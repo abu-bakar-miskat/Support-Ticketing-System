@@ -15,6 +15,7 @@ import {
   getSubDepartmentStatusesForSubDepartmentIds,
   getSubDepartmentStatuses,
 } from "@/lib/board-data";
+import { attachSlaResolution } from "@/lib/task-sla-resolution";
 import type { MyTasksResponse, TasksMetaResponse } from "@/lib/api/tasks";
 import type { getProfile } from "@/lib/profile";
 
@@ -58,8 +59,10 @@ async function collectMyTasksData(profile: Profile): Promise<MyTasksResponse> {
       ...(profile.activeTenantId ? { tenantId: profile.activeTenantId } : {}),
       ...(personalTaskScope ? { allowedDeptIds: personalTaskScope.allowedDeptIds } : {}),
       timeForUserId: profile.id,
-    }),
-    isMgrOrAdmin ? getSubDepartmentReviewCards(managedSubDepartmentIds, profile.id) : Promise.resolve([]),
+    }).then(attachSlaResolution),
+    isMgrOrAdmin
+      ? getSubDepartmentReviewCards(managedSubDepartmentIds, profile.id).then(attachSlaResolution)
+      : Promise.resolve([]),
     getAssignedSubtasks(
       profile.id,
       personalTaskScope ? { allowedDeptIds: personalTaskScope.allowedDeptIds } : {},

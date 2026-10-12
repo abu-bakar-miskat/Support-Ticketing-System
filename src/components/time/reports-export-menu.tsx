@@ -27,7 +27,7 @@ export function ReportsExportMenu({
 }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const ready = !!subDepartmentTime || !!overview;
+  const ready = !!subDepartmentTime && !!overview;
 
   async function handleExport(format: ReportExportFormat) {
     setOpen(false);

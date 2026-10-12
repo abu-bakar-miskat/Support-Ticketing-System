@@ -85,6 +85,33 @@ export function buildReportsExportDoc(args: {
 
   if (overview) {
     sheets.push({
+      name: "Ticket Sources",
+      columns: [
+        { key: "source", header: "Ticket Source", width: 28 },
+        { key: "count", header: "Tickets", width: 12 },
+      ],
+      rows: [
+        { source: "Total tickets", count: overview.totals.total },
+        { source: "Custom / manual", count: overview.ticketSources.manual },
+        { source: "Support", count: overview.ticketSources.support },
+        { source: "Portal", count: overview.ticketSources.portal },
+        { source: "Shared mailbox", count: overview.ticketSources.mailbox },
+      ],
+    });
+    sheets.push({
+      name: "Person Performance",
+      columns: [
+        { key: "name", header: "Person", width: 26 },
+        { key: "assigned", header: "Assigned", width: 12 },
+        { key: "completed", header: "Completed", width: 12 },
+        { key: "slaMet", header: "SLA met", width: 12 },
+        { key: "slaMissed", header: "SLA missed", width: 12 },
+        { key: "slaPending", header: "SLA pending", width: 12 },
+        { key: "noSla", header: "No SLA", width: 12 },
+      ],
+      rows: overview.personPerformance.map((person) => ({ ...person })),
+    });
+    sheets.push({
       name: "Totals",
       columns: [
         { key: "open", header: "Open", width: 12 },
@@ -167,6 +194,7 @@ export function buildReportsExportDoc(args: {
 
   const subtitleParts = [rangeLabel];
   if (scopeLabel) subtitleParts.push(scopeLabel);
+  subtitleParts.push("Ticket metrics use tickets created in the selected period and current assignees. SLA met: completed without a breach; SLA missed: breached; pending: open without a breach; no SLA: no applicable policy. Each co-assignee receives credit.");
   subtitleParts.push(`Generated ${new Date().toLocaleString()}`);
 
   return {

@@ -688,7 +688,7 @@ const RUNNING_PROBE_MS = 1000;
 export async function getSlaIndicatorViewForTicket(
   ticketId: string,
   now: Date = new Date(),
-  opts: { includeDetails?: boolean } = {},
+  opts: { includeDetails?: boolean; readOnly?: boolean } = {},
 ): Promise<SlaIndicatorView | null> {
   const timer = await prisma.slaTimer.findUnique({
     where: { ticketId },
@@ -699,9 +699,10 @@ export async function getSlaIndicatorViewForTicket(
   });
   if (!timer || !isSlaEligible(timer)) return null;
 
-  await reconcileFirstResponseActiveStatus(timer, now);
-  await reconcileMailboxResolutionStart(timer, now);
-  await reconcileFormResolutionStart(timer, timer.resolutionStoppedAt ?? now);
+  const persist = !opts.readOnly;
+  await reconcileFirstResponseActiveStatus(timer, now, persist);
+  await reconcileMailboxResolutionStart(timer, now, false, persist);
+  await reconcileFormResolutionStart(timer, timer.resolutionStoppedAt ?? now, persist);
   const rangeFrom = timer.firstResponseStartedAt < timer.resolutionStartedAt ? timer.firstResponseStartedAt : timer.resolutionStartedAt;
   const probeEnd = new Date(now.getTime() + RUNNING_PROBE_MS);
   const { calendar, slaConfig } = await runtimeForTimer(timer, rangeFrom, probeEnd);

@@ -247,6 +247,7 @@ export function TaskListRow({
             coAssigneeIds={task.coAssignees.map((a) => a.id)}
             userLoggedSecs={task.userLoggedSecs}
             estimatedTime={task.slaResolutionTargetMins ?? task.estimatedTime}
+            slaResolution={task.slaResolution}
           />
         </td>
         <td className={cn(COL_CREATED, "overflow-hidden py-2.5")}>

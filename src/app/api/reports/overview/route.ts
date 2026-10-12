@@ -5,6 +5,9 @@ import { runAsSystem } from "@/lib/request-scope"
 import { getProfileDeptScope, ticketInDeptWhere, effectiveTicketDept } from "@/lib/dept-scope"
 import { resolveAnalyticsScope } from "@/lib/reporting/analytics-scope"
 import { resolveReportRange } from "@/lib/report-period"
+import { getSlaIndicatorForTicket } from "@/lib/sla-engine"
+import { summarizeTicketPerformance } from "@/lib/reporting/ticket-performance"
+import type { SlaIndicator } from "@/lib/sla-timer"
 import { statusCategory, STATUS_CATEGORIES, STATUS_CATEGORY_LABELS } from "@/lib/status-category"
 import type {
   ReportsOverview,
@@ -53,8 +56,10 @@ async function loadOverview(request: Request, profile: AuthProfile) {
   const subDepartmentFilter = analyticsScope.ticketWhere
   const projectFilter = projectId && projectId !== "all" ? { projectId } : {}
   // Person filter = tickets assigned to that person; every widget follows it.
-  const personFilter = personId && personId !== "all" ? { assigneeId: personId } : {}
-  const base = { deletedAt: null, ...subDepartmentFilter, ...projectFilter, ...personFilter }
+  const personFilter = personId && personId !== "all"
+    ? { OR: [{ assigneeId: personId }, { assignees: { some: { userId: personId } } }] }
+    : {}
+  const base = { deletedAt: null, isDraft: false, ...subDepartmentFilter, ...projectFilter, ...personFilter }
   // Cohort created within the selected period (for creation-based metrics).
   const createdWhere = { ...base, createdAt: { gte: start, lt: end } }
   // Tickets resolved (closed) within the selected period.
@@ -62,26 +67,20 @@ async function loadOverview(request: Request, profile: AuthProfile) {
 
   const [
     createdGroups,
-    resolvedGroups,
     bugGroups,
     moduleTickets,
     statusGroups,
     priorityGroups,
-    workloadGroups,
     projectTotalGroups,
     projectOpenGroups,
     moduleTotalGroups,
     moduleOpenGroups,
     scopeProjectGroups,
     completeStatuses,
+    performanceTickets,
   ] = await Promise.all([
     prisma.ticket.groupBy({
       by: ["creatorId"],
-      where: createdWhere,
-      _count: { _all: true },
-    }),
-    prisma.ticket.groupBy({
-      by: ["assigneeId", "subDepartmentId", "status"],
       where: createdWhere,
       _count: { _all: true },
     }),
@@ -106,11 +105,6 @@ async function loadOverview(request: Request, profile: AuthProfile) {
     }),
     prisma.ticket.groupBy({ by: ["subDepartmentId", "status"], where: createdWhere, _count: { _all: true } }),
     prisma.ticket.groupBy({ by: ["priority"], where: createdWhere, _count: { _all: true } }),
-    prisma.ticket.groupBy({
-      by: ["assigneeId"],
-      where: { ...createdWhere, closedAt: null },
-      _count: { _all: true },
-    }),
     prisma.ticket.groupBy({ by: ["projectId"], where: createdWhere, _count: { _all: true } }),
     prisma.ticket.groupBy({
       by: ["projectId"],
@@ -142,6 +136,21 @@ async function loadOverview(request: Request, profile: AuthProfile) {
       },
       select: { subDepartmentId: true, label: true, category: true },
     }),
+    prisma.ticket.findMany({
+      where: createdWhere,
+      select: {
+        id: true, status: true, subDepartmentId: true, closedAt: true,
+        assignee: { select: { id: true, name: true } },
+        assignees: { select: { user: { select: { id: true, name: true } } } },
+        intake: { select: { apiKeyId: true, portalIdempotencyKey: true } },
+        slaTimer: { select: { source: true } },
+        activityLogs: {
+          where: { action: "TICKET_CREATED", metadata: { path: ["source"], equals: "email" } },
+          select: { metadata: true },
+          take: 1,
+        },
+      },
+    }),
   ])
 
   const categories = new Map(completeStatuses.map((s) => [`${s.subDepartmentId}::${s.label}`, statusCategory(s)]))
@@ -163,13 +172,26 @@ async function loadOverview(request: Request, profile: AuthProfile) {
       })
     : []
 
+  // Use the authoritative SLA engine with persistence disabled: reports must
+  // never reconcile live records or trigger manager notifications.
+  const now = new Date()
+  const evaluatedTickets: (typeof performanceTickets[number] & { completed: boolean; sla: SlaIndicator | null })[] = []
+  for (let offset = 0; offset < performanceTickets.length; offset += 6) {
+    evaluatedTickets.push(...await Promise.all(performanceTickets.slice(offset, offset + 6).map(async (ticket) => {
+      const completed = isDone(ticket.subDepartmentId, ticket.status)
+      const sla = ticket.slaTimer
+        ? await getSlaIndicatorForTicket(ticket.id, completed ? ticket.closedAt ?? now : now, { readOnly: true })
+        : null
+      return { ...ticket, completed, sla }
+    })))
+  }
+  const { ticketSources, personPerformance } = summarizeTicketPerformance(evaluatedTickets, memberOptions, personId)
+
   // ── Resolve display names for creators / resolvers ──
   const personIds = [
     ...new Set(
       [
         ...createdGroups.map((g) => g.creatorId),
-        ...resolvedGroups.map((g) => g.assigneeId),
-        ...workloadGroups.map((g) => g.assigneeId),
       ].filter((id): id is string => !!id),
     ),
   ]
@@ -187,13 +209,9 @@ async function loadOverview(request: Request, profile: AuthProfile) {
     .sort((a, b) => b.count - a.count)
     .slice(0, 8)
 
-  const resolvedByPerson = new Map<string, number>()
-  for (const g of resolvedGroups) {
-    if (!g.assigneeId || !isDone(g.subDepartmentId, g.status)) continue
-    resolvedByPerson.set(g.assigneeId, (resolvedByPerson.get(g.assigneeId) ?? 0) + g._count._all)
-  }
-  const resolved: NamedCount[] = [...resolvedByPerson.entries()]
-    .map(([id, count]) => ({ name: nameById.get(id) ?? "Unknown", count }))
+  const resolved: NamedCount[] = personPerformance
+    .filter((person) => person.personId && person.completed > 0)
+    .map((person) => ({ name: person.name, count: person.completed }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 8)
 
@@ -270,9 +288,9 @@ async function loadOverview(request: Request, profile: AuthProfile) {
     .sort((a, b) => PRIORITY_ORDER.indexOf(a.label) - PRIORITY_ORDER.indexOf(b.label))
 
   // ── Open workload per assignee ──
-  const workload: NamedCount[] = workloadGroups
-    .filter((g) => g.assigneeId)
-    .map((g) => ({ name: nameById.get(g.assigneeId!) ?? "Unknown", count: g._count._all }))
+  const workload: NamedCount[] = personPerformance
+    .filter((person) => person.personId && person.assigned > person.completed)
+    .map((person) => ({ name: person.name, count: person.assigned - person.completed }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 8)
 
@@ -347,6 +365,7 @@ async function loadOverview(request: Request, profile: AuthProfile) {
     const deptMembers = await prisma.profile.findMany({
       where: {
         deletedAt: null,
+        ...(personId !== "all" ? { id: personId } : {}),
         memberships: { some: { subDepartmentId: { in: deptSubDepartmentIds }, isActive: true } },
       },
       select: { id: true, name: true, avatarUrl: true },
@@ -357,7 +376,7 @@ async function loadOverview(request: Request, profile: AuthProfile) {
       // "Other department" = tickets NOT belonging to the active department, by
       // the ticket's project department (not its subDepartment) — so work done on a
       // member's own subDepartment but inside another department's project counts.
-      const notInDept = { NOT: ticketInDeptWhere(deptScope.activeDeptId) }
+      const notInDept = { tenantId: profile.activeTenantId ?? "__no_tenant__", ...projectFilter, NOT: ticketInDeptWhere(deptScope.activeDeptId) }
       const deptSelect = {
         project: {
           select: {
@@ -483,6 +502,8 @@ async function loadOverview(request: Request, profile: AuthProfile) {
     projectTickets,
     moduleTickets: moduleTicketOverview,
     totals,
+    ticketSources,
+    personPerformance,
     projectOptions,
     memberOptions: memberOptions.map((m) => ({ id: m.id, name: m.name, avatarUrl: m.avatarUrl ?? null })),
     crossDept,

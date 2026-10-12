@@ -194,7 +194,7 @@ export function StatusSelect({
           <SelectValue>
             <span className="flex min-w-0 items-center gap-2">
               <span
-                className={coloredDotClass()}
+                className={coloredDotClass("md")}
                 style={{ backgroundColor: accent }}
               />
               <span className="truncate">{displayValue}</span>
@@ -204,7 +204,7 @@ export function StatusSelect({
         <SelectContent className={sidebarSelectContentClass}>
           {sortStatusesByCategory(statuses).map((s) => (
             <SelectItem key={s.id} value={s.label} className={sidebarSelectItemClass}>
-              <span className={coloredDotClass()} style={{ backgroundColor: s.color }} />
+              <span className={coloredDotClass("md")} style={{ backgroundColor: s.color }} />
               {s.label}
             </SelectItem>
           ))}

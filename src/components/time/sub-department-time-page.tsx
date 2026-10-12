@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { ChevronDown, Check, Clock, TicketCheck, Layers, ChartColumn, Globe } from "lucide-react";
+import { ChevronDown, Check, Clock, TicketCheck, Layers, ChartColumn } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { createTicketsSubscription } from "@/lib/realtime";
 import { ScheduledReports } from "@/components/reports/scheduled-reports";
+import { TicketPerformancePanel } from "@/components/reports/ticket-performance-panel";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -22,7 +23,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { useSubDepartmentTimeReport, useReportsOverview } from "@/hooks/queries/use-reports";
 import { useDashboardContext } from "@/components/dashboard/dashboard-context";
 import { ReportsExportMenu } from "@/components/time/reports-export-menu";
-import type { StatCard, SubDepartmentMember, NamedCount, ModuleSpeed, DistSlice, ProjectTickets, ModuleTickets, ProjectTimeRow, CrossDeptContribution } from "@/lib/api/reports";
+import type { StatCard, SubDepartmentMember, NamedCount, DistSlice } from "@/lib/api/reports";
 import { formatCalendarDate } from "@/lib/ticket-datetime";
 import { ReportsSectionsSkeleton } from "@/components/skeletons/page-skeletons";
 
@@ -91,22 +92,6 @@ function ReportStatCard({
       <p className={cn("mt-1.5 font-sans text-[11.5px] text-sts-muted", detailClassName)}>
         {detail}
       </p>
-    </div>
-  );
-}
-
-function ProjectShareBar({ projects }: { projects: ProjectTimeRow[] }) {
-  if (projects.length === 0) return null;
-  return (
-    <div className="mb-3 flex h-2.5 overflow-hidden rounded-full bg-sts-surface">
-      {projects.map((p) => (
-        <div
-          key={p.name}
-          className="h-full transition-[width] duration-300"
-          style={{ width: `${Math.max(p.share, 1)}%`, backgroundColor: p.color }}
-          title={`${p.name}: ${p.hours} (${p.share}%)`}
-        />
-      ))}
     </div>
   );
 }
@@ -206,32 +191,6 @@ function CountBars({ rows, color }: { rows: NamedCount[]; color: string }) {
   );
 }
 
-function ModuleSpeedBars({ rows }: { rows: ModuleSpeed[] }) {
-  const max = Math.max(1, ...rows.map((r) => r.days));
-  if (rows.length === 0)
-    return <p className="font-sans text-[12px] text-sts-subtle">No bug tickets resolved yet.</p>;
-  return (
-    <div className="flex flex-col gap-2">
-      {rows.map((r) => (
-        <div key={r.module} className="flex items-center gap-2.5">
-          <span className="w-24 shrink-0 truncate font-sans text-[12px] text-sts-foreground" title={r.module}>
-            {r.module}
-          </span>
-          <div className="h-2 flex-1 overflow-hidden rounded-full bg-sts-surface">
-            <div
-              className="h-full rounded-full"
-              style={{ width: `${Math.max(4, (r.days / max) * 100)}%`, backgroundColor: "#e08848" }}
-            />
-          </div>
-          <span className="w-9 shrink-0 text-right font-mono text-[12px] font-semibold tabular-nums text-sts-foreground">
-            {r.days}d
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 function DonutChart({
   rows,
   size = 132,
@@ -294,136 +253,6 @@ function DonutChart({
   );
 }
 
-function ProjectTicketsList({ rows }: { rows: ProjectTickets[] }) {
-  const max = Math.max(1, ...rows.map((r) => r.total));
-  if (rows.length === 0)
-    return <p className="font-sans text-[12px] text-sts-subtle">No projects yet.</p>;
-  return (
-    <div className="flex flex-col gap-2.5">
-      {rows.map((r) => (
-        <div key={r.project} className="flex items-center gap-2.5">
-          <span className="flex w-28 shrink-0 items-center gap-1.5 font-sans text-[12px] text-sts-foreground">
-            <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: r.color }} />
-            <span className="truncate" title={r.project}>{r.project}</span>
-          </span>
-          <div className="flex h-2.5 flex-1 overflow-hidden rounded-full bg-sts-surface">
-            <div
-              className="h-full"
-              style={{ width: `${((r.total - r.open) / max) * 100}%`, backgroundColor: "#16a34a" }}
-              title={`${r.total - r.open} closed`}
-            />
-            <div
-              className="h-full"
-              style={{ width: `${(r.open / max) * 100}%`, backgroundColor: r.color }}
-              title={`${r.open} open`}
-            />
-          </div>
-          <span className="w-20 shrink-0 text-right font-sans text-[11.5px] text-sts-subtle">
-            <span className="font-semibold text-sts-foreground">{r.open}</span> open / {r.total}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ModuleTicketsList({ rows }: { rows: ModuleTickets[] }) {
-  const max = Math.max(1, ...rows.map((r) => r.total));
-  if (rows.length === 0)
-    return <p className="font-sans text-[12px] text-sts-subtle">No module tickets yet.</p>;
-  return (
-    <div className="flex flex-col gap-2.5">
-      {rows.map((r) => (
-        <div key={r.module} className="flex items-center gap-2.5">
-          <span className="flex w-28 shrink-0 items-center gap-1.5 font-sans text-[12px] text-sts-foreground">
-            <span className="size-2.5 shrink-0 rounded-full" style={{ backgroundColor: "#0a76b9" }} />
-            <span className="truncate" title={r.module}>{r.module}</span>
-          </span>
-          <div className="flex h-2.5 flex-1 overflow-hidden rounded-full bg-sts-surface">
-            <div
-              className="h-full"
-              style={{ width: `${((r.total - r.open) / max) * 100}%`, backgroundColor: "#16a34a" }}
-              title={`${r.total - r.open} closed`}
-            />
-            <div
-              className="h-full"
-              style={{ width: `${(r.open / max) * 100}%`, backgroundColor: "#0a76b9" }}
-              title={`${r.open} open`}
-            />
-          </div>
-          <span className="w-20 shrink-0 text-right font-sans text-[11.5px] text-sts-subtle">
-            <span className="font-semibold text-sts-foreground">{r.open}</span> open / {r.total}
-          </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function crossDeptHours(secs: number): string {
-  const h = Math.floor(secs / 3600);
-  const m = Math.round((secs % 3600) / 60);
-  if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`;
-  return `${m}m`;
-}
-
-function CrossDeptPanel({ rows }: { rows: CrossDeptContribution[] }) {
-  return (
-    <div className="flex flex-col gap-3">
-      {rows.map((r) => (
-        <div
-          key={r.personId}
-          className="flex flex-col gap-2 border-b border-sts-card-border/40 pb-3 last:border-b-0 last:pb-0"
-        >
-          <div className="flex items-center gap-2.5">
-            <UserAvatar name={r.name} avatarUrl={r.avatarUrl} size={28} />
-            <span className="min-w-0 flex-1 truncate font-sans text-[13px] font-medium text-sts-foreground">
-              {r.name}
-            </span>
-            <span className="flex shrink-0 items-center gap-3 font-mono text-[11.5px] tabular-nums text-sts-muted">
-              {r.created > 0 && (
-                <span title="Tickets created for other departments">
-                  <span className="font-semibold text-sts-foreground">{r.created}</span> created
-                </span>
-              )}
-              {r.completed > 0 && (
-                <span title="Tickets completed for other departments">
-                  <span className="font-semibold text-emerald-600 dark:text-emerald-400">{r.completed}</span> done
-                </span>
-              )}
-              {r.loggedSecs > 0 && (
-                <span title="Time logged for other departments">
-                  <span className="font-semibold text-sts-foreground">{crossDeptHours(r.loggedSecs)}</span> logged
-                </span>
-              )}
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-1.5 pl-[38px]">
-            {r.byDepartment.map((d) => (
-              <span
-                key={d.departmentName}
-                className="rounded bg-amber-500/10 px-1.5 py-px font-sans text-[10.5px] text-amber-700 dark:text-amber-400"
-                title={`${d.created} created · ${d.completed} done · ${crossDeptHours(d.loggedSecs)} logged`}
-              >
-                {d.departmentName}
-                <span className="ml-1 text-amber-600/70 dark:text-amber-400/70">
-                  {[
-                    d.created > 0 ? `${d.created}c` : null,
-                    d.completed > 0 ? `${d.completed}d` : null,
-                    d.loggedSecs > 0 ? crossDeptHours(d.loggedSecs) : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </span>
-              </span>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export function SubDepartmentTimePage({
   showDepartmentFilter = false,
 }: {
@@ -458,7 +287,6 @@ export function SubDepartmentTimePage({
       unsubscribe();
     };
   }, [queryClient]);
-  const [projectFilter, setProjectFilter] = useState<string>("all");
   const [personFilter, setPersonFilter] = useState<string>("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
@@ -486,22 +314,17 @@ export function SubDepartmentTimePage({
   const { data, isLoading, isError, refetch } = useSubDepartmentTimeReport(
     range.from,
     range.to,
-    projectFilter,
+    "all",
     personFilter,
     showDepartmentFilter ? departmentFilter : "all",
   );
-  const { data: overview } = useReportsOverview(
+  const { data: overview, isError: overviewError, refetch: refetchOverview } = useReportsOverview(
     range.from,
     range.to,
-    projectFilter,
+    "all",
     personFilter,
     showDepartmentFilter ? departmentFilter : "all",
   );
-  const projectOptions = overview?.projectOptions ?? [];
-  const selectedProjectName =
-    projectFilter === "all"
-      ? "All projects"
-      : projectOptions.find((p) => p.id === projectFilter)?.name ?? "Project";
   const memberOptions = overview?.memberOptions ?? [];
   const selectedPerson = memberOptions.find((m) => m.id === personFilter);
   const selectedPersonName = personFilter === "all" ? "Everyone" : selectedPerson?.name ?? "Person";
@@ -537,14 +360,14 @@ export function SubDepartmentTimePage({
               align="end"
               className="max-h-72 overflow-y-auto font-sans [&_[data-slot=dropdown-menu-item]]:text-[12.5px]"
             >
-              <DropdownMenuItem onClick={() => setDepartmentFilter("all")} className="gap-2">
+              <DropdownMenuItem onClick={() => { setDepartmentFilter("all"); setPersonFilter("all"); }} className="gap-2">
                 <span className="flex-1">All departments</span>
                 {departmentFilter === "all" && <Check className="size-3 text-sts-blue" />}
               </DropdownMenuItem>
               {departments.map((dept) => (
                 <DropdownMenuItem
                   key={dept.id}
-                  onClick={() => setDepartmentFilter(dept.id)}
+                  onClick={() => { setDepartmentFilter(dept.id); setPersonFilter("all"); }}
                   className="gap-2"
                 >
                   <span className="flex-1 truncate">{dept.name}</span>
@@ -559,6 +382,7 @@ export function SubDepartmentTimePage({
           <DropdownMenu>
             <DropdownMenuTrigger
               type="button"
+              aria-label={`Filter by person: ${selectedPersonName}`}
               className="flex h-[30px] w-[160px] shrink-0 items-center justify-between gap-2 rounded-full border border-sts-card-border bg-sts-card px-3 font-sans text-[11.5px] font-semibold text-sts-foreground outline-none hover:bg-sts-bg data-popup-open:bg-sts-bg"
             >
               <span className="flex min-w-0 items-center gap-1.5">
@@ -592,35 +416,7 @@ export function SubDepartmentTimePage({
           </DropdownMenu>
           )}
 
-          {/* Project filter */}
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              type="button"
-              className="flex h-[30px] w-[160px] shrink-0 items-center justify-between gap-2 rounded-full border border-sts-card-border bg-sts-card px-3 font-sans text-[11.5px] font-semibold text-sts-foreground outline-none hover:bg-sts-bg data-popup-open:bg-sts-bg"
-            >
-              <span className="truncate">{selectedProjectName}</span>
-              <ChevronDown className="size-3 shrink-0 text-sts-subtle" />
-            </DropdownMenuTrigger>
-            <DropdownMenuContent
-              align="end"
-              className="max-h-72 overflow-y-auto font-sans [&_[data-slot=dropdown-menu-item]]:text-[12.5px]"
-            >
-              <DropdownMenuItem onClick={() => setProjectFilter("all")} className="gap-2">
-                <span className="flex-1">All projects</span>
-                {projectFilter === "all" && <Check className="size-3 text-sts-blue" />}
-              </DropdownMenuItem>
-              {projectOptions.map((p) => (
-                <DropdownMenuItem
-                  key={p.id}
-                  onClick={() => setProjectFilter(p.id)}
-                  className="gap-2"
-                >
-                  <span className="flex-1 truncate">{p.name}</span>
-                  {projectFilter === p.id && <Check className="size-3 text-sts-blue" />}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+
 
           {/* Date range filter */}
           <Popover open={rangeOpen} onOpenChange={setRangeOpen}>
@@ -685,10 +481,10 @@ export function SubDepartmentTimePage({
           <ReportsExportMenu
             subDepartmentTime={data}
             overview={overview}
-            rangeLabel={selectedLabel}
+            rangeLabel={formatRangeLabel(range.from, range.to)}
             scopeLabel={
               [
-                projectFilter !== "all" ? selectedProjectName : null,
+                showDepartmentFilter && departmentFilter !== "all" ? departments.find((dept) => dept.id === departmentFilter)?.name : null,
                 canFilterByPerson && personFilter !== "all" ? selectedPersonName : null,
               ]
                 .filter(Boolean)
@@ -700,7 +496,7 @@ export function SubDepartmentTimePage({
       />
 
       {/* Error state */}
-      {isError && (
+      {(isError || overviewError) && (
         <div className="flex flex-col items-center gap-2 rounded-xl border border-sts-card-border bg-sts-card py-8">
           <p className="font-sans text-[12.5px] text-sts-muted">
             Failed to load report data.
@@ -708,7 +504,7 @@ export function SubDepartmentTimePage({
           <Button
             variant="outline"
             size="sm"
-            onClick={() => refetch()}
+            onClick={() => { refetch(); refetchOverview(); }}
             className="h-7 border-sts-card-border bg-sts-bg px-3 font-sans text-[11.5px]"
           >
             Retry
@@ -717,10 +513,11 @@ export function SubDepartmentTimePage({
       )}
 
       {/* Range KPIs + overview — skeleton while either report stream is pending */}
-      {isLoading || !overview ? (
+      {isError || overviewError ? null : isLoading || !overview ? (
         <ReportsSectionsSkeleton />
       ) : (
         <>
+          <TicketPerformancePanel overview={overview} onSelectPerson={canFilterByPerson ? setPersonFilter : undefined} />
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <>
             {data?.stats.map((stat, i) => (
@@ -757,11 +554,8 @@ export function SubDepartmentTimePage({
             </OverviewCard>
           </div>
 
-          {/* Contributions — three equal people cards */}
-          <div className="grid auto-rows-fr grid-cols-1 gap-3.5 md:grid-cols-3">
-            <OverviewCard title="CREATED">
-              <CountBars rows={overview.created} color="#2f6df6" />
-            </OverviewCard>
+          {/* Contributions */}
+          <div className="grid auto-rows-fr grid-cols-1 gap-3.5 md:grid-cols-2">
             <OverviewCard title="RESOLVED">
               <CountBars rows={overview.resolved} color="#16a34a" />
             </OverviewCard>
@@ -773,120 +567,7 @@ export function SubDepartmentTimePage({
             </OverviewCard>
           </div>
 
-          {/* Tickets breakdown — two equal cards */}
-          <div className="grid auto-rows-fr grid-cols-1 gap-3.5 md:grid-cols-2">
-            <OverviewCard title="TICKETS BY PROJECT">
-              <ProjectTicketsList rows={overview.projectTickets} />
-            </OverviewCard>
-            <OverviewCard title="TICKETS BY MODULE">
-              <ModuleTicketsList rows={overview.moduleTickets} />
-            </OverviewCard>
-          </div>
-
-          {/* Delivery — two equal cards */}
-          <div className="grid auto-rows-fr grid-cols-1 gap-3.5 md:grid-cols-2">
-            <OverviewCard title="OPEN WORKLOAD">
-              <CountBars rows={overview.workload} color="#f97316" />
-            </OverviewCard>
-            <OverviewCard title="BUG RESOLUTION SPEED">
-              <ModuleSpeedBars rows={overview.bugResolution} />
-            </OverviewCard>
-          </div>
-
-          {/* Cross-department contributions — what our people did for other departments */}
-          {(overview.crossDept?.length ?? 0) > 0 && (
-            <div className="rounded-xl border border-sts-card-border bg-sts-card">
-              <div className="flex items-center gap-2 border-b border-sts-card-border px-4 py-2.5">
-                <Globe className="size-3.5 text-amber-500" />
-                <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle">
-                  CROSS-DEPARTMENT CONTRIBUTIONS · {selectedLabel.toUpperCase()}
-                </p>
-              </div>
-              <div className="px-4 py-3">
-                <CrossDeptPanel rows={overview.crossDept} />
-              </div>
-            </div>
-          )}
         </>
-      )}
-
-      {/* Time by project */}
-      {!isLoading && overview && (data?.projects.length ?? 0) > 0 && (
-        <div className="rounded-xl border border-sts-card-border bg-sts-card">
-          <div className="border-b border-sts-card-border px-4 py-2.5 sm:px-[18px]">
-            <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle">
-              TIME BY PROJECT · {selectedLabel.toUpperCase()}
-            </p>
-          </div>
-          <div className="px-4 py-3 sm:px-[18px]">
-            <ProjectShareBar projects={data!.projects} />
-            <div className="mb-1 flex flex-wrap gap-x-3 gap-y-1">
-              {data!.projects.slice(0, 6).map((p) => (
-                <span
-                  key={p.name}
-                  className="flex items-center gap-1.5 font-sans text-[11px] text-sts-muted"
-                >
-                  <span
-                    className="size-2 shrink-0 rounded-full"
-                    style={{ backgroundColor: p.color }}
-                  />
-                  {p.name} {p.share}%
-                </span>
-              ))}
-            </div>
-          </div>
-          {/* Column headers */}
-          <div className="flex items-center gap-4 border-y border-sts-card-border/60 px-4 py-1.5 sm:px-[18px]">
-            <span className="size-2.5 shrink-0" />
-            <span className="min-w-0 flex-1 font-sans text-[10px] font-semibold uppercase tracking-[0.6px] text-sts-subtle/70">
-              Project
-            </span>
-            <span className="hidden w-16 shrink-0 text-right font-sans text-[10px] font-semibold uppercase tracking-[0.6px] text-sts-subtle/70 sm:block">
-              People
-            </span>
-            <span className="hidden w-32 shrink-0 md:block" />
-            <span className="w-[72px] shrink-0 text-right font-sans text-[10px] font-semibold uppercase tracking-[0.6px] text-sts-subtle/70">
-              Time
-            </span>
-            <span className="w-9 shrink-0 text-right font-sans text-[10px] font-semibold uppercase tracking-[0.6px] text-sts-subtle/70">
-              %
-            </span>
-          </div>
-          <div className="divide-y divide-sts-card-border/60">
-            {data!.projects.map((p) => (
-              <div
-                key={p.name}
-                className="flex items-center gap-4 px-4 py-2.5 transition-colors hover:bg-sts-bg/40 sm:px-[18px]"
-              >
-                <span
-                  className="size-2.5 shrink-0 rounded-full"
-                  style={{ backgroundColor: p.color }}
-                />
-                <span className="min-w-0 flex-1 truncate font-sans text-[12.5px] text-sts-foreground">
-                  {p.name}
-                </span>
-                <span className="hidden w-16 shrink-0 text-right font-sans text-[11.5px] text-sts-subtle sm:block">
-                  {p.contributors} {p.contributors === 1 ? "person" : "people"}
-                </span>
-                <div className="hidden h-2 w-32 shrink-0 overflow-hidden rounded-full bg-sts-surface md:block">
-                  <div
-                    className="h-full rounded-full"
-                    style={{
-                      width: `${Math.max(4, p.share)}%`,
-                      backgroundColor: p.color,
-                    }}
-                  />
-                </div>
-                <span className="w-[72px] shrink-0 whitespace-nowrap text-right font-mono text-[12px] font-semibold tabular-nums text-sts-foreground">
-                  {p.hours}
-                </span>
-                <span className="w-9 shrink-0 text-right font-sans text-[11.5px] tabular-nums text-sts-subtle">
-                  {p.share}%
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
       )}
 
       {/* RPT-06: periodic exportable reports (Project Admin only; self-hides otherwise) */}

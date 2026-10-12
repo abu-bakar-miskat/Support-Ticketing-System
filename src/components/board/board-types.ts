@@ -249,8 +249,10 @@ export type BoardCardData = {
   userLoggedSecs: number
   /** Estimated time in minutes. */
   estimatedTime: number | null
-  /** Mailbox SLA target, kept separate from personal work estimates. */
+  /** Mailbox/form SLA resolution target, kept separate from personal work estimates. */
   slaResolutionTargetMins?: number | null
+  /** Resolution clock (mailbox SLA or manual tracked work), attached by task lists. */
+  slaResolution?: { elapsedMs: number; running: boolean } | null
   startDate: string | null
   startDateIso: string | null
   due: string | null

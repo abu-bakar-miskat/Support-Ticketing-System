@@ -149,10 +149,10 @@ export function InlineStatusPicker({
                   )}
                 >
                   <span
-                    className="size-2.5 shrink-0 rounded-full"
+                    className="size-2 shrink-0 rounded-full"
                     style={{ backgroundColor: s.color }}
                   />
-                  <span className="flex-1 font-sans text-[12px] text-sts-foreground">
+                  <span className="flex-1 font-sans text-[12.5px] font-medium leading-none text-sts-foreground antialiased">
                     {s.label}
                   </span>
                   {s.label === current && (

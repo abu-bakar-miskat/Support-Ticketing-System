@@ -139,7 +139,7 @@ export function toBoardCard(
     totalLoggedSecs: ownSecs + subSecs,
     userLoggedSecs: userTimeByTicketId.get(t.id) ?? 0,
     estimatedTime: t.estimatedTime ?? null,
-    slaResolutionTargetMins: t.slaTimer?.source === "mailbox" ? t.slaTimer.resolutionTargetMins : null,
+    slaResolutionTargetMins: t.slaTimer?.source === "mailbox" || t.slaTimer?.source === "form" ? t.slaTimer.resolutionTargetMins : null,
     startDate: t.startDate
       ? t.startDate.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
       : null,

@@ -10,6 +10,8 @@ import { ensureAvailableFeatureTemplates } from "@/lib/template-catalogue"
 
 export const dynamic = "force-dynamic"
 
+export const metadata = { title: "Feature templates — Global Support Portal" }
+
 export default async function TemplatesCataloguePage() {
   const profile = await getProfile()
   if (!profile) redirect("/login")

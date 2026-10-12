@@ -7,6 +7,19 @@ import { TenantManageClient } from "@/components/platform/tenant-manage-client"
 
 export const dynamic = "force-dynamic"
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  // Same super-admin gate as the page, so the tenant name never leaks in the tab title.
+  const profile = await getProfile()
+  if (!profile?.isSuperAdmin) return { title: "Tenant — Global Support Portal" }
+  const { id } = await params
+  const tenant = await prisma.tenant.findUnique({ where: { id }, select: { name: true } })
+  return { title: `${tenant?.name ?? "Tenant"} — Global Support Portal` }
+}
+
 export default async function TenantManagePage({
   params,
 }: {

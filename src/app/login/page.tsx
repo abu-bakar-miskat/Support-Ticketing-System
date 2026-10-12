@@ -17,6 +17,8 @@ import { isDevTestAccount } from "@/lib/auth/dev-test-accounts";
  * Clears any stale active-dept cookie so they don't drop into a dept dashboard.
  * Only applies to the default landing ("/"); a real deep link still wins.
  */
+export const metadata = { title: "Sign in — Global Support Portal" };
+
 async function redirectSuperAdminToPlatform(
   userId: string,
   next: string,

@@ -6,6 +6,8 @@ import { TenantsClient } from "@/components/platform/tenants-client"
 
 export const dynamic = "force-dynamic"
 
+export const metadata = { title: "Tenants — Global Support Portal" }
+
 export default async function TenantsPage() {
   const profile = await getProfile()
   if (!profile) redirect("/login")

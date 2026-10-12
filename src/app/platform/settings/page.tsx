@@ -7,6 +7,8 @@ import { PlatformSettingsAdmin } from "@/components/platform/platform-settings-a
 
 export const dynamic = "force-dynamic"
 
+export const metadata = { title: "Platform settings — Global Support Portal" }
+
 export default async function PlatformSettingsPage() {
   const profile = await getProfile()
   if (!profile) redirect("/login")

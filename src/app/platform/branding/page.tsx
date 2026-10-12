@@ -5,6 +5,8 @@ import { PlatformBrandingPage } from "@/components/platform/platform-branding-pa
 
 export const dynamic = "force-dynamic"
 
+export const metadata = { title: "Branding — Global Support Portal" }
+
 export default async function PlatformBrandingRoute() {
   const profile = await getProfile()
   if (!profile) redirect("/login")

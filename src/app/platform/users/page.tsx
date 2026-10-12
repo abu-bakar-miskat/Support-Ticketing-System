@@ -7,6 +7,8 @@ import type { InviteTenant } from "@/components/platform/platform-invite-member-
 
 export const dynamic = "force-dynamic"
 
+export const metadata = { title: "All users — Global Support Portal" }
+
 export default async function PlatformUsersPage() {
   const profile = await getProfile()
   if (!profile) redirect("/login")

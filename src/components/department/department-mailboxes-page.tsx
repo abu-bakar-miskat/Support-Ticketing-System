@@ -40,7 +40,8 @@ import {
 } from "@/components/ui/select";
 import { ReceivedMailPanel } from "@/components/mailbox/received-mail-panel";
 import {
-  DomainRequestForm,
+  DomainRequestStatusList,
+  RequestDomainDialog,
   type ScopeRequestStatus,
 } from "@/components/email/domain-request-form";
 import {
@@ -415,21 +416,22 @@ export function DepartmentMailboxesPage({
       />
 
       {/* ── Header ── */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h1 className="sts-text-admin-title">Shared Mailboxes</h1>
           <p className="mt-[3px] font-sans text-[13px] text-sts-muted">
             Connect the shared inboxes that open tickets for {departmentName}.
           </p>
         </div>
+        {/* Request a sending domain (managers / sub-managers) */}
+        {canRequestDomain && (
+          <RequestDomainDialog departmentId={departmentId} subDepartments={subDepartments} />
+        )}
       </div>
 
-      {/* ── Request a sending domain (managers / sub-managers) ── */}
       {canRequestDomain && (
-        <DomainRequestForm
-          departmentId={departmentId}
-          subDepartments={subDepartments}
-          existingRequests={domainRequests}
+        <DomainRequestStatusList
+          requests={domainRequests}
           onConnectMailbox={canManage && !noSubDepartments ? connectForDomain : undefined}
         />
       )}

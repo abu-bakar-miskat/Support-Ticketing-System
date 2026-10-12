@@ -20,7 +20,7 @@ vi.mock("@/lib/auth", () => ({
 vi.mock("@/lib/db", () => ({
   prisma: {
     ticket: { findUnique: vi.fn(), update: vi.fn() },
-    ticketMessage: { create: vi.fn(), findFirst: vi.fn() },
+    ticketMessage: { create: vi.fn(), findFirst: vi.fn(), findMany: vi.fn() },
     attachment: { findMany: vi.fn(), updateMany: vi.fn() },
     subDepartmentStatus: { findFirst: vi.fn() },
     $transaction: vi.fn(async (callback: (tx: unknown) => unknown) =>
@@ -51,7 +51,7 @@ vi.mock("@/lib/sla-engine", () => ({
   stopFirstResponseOnPublicAgentMessage: vi.fn().mockResolvedValue(undefined),
 }))
 
-import { POST } from "./route"
+import { GET, POST } from "./route"
 import { requireAuth, assertTicketAccess } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { sendCustomerReplyEmail } from "@/lib/email"
@@ -389,4 +389,18 @@ describe("POST /api/tickets/[id]/messages", () => {
       expect.objectContaining({ attachments: undefined }),
     )
   })
+})
+
+it("GET hides internal mailbox receipts without hiding ordinary system messages", async () => {
+  mockRequireAuth.mockResolvedValue({ profile: mockProfile, error: null } as never)
+  mockAssertAccess.mockResolvedValue(null)
+  mockFindUnique.mockResolvedValue(intakeTicket as never)
+  const common = { direction: "inbound", throttled: false, fromName: "Customer", fromEmail: "c@example.test", bodyHtml: "", author: null, attachments: [], createdAt: new Date("2026-10-12T08:00:00Z") }
+  vi.mocked(prisma.ticketMessage.findMany).mockResolvedValue([
+    { ...common, id: "receipt", status: "system", rawPayload: { mailboxReceipt: true } },
+    { ...common, id: "system", status: "system", rawPayload: null },
+    { ...common, id: "reply", status: "trusted", rawPayload: null, bodyHtml: "Hello" },
+  ] as never)
+  const response = await GET(new Request("http://x/api/tickets/ticket-1/messages") as never, { params: Promise.resolve({ id: "ticket-1" }) })
+  expect((await response.json()).map((row: { id: string }) => row.id)).toEqual(["system", "reply"])
 })

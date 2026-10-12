@@ -1,3 +1,5 @@
+import { notifyMailboxTicketCreated } from "@/lib/notify-mailbox-ticket-created";
+import { normalizeMessageId } from "@/lib/inbound-email";
 import "server-only";
 import { prisma } from "@/lib/db";
 import { autoAssignTicket, recordAssignmentFailure } from "@/lib/assignment-engine";
@@ -102,7 +104,7 @@ export async function createTicketFromInboundEmail(params: {
   const ticket = await prisma.$transaction(async (tx) => {
     // Serialize duplicate deliveries; the ticket and origin metadata commit together.
     // $executeRaw: pg_advisory_xact_lock returns `void`, which the adapter can't read.
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${inboundMessage.data.providerMessageId}))`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${normalizeMessageId(inboundMessage.data.providerMessageId)}))`;
     const dup = await tx.ticketMessage.findFirst({
       where: { providerMessageId: { in: inboundMessage.providerMessageIds } },
       select: { id: true },
@@ -153,12 +155,21 @@ export async function createTicketFromInboundEmail(params: {
         actorId: creatorId,
         action: "TICKET_CREATED",
         metadata: {
-          source: "email", fromEmail, fromName,
+          source: "email", fromEmail, fromName, mailboxReceiptManagedByApp: true,
           providerMessageId: inboundMessage.data.providerMessageId,
           rawPayload: mailboxOriginRouting(inboundMessage.data.rawPayload),
         },
       },
     });
+
+    // Older webhook deployments only look in TicketMessage under this same
+    // advisory lock. Keep an identity-only system receipt for rolling-deploy
+    // compatibility; the original body remains solely in the description.
+    await tx.ticketMessage.create({ data: {
+      ticketId: created.id, providerMessageId: normalizeMessageId(inboundMessage.data.providerMessageId),
+      direction: "inbound", status: "system", fromEmail, fromName, bodyHtml: "",
+      rawPayload: { ...mailboxOriginRouting(inboundMessage.data.rawPayload), mailboxReceipt: true },
+    } });
 
     if (assignResult.nextRotaPointer !== undefined) {
       await tx.subDepartment.update({ where: { id: teamId }, data: { rotaPointer: assignResult.nextRotaPointer } });
@@ -170,6 +181,9 @@ export async function createTicketFromInboundEmail(params: {
     } });
     return created;
   });
+
+  await notifyMailboxTicketCreated({ ticketId: ticket.id, tenantId: subDepartment.tenantId, departmentId, mailboxConnectionId })
+    .catch((err) => console.error("[inbound] new mailbox ticket notification failed:", ticket.id, err));
 
   if (assignResult.assigneeId && projectId) {
     await ensureProjectMembers(projectId, [assignResult.assigneeId]).catch(() => undefined);
@@ -215,7 +229,7 @@ export async function createTicketFromInboundEmail(params: {
         select: { id: true, name: true, email: true },
       });
       if (assignee) {
-        createNotification({
+        await createNotification({
           recipientId: assignee.id,
           type: "assignment",
           ticketId: ticket.id,

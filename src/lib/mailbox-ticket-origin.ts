@@ -2,6 +2,12 @@ import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
 
+/** Internal compatibility receipt, never a public customer conversation row. */
+export function isMailboxReceipt(message: { status: string; rawPayload?: unknown }): boolean {
+  return message.status === "system" && !!message.rawPayload && typeof message.rawPayload === "object" &&
+    (message.rawPayload as Record<string, unknown>).mailboxReceipt === true;
+}
+
 /** Store only envelope/threading metadata. The email body belongs to description. */
 export function mailboxOriginRouting(raw: unknown) {
   if (!raw || typeof raw !== "object") return {};

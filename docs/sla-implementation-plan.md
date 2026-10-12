@@ -326,11 +326,40 @@ Stage 2 remains **Awaiting user testing**.
 
 Stage 2 remains **Awaiting user testing**.
 
+## Stage 2 user-test fix — duplicate inbound tickets and arrival alerts — 2026-10-12
+
+- User reported WEB-22/23 and WEB-24/25: one sender email opened two tickets for each email. Read-only inspection confirmed matching RFC Message-ID and Resend email ID within each pair. WEB-22/24 store the email identity in creation audits; WEB-23/25 store it only in the initial message. This identifies a race between newer description-only storage and an older webhook deployment that checks only TicketMessage identities.
+- New creation now writes an identity-only **system receipt** in the same transaction as the ticket/audit/SLA under the normalized message advisory lock. Both older message-only processors and newer audit-aware processors can detect that committed receipt. The receipt carries routing metadata and no body; the email body remains in the description. No synthetic public customer message or customer-wait state is introduced.
+- Receipt rows are excluded from detail/chat payloads and received-mail queries, so neither reply threads nor received-mail panels show extra blank rows. Normal system/public messages remain visible in the chat API.
+- Added awaited new-arrival notifications to department admins/managers and active tenant managers, deduplicating overlapping manager roles. Alerts use the existing intake-manager notification type/preferences and name the shared mailbox, linking to its ticket. Assignee assignment notifications remain and their persistence is now awaited. No new manager email is sent.
+- **37 targeted tests pass** (36 creation/origin/notification/webhook checks plus the receipt-hiding chat GET check), covering mixed-version duplicate detection, message-ID normalization, body-free receipts, manager recipient scoping/deduplication, and hidden receipts. Typecheck and changed-file lint pass; `git diff --check` passes.
+- Full-suite check before the last two test additions: **1504 passed / 50 failed / 2 skipped**. No new failing cases compared with the established baseline. Existing reply POST tests have incomplete mocks and remain among these failures.
+- All writes/delivery in tests were mocked. Database inspection was read-only; existing duplicate tickets and notification rows were retained, and no real alerts/emails were sent or backfilled.
+- Retest in controlled inboxes: send one new email while webhook and on-open reconciliation may both run. Confirm exactly one new ticket, one received-mail row, empty reply thread, unchanged mailbox SLA targets, assignee assignment alert, and one shared-mailbox arrival alert per eligible manager. Provider retry/reconciliation must not create another ticket or new-ticket alert. Ensure the instance receiving the real webhook also runs this updated code; older deployments lack the new manager-arrival notification path.
+
+Stage 2 remains **Awaiting user testing**; Stage 3 has not started.
+
+## Stage 2 follow-up — shared database guard for stale processors — 2026-10-12
+
+User retesting still produced WEB-27/28 and WEB-30/31. Read-only inspection again confirmed identical email IDs within each pair, with **no system receipts and no arrival alerts**. Those writes came from processors without the local compatibility/notification changes. The earlier app-only fix was insufficient while those older instances remained active.
+
+- Applied additive migration `20261012083000_mailbox_receipt_guard` to the shared DB and marked it applied. Read-only verification confirmed all three triggers exist. No schema/client fields changed and no existing tickets or notifications were backfilled/deleted.
+- Database triggers now serialize normalized inbound email identities and check both creation audits and message rows. A conflicting identity on another ticket raises a uniqueness error, rolling back its creation transaction. Expression indexes support both identity lookups.
+- Older description-only instances automatically receive a body-free system receipt in their creation transaction, making their arrivals visible to message-only deduplication. Updated instances mark their audit as app-managed and continue writing exactly one receipt themselves. Receipt rows stay hidden from the updated reply and received-mail UIs.
+- Arrival notifications now commit atomically with the email-origin creation audit. Recipients are department admins/managers plus active tenant admins/managers, deduplicated across roles and respecting the existing intake-manager alert preference. Duplicate transactions also roll back their alerts. Deterministic notification IDs prevent repeated inserts. No notification emails are sent.
+- The app notification helper recognizes already-persisted arrival alerts instead of creating another. The open browser polls its scoped recent inbox every 15 seconds as a fallback for database arrivals from older instances that lack app broadcasts; new arrivals produce a linked toast and resync the bell count. Seen IDs prevent polling/broadcast duplicates, and historical/read alerts do not replay. An open notification panel refreshes on new events.
+- **51 focused tests pass** across five files; the separate receipt-hiding chat GET regression also passes. Typecheck and scoped lint pass; the notification sidebar retains its one pre-existing set-state-in-effect lint diagnostic. Full suite: **1513 passed / 50 failed / 2 skipped**, with no new failing cases.
+- Isolated PostgreSQL/PGlite SQL checks validate both storage orders, duplicate rollback of tickets/alerts, distinct-email acceptance, body-free receipts, recipient deduplication and preferences. The test is saved as `scripts/test-mailbox-receipt-guard.cjs`; it uses an isolated engine and never reads DATABASE_URL. Install PGlite in a temporary prefix and provide its module path via `PGLITE_MODULE` to rerun. Its single-session check does not exercise cross-session contention; the production trigger uses PostgreSQL transaction advisory locks, and app tests cover mixed-version lock ordering.
+- Real shared DB activity was limited to the additive migration and read-only verification. No live test email, ticket creation, notification sending, historical replay, or duplicate cleanup was performed.
+- Retest after refreshing the local browser: send **one new controlled email**. Confirm one ticket and one mail row. Eligible admins/managers with intake alerts enabled should see one new mailbox arrival in the notification panel/bell, and an open tab should show its toast within about 15 seconds. Old duplicates remain stored. Database guards/arrival persistence now apply immediately even to stale webhook processors; updated UI code is needed for the polling fallback.
+
+Stage 2 remains **Awaiting user testing**; Stage 3 has not started.
+
 ## Handoff notes
 
 - Current stage: Stage 2, **Awaiting user testing**. Stage 1 is approved.
 - Completed work: mailbox-specific target hierarchy, atomic SLA creation, working-calendar snapshots, response/wait lifecycle, warnings/breaches/escalation, final totals, settings, and regression verification.
-- Schema/database changes: additive migration `20261009160000_mailbox_sla_stage2` applied and recorded; Prisma Client regenerated.
+- Schema/database changes: additive migrations `20261009160000_mailbox_sla_stage2` and `20261012083000_mailbox_receipt_guard` applied and recorded. Client regenerated for the earlier field changes; the new trigger migration adds no client fields.
 - Verification and limitations: see Stage 2 results above; existing full-suite/typecheck failures remain outside this stage.
 - Next action: wait for user testing and fix reported Stage 2 issues. Do not implement Stage 3 without explicit approval.
 

@@ -56,6 +56,7 @@ export async function GET() {
     message: n.message ?? null,
     unread: n.readAt === null,
     time: timeAgo(n.createdAt, now),
+    createdAt: n.createdAt.toISOString(),
     ticket: n.ticket
       ? {
           dbId: n.ticket.id,

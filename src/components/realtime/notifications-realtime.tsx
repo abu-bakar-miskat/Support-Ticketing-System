@@ -26,6 +26,15 @@ export function shouldForceLogoutFromStatus(status: number): boolean {
   return status === 401 || status === 403;
 }
 
+export function mailboxArrivalFromRecent(item: {
+  id: string; type: string; unread: boolean; createdAt: string; message?: string | null;
+  ticket?: { dbId: string; humanId: string; title: string } | null;
+}, since: number): NotificationBroadcastPayload | null {
+  const createdAt = new Date(item.createdAt).getTime();
+  if (!item.id.startsWith("mailbox-arrival:") || !item.unread || !Number.isFinite(createdAt) || createdAt < since || !item.ticket) return null;
+  return { id: item.id, type: item.type, title: `New shared mailbox ticket ${item.ticket.humanId}`, body: item.ticket.title, ticketDbId: item.ticket.dbId };
+}
+
 /** Mounted once in DashboardLayout — keeps the bell badge live and shows toasts. */
 export function NotificationsRealtime() {
   const router = useRouter();
@@ -149,6 +158,34 @@ export function NotificationsRealtime() {
       (reason) => { forceLogout(reason).catch(() => undefined); },
     );
   }, [userId, handleBroadcast, forceLogout]);
+
+  // DB-persisted arrivals from older webhook instances have no app broadcast.
+  // Poll the scoped inbox so their badge/toast still reaches an open browser.
+  useEffect(() => {
+    if (!userId) return;
+    let cancelled = false;
+    let inFlight = false;
+    const since = Date.now();
+    const sync = async () => {
+      if (inFlight) return;
+      inFlight = true;
+      try {
+        const response = await fetch("/api/notifications/recent", { cache: "no-store" });
+        if (!response.ok || cancelled) return;
+        const data = await response.json();
+        if (cancelled) return;
+        for (const item of data.items ?? []) {
+          const payload = mailboxArrivalFromRecent(item, since);
+          if (payload) handleBroadcast(payload);
+        }
+        init(data.unreadCount);
+      } catch { /* Next poll retries a disconnected inbox. */ }
+      finally { inFlight = false; }
+    };
+    void sync();
+    const interval = setInterval(() => { void sync(); }, 15_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [userId, handleBroadcast, init]);
 
   return null;
 }

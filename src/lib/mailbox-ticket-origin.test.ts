@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 vi.mock("@/lib/db", () => ({ prisma: { activityLog: { findMany: vi.fn() } } }));
 import { prisma } from "@/lib/db";
-import { mailboxOriginRouting, loadMailboxOrigins } from "./mailbox-ticket-origin";
+import { mailboxOriginRouting, loadMailboxOrigins, isMailboxReceipt } from "./mailbox-ticket-origin";
 
 describe("description-only mailbox origins", () => {
   it("retains routing information without duplicating any body", () => {
@@ -31,3 +31,9 @@ describe("description-only mailbox origins", () => {
     }));
   });
 });
+
+it("hides only internal receipt rows, preserving ordinary system/public messages", () => {
+  expect(isMailboxReceipt({ status: "system", rawPayload: { mailboxReceipt: true } })).toBe(true)
+  expect(isMailboxReceipt({ status: "trusted", rawPayload: { mailboxReceipt: true } })).toBe(false)
+  expect(isMailboxReceipt({ status: "system", rawPayload: null })).toBe(false)
+})

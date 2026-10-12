@@ -10,7 +10,7 @@ import {
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { cn } from "@/lib/utils";
 import { markNotificationRead, markAllNotificationsRead } from "@/lib/api/notifications";
-import { useNotificationStore } from "@/store";
+import { useNotificationStore, notifEvents } from "@/store";
 import { Tip } from "@/components/ui/tooltip";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -183,6 +183,11 @@ export function NotificationSidebar({
 
   useEffect(() => {
     if (open) fetchRecent();
+  }, [open, fetchRecent]);
+
+  useEffect(() => {
+    if (!open) return;
+    return notifEvents.subscribe(() => { void fetchRecent(); });
   }, [open, fetchRecent]);
 
   // Close on Escape

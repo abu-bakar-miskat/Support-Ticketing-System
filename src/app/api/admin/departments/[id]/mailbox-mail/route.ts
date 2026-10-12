@@ -45,7 +45,7 @@ export async function GET(_req: NextRequest, { params }: Params) {
 
   const [messages, suppressed, origins] = await runAsSystem(() => Promise.all([
     prisma.ticketMessage.findMany({
-      where: { direction: "inbound", ticket: { subDepartment: { departmentId } } },
+      where: { direction: "inbound", status: { not: "system" }, ticket: { subDepartment: { departmentId } } },
       // One row per ticket — its earliest inbound message, i.e. the email that
       // opened the ticket. `distinct` keeps the first row seen per ticketId in
       // the given order, so ticketId + createdAt asc yields the original mail and

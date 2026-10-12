@@ -46,7 +46,7 @@ async function loadMailboxMail(departmentId: string) {
   const [messages, suppressed, origins] = await Promise.all([
     prisma.ticketMessage.findMany({
       where: {
-        direction: "inbound",
+        direction: "inbound", status: { not: "system" },
         ticket: { subDepartment: { departmentId } },
       },
       orderBy: { createdAt: "desc" },

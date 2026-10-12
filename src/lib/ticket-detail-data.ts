@@ -1,3 +1,4 @@
+import { isMailboxReceipt } from "@/lib/mailbox-ticket-origin";
 import "server-only";
 import { personalEstimatesWithCreationFallback } from "@/lib/ticket-estimates";
 
@@ -765,7 +766,7 @@ export async function getTicketDetailPayload(
       { createdAt: ticket.createdAt, hasIntake: ticket.intake !== null },
       messages,
     ),
-    messages: messages.map((m) => ({
+    messages: messages.filter((m) => !isMailboxReceipt(m)).map((m) => ({
       id: m.id,
       direction: m.direction,
       status: m.status,

@@ -1,4 +1,4 @@
-import { getMailboxOriginMessageId } from "@/lib/mailbox-ticket-origin"
+import { getMailboxOriginMessageId, isMailboxReceipt } from "@/lib/mailbox-ticket-origin"
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth, assertTicketAccess } from "@/lib/auth"
 import { prisma } from "@/lib/db"
@@ -43,7 +43,7 @@ export async function GET(
   })
 
   return NextResponse.json(
-    messages.map((m) => ({
+    messages.filter((m) => !isMailboxReceipt(m)).map((m) => ({
       id: m.id,
       direction: m.direction,
       status: m.status,

@@ -6,6 +6,8 @@ import { AuditLog } from "@/components/audit/audit-log"
 
 export const dynamic = "force-dynamic"
 
+export const metadata = { title: "Audit log — Global Support Portal" }
+
 export default async function PlatformActivityPage() {
   const profile = await getProfile()
   if (!profile) redirect("/login")

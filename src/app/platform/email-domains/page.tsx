@@ -5,6 +5,8 @@ import { PlatformEmailDomains } from "@/components/platform/platform-email-domai
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Email domains — Global Support Portal" };
+
 export default async function PlatformEmailDomainsPage() {
   const profile = await getProfile();
   if (!profile) redirect("/login");

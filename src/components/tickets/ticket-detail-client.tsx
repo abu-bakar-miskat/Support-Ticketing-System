@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { RefreshCw, Lock, FileX } from "lucide-react";
 import { TicketDetailPage } from "@/components/tickets/ticket-detail-page";
@@ -17,6 +18,18 @@ import { TicketDetailError } from "@/lib/api/tickets";
 export function TicketDetailClient({ ticketId }: { ticketId: string }) {
   const { data, isPending, isError, error, refetch, isFetching, isPlaceholderData } =
     useTicketDetail(ticketId);
+
+  // The ticket loads client-side, so the server can only title the tab "Ticket" —
+  // swap in the real ticket once it arrives (same pattern as ProjectProfilePage).
+  const displayId = data?.ticketId;
+  const title = data?.title;
+  useEffect(() => {
+    if (!displayId) return;
+    document.title = `${displayId}${title ? ` · ${title}` : ""} — Global Support Portal`;
+    return () => {
+      document.title = "Global Support Portal";
+    };
+  }, [displayId, title]);
 
   if (!data && (isPending || isFetching)) {
     return <TicketDetailSkeleton />;

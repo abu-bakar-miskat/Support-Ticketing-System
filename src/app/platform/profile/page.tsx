@@ -4,6 +4,8 @@ import { PlatformProfilePage } from "@/components/platform/platform-profile-page
 
 export const dynamic = "force-dynamic"
 
+export const metadata = { title: "My profile — Global Support Portal" }
+
 export default async function PlatformProfileRoute() {
   const profile = await getProfile()
   if (!profile) redirect("/login")

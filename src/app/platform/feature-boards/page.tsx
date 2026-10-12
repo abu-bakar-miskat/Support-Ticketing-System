@@ -5,6 +5,8 @@ import { FeatureBoardsAdmin } from "@/components/platform/feature-boards-admin";
 
 export const dynamic = "force-dynamic";
 
+export const metadata = { title: "Customize features — Global Support Portal" };
+
 export default async function FeatureBoardsPage() {
   const profile = await getProfile();
   if (!profile) redirect("/login");

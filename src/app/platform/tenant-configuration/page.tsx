@@ -6,6 +6,8 @@ import type { TenantTypeRow } from "@/components/platform/tenant-type-modal"
 
 export const dynamic = "force-dynamic"
 
+export const metadata = { title: "Tenant configuration — Global Support Portal" }
+
 export default async function PlatformTenantConfigurationRoute() {
   const profile = await getProfile()
   if (!profile) redirect("/login")

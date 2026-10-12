@@ -6,6 +6,8 @@ import { PlatformOtpEmailPage } from "@/components/platform/platform-otp-email-p
 
 export const dynamic = "force-dynamic"
 
+export const metadata = { title: "OTP email — Global Support Portal" }
+
 export default async function PlatformOtpEmailRoute() {
   const profile = await getProfile()
   if (!profile) redirect("/login")

@@ -3,7 +3,7 @@
  * soft tinted card derived from its accent (see components/dashboard/
  * sidebar-group-styles). Users:
  *  - platform (Super Admin) — stored as the `sidebarGroupColors` PlatformSetting
- *    row, edited on /platform/settings;
+ *    row, edited on /platform/branding;
  *  - tenant departments shell (`sidebarColors`), in-department sidebar
  *    (`deptSidebarColors`) and Settings sub-nav (`settingsNavColors`) — stored
  *    inside Tenant.branding, edited on the tenant Branding page.

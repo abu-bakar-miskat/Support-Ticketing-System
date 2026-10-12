@@ -5,7 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { LucideIcon } from "lucide-react";
-import { Building2, LayoutTemplate, History, Settings, Settings2, Users, Globe, Mail, PanelLeftClose, BarChart3, ClipboardCheck, SlidersHorizontal, X } from "lucide-react";
+import { Building2, LayoutTemplate, History, Settings, Settings2, Users, Globe, Mail, Palette, PanelLeftClose, BarChart3, ClipboardCheck, SlidersHorizontal, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SidebarNavIcon } from "@/components/dashboard/sidebar-nav-icon";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
@@ -59,6 +59,7 @@ export const PLATFORM_NAV_GROUPS: {
       { label: "Email Domains", href: "/platform/email-domains", icon: Globe },
       { label: "OTP email", href: "/platform/otp-email", icon: Mail },
       { label: "Tenant configuration", href: "/platform/tenant-configuration", icon: Settings2 },
+      { label: "Branding", href: "/platform/branding", icon: Palette },
       { label: "Settings", href: "/platform/settings", icon: Settings },
     ],
   },

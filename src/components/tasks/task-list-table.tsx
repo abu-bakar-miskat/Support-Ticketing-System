@@ -1,4 +1,6 @@
-"use client";
+"use client"
+
+import { categoryForStatus } from "@/lib/status-category";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -57,9 +59,7 @@ export function TaskListRow({
 
   const { data: statuses = [] } = useSubDepartmentStatuses(task.subDepartmentId);
   const { data: members = [] } = useSubDepartmentMembers(task.subDepartmentId);
-  const liveIsComplete =
-    statuses.find((s) => s.label === liveStatus)?.isComplete === true ||
-    liveStatus === "Live";
+  const liveIsComplete = categoryForStatus(liveStatus, statuses) === "COMPLETE";
 
   async function handleStatusChange(newStatus: string, chosenLabel?: string) {
     const prev = liveStatus;
@@ -246,10 +246,11 @@ export function TaskListRow({
             humanId={task.humanId}
             title={task.title}
             status={liveStatus}
+            category={categoryForStatus(liveStatus, statuses)}
             assigneeId={liveAssigneeId}
             coAssigneeIds={task.coAssignees.map((a) => a.id)}
             userLoggedSecs={task.userLoggedSecs}
-            estimatedTime={task.estimatedTime}
+            estimatedTime={task.slaResolutionTargetMins ?? task.estimatedTime}
           />
         </td>
         <td className={cn(COL_CREATED, "overflow-hidden py-2.5")}>

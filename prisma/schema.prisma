@@ -34,6 +34,13 @@ enum StatusType {
   RESOLVED
 }
 
+enum StatusCategory {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  COMPLETE
+}
+
 enum TicketType {
   Bug
   Feature
@@ -639,6 +646,8 @@ model SubDepartmentStatus {
   label         String
   color         String   @default("#94a3b8")
   order         Int
+  category      StatusCategory @default(TODO)
+  // Compatibility mirror; the database keeps this in sync with category.
   isComplete    Boolean  @default(false)
   allowedLabels String[] @default([])
 

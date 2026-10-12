@@ -4,7 +4,8 @@ import { checkAndNotifyEstimateOverrun } from "@/lib/time-estimate-notify"
 import { prisma } from "@/lib/db"
 import { broadcastTimerChange } from "@/lib/timer-broadcast"
 import { broadcastTicketEvent } from "@/lib/ticket-events"
-import { normalizeStatus } from "@/components/board/board-types"
+import type { StatusCategory } from "@/lib/status-category"
+import { getTicketStatusCategory } from "@/lib/status-category.server"
 import { latestPortalCommentSelect, portalCommentsAsConversation, portalIntakeSelect } from "@/lib/portal-conversation"
 
 function durationSecsBetween(start: Date, end: Date): number {
@@ -20,8 +21,9 @@ export async function startTimerOnStatusChange(
   ticketId: string,
   newStatus: string,
   actor: { id: string; name: string; avatarUrl?: string | null },
+  category?: StatusCategory,
 ): Promise<void> {
-  if (normalizeStatus(newStatus) !== "In Progress") return
+  if ((category ?? await getTicketStatusCategory(ticketId, newStatus)) !== "IN_PROGRESS") return
 
   await syncResolutionTimerOnClosedAtChange(ticketId, null)
 

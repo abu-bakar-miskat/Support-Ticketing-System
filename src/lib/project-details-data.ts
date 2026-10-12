@@ -1,3 +1,4 @@
+import { categoryForStatus } from "@/lib/status-category";
 import "server-only";
 import { prisma } from "@/lib/db";
 import { runAsSystem } from "@/lib/request-scope";
@@ -125,9 +126,10 @@ export async function getProjectDetailsData(
         creator: { select: { id: true, name: true } },
         _count: { select: { comments: { where: { deletedAt: null } } } },
         messages: {
+          where: { status: "trusted" },
           orderBy: { createdAt: "desc" },
           take: 1,
-          select: { direction: true, createdAt: true },
+          select: { direction: true, status: true, createdAt: true },
         },
         comments: latestPortalCommentSelect,
         intake: portalIntakeSelect,
@@ -346,9 +348,10 @@ export async function getProjectDetailsData(
     byPriority[t.priority] = (byPriority[t.priority] ?? 0) + 1;
   }
   const total = tickets.length;
-  const open = tickets.filter((t) => t.status !== "Live").length;
-  const closed = byStatus["Live"] ?? 0;
-  const inProgress = byStatus["In Progress"] ?? 0;
+  const ticketCategory = (t: typeof tickets[number]) => categoryForStatus(t.status, subDepartmentBoardGroups.find((g) => g.subDepartmentId === t.subDepartmentId)?.statuses ?? fallbackStatuses);
+  const closed = tickets.filter((t) => ticketCategory(t) === "COMPLETE").length;
+  const open = total - closed;
+  const inProgress = tickets.filter((t) => ticketCategory(t) === "IN_PROGRESS").length;
 
   const seenMembers = new Map<string, { name: string; bg: string }>();
   for (const pm of project.members) {

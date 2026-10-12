@@ -1,3 +1,4 @@
+vi.mock("@/lib/status-category.server", () => ({ getTicketStatusCategory: vi.fn(async (_id, label) => label === "In Progress" ? "IN_PROGRESS" : "TODO") }))
 vi.mock("@/lib/ticket-events", () => ({ broadcastTicketEvent: vi.fn().mockResolvedValue(undefined) }))
 vi.mock("@/lib/ticket-escalation", () => ({ escalateTicket: vi.fn().mockResolvedValue(undefined) }))
 vi.mock("@/lib/manual-resolution", () => ({

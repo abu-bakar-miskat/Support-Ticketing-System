@@ -5,7 +5,7 @@ import { runAsSystem } from "@/lib/request-scope"
 import { getProfileDeptScope, ticketInDeptWhere, effectiveTicketDept } from "@/lib/dept-scope"
 import { resolveAnalyticsScope } from "@/lib/reporting/analytics-scope"
 import { resolveReportRange } from "@/lib/report-period"
-import { normalizeStatus, UI_STATUS_DOT } from "@/components/board/board-types"
+import { statusCategory, STATUS_CATEGORIES, STATUS_CATEGORY_LABELS } from "@/lib/status-category"
 import type {
   ReportsOverview,
   NamedCount,
@@ -133,31 +133,20 @@ async function loadOverview(request: Request, profile: AuthProfile) {
       where: { deletedAt: null, ...subDepartmentFilter },
       _count: { _all: true },
     }),
-    // Statuses flagged complete per subDepartment — the source of truth for "done".
+    // All saved categories for status distribution and completion metrics.
     prisma.subDepartmentStatus.findMany({
       where: {
-        isComplete: true,
         ...(analyticsScope.subDepartmentIds
           ? { subDepartmentId: { in: analyticsScope.subDepartmentIds.length ? analyticsScope.subDepartmentIds : ["__none__"] } }
           : { subDepartment: { tenantId: profile.activeTenantId ?? "__no_tenant__" } }),
       },
-      select: { subDepartmentId: true, label: true },
+      select: { subDepartmentId: true, label: true, category: true },
     }),
   ])
 
-  // A ticket is "done" when its current status is flagged isComplete on its subDepartment.
-  // SubDepartments with no configured statuses fall back to the default "Live" complete state.
-  const completeBySubDepartment = new Map<string, Set<string>>()
-  for (const s of completeStatuses) {
-    const set = completeBySubDepartment.get(s.subDepartmentId) ?? new Set<string>()
-    set.add(s.label)
-    completeBySubDepartment.set(s.subDepartmentId, set)
-  }
-  const isDone = (subDepartmentId: string, status: string): boolean => {
-    const set = completeBySubDepartment.get(subDepartmentId)
-    if (set && set.size > 0) return set.has(status)
-    return normalizeStatus(status) === "Live"
-  }
+  const categories = new Map(completeStatuses.map((s) => [`${s.subDepartmentId}::${s.label}`, statusCategory(s)]))
+  const ticketCategory = (subDepartmentId: string, label: string) => categories.get(`${subDepartmentId}::${label}`) ?? statusCategory({ label })
+  const isDone = (subDepartmentId: string, label: string) => ticketCategory(subDepartmentId, label) === "COMPLETE"
 
   // Full member list in scope (ignores all filters) for the person picker.
   // Members never receive the list — the picker is manager/admin-only.
@@ -253,21 +242,21 @@ async function loadOverview(request: Request, profile: AuthProfile) {
     })
     .sort((a, b) => a.module.localeCompare(b.module))
 
-  // ── Status distribution (open statuses normalized; all done statuses → "Completed") ──
+  // ── Status distribution by the four saved lifecycle categories ──
   const statusCountMap = new Map<string, number>()
   for (const g of statusGroups) {
-    const label = isDone(g.subDepartmentId, g.status) ? "Completed" : normalizeStatus(g.status)
+    const label = STATUS_CATEGORY_LABELS[ticketCategory(g.subDepartmentId, g.status)]
     statusCountMap.set(label, (statusCountMap.get(label) ?? 0) + g._count._all)
   }
-  const STATUS_ORDER = ["To Do", "In Progress", "Pull Request", "Live", "Blocked", "Completed"]
+  const STATUS_ORDER: string[] = STATUS_CATEGORIES.map((category) => STATUS_CATEGORY_LABELS[category])
   const statusDist: DistSlice[] = [...statusCountMap.entries()]
     .map(([label, count]) => ({
       label,
       count,
       color:
-        label === "Completed"
+        label === "Complete"
           ? "#16a34a"
-          : UI_STATUS_DOT[label as keyof typeof UI_STATUS_DOT] ?? "#94a3b8",
+          : ({ "To-do": "#94a3b8", "In progress": "#0a76b9", "Blocked": "#dc2626" } as Record<string, string>)[label] ?? "#94a3b8",
     }))
     .sort((a, b) => STATUS_ORDER.indexOf(a.label) - STATUS_ORDER.indexOf(b.label))
 

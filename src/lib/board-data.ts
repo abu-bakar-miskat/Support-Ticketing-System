@@ -1,3 +1,4 @@
+import { sortStatusesByCategory, statusCategory, type StatusCategory } from "@/lib/status-category"
 import "server-only"
 import { prisma } from "@/lib/db"
 import type { TicketGetPayload } from "@/generated/prisma/models/Ticket"
@@ -13,7 +14,7 @@ const PRIORITY_TO_UI: Record<string, UiPriority> = {
 }
 
 import { avatarColorFor } from "@/lib/avatar"
-import { formatTicketDue, isBlockedStatus } from "@/lib/format"
+import { formatTicketDue } from "@/lib/format"
 import { dueHasTime, formatTimeHM, formatCalendarDate } from "@/lib/ticket-datetime"
 import { resolveSubStatusTicketIds, resolveFormFieldTicketIds, resolveSearchTicketIds, type FormFieldFilter } from "@/lib/board-search"
 import type { SubStatus } from "@/lib/ticket-sub-status"
@@ -25,10 +26,11 @@ function formatDue(
   dueDate: Date | null,
   status: string,
   isStatusComplete: boolean,
+  category?: StatusCategory,
 ): { due: string | null; dueUrgent: boolean; dueOverdue: boolean } {
   const { due, dueUrgent, dueOverdue } = formatTicketDue(dueDate, new Date(), {
     isStatusComplete,
-    isBlocked: isBlockedStatus(status),
+    isBlocked: (category ?? statusCategory({ label: status })) === "BLOCKED",
   })
   const withTime =
     due && dueDate && dueHasTime(dueDate) ? `${due} · ${formatTimeHM(dueDate)}` : due
@@ -38,9 +40,10 @@ function formatDue(
 const ticketSelect = {
   id: true, title: true, description: true, ticketNumber: true, priority: true, status: true,
   moduleId: true, labels: true, estimatedTime: true, startDate: true,
+  slaTimer: { select: { source: true, resolutionTargetMins: true } },
   dueDate: true, createdAt: true,
   transferredFromName: true, transferredByName: true,
-  subDepartment: { select: { id: true, prefix: true, name: true } },
+  subDepartment: { select: { id: true, prefix: true, name: true, statuses: { select: { label: true, category: true } } } },
   project: { select: { id: true, name: true, slug: true, color: true, avatarUrl: true, kind: true } },
   module: { select: { id: true, name: true } },
   assignee: { select: { id: true, name: true, avatarUrl: true } },
@@ -58,16 +61,17 @@ const ticketSelect = {
       ticketNumber: true,
       startDate: true,
       dueDate: true,
-      subDepartment: { select: { prefix: true } },
+      subDepartment: { select: { prefix: true, statuses: { select: { label: true, category: true } } } },
       assignee: { select: { id: true, name: true, avatarUrl: true } },
     },
   },
   _count: { select: { comments: { where: { deletedAt: null } }, attachments: true, messages: true } },
   intake: { select: { id: true, ...portalIntakeSelect.select } },
   messages: {
+    where: { status: "trusted" as const },
     orderBy: { createdAt: "desc" as const },
     take: 1,
-    select: { direction: true, createdAt: true },
+    select: { direction: true, status: true, createdAt: true },
   },
   comments: latestPortalCommentSelect,
 } as const
@@ -80,8 +84,10 @@ export function toBoardCard(
   userTimeByTicketId: Map<string, number> = new Map(),
   completeLabels: Set<string> = new Set(),
 ): BoardCardData {
-  const isStatusComplete = completeLabels.has(t.status) || t.status === "Live"
-  const { due, dueUrgent, dueOverdue } = formatDue(t.dueDate, t.status, isStatusComplete)
+  const category = statusCategory(t.subDepartment.statuses?.find((s) => s.label === t.status) ?? { label: t.status, isComplete: completeLabels.has(t.status) })
+  const isStatusComplete = category === "COMPLETE"
+  const subDone = (s: TicketWithRelations["subTickets"][number]) => statusCategory(s.subDepartment.statuses?.find((status) => status.label === s.status) ?? { label: s.status, isComplete: completeLabels.has(s.status) }) === "COMPLETE"
+  const { due, dueUrgent, dueOverdue } = formatDue(t.dueDate, t.status, isStatusComplete, category)
   const ownSecs = timeByTicketId.get(t.id) ?? 0
   const subSecs = t.subTickets.reduce((sum, s) => sum + (timeByTicketId.get(s.id) ?? 0), 0)
   return {
@@ -91,6 +97,7 @@ export function toBoardCard(
     description: t.description ?? null,
     priority: PRIORITY_TO_UI[t.priority] ?? "medium",
     status: t.status,
+    statusCategory: category,
     subDepartment: t.subDepartment.name,
     subDepartmentId: t.subDepartment.id,
     project: t.project?.name ?? "Miscellaneous",
@@ -104,14 +111,14 @@ export function toBoardCard(
     comments: t._count.comments,
     messages: t._count.messages,
     attachments: t._count.attachments,
-    subDone: t.subTickets.filter((s) => completeLabels.has(s.status) || s.status === "Live").length,
+    subDone: t.subTickets.filter(subDone).length,
     subTotal: t.subTickets.length,
     subTicketCards: t.subTickets.map((s) => ({
       dbId: s.id,
       humanId: `${s.subDepartment.prefix}-${s.ticketNumber}`,
       title: s.title,
       status: s.status,
-      done: completeLabels.has(s.status) || s.status === "Live",
+      done: subDone(s),
       priority: PRIORITY_TO_UI[s.priority] ?? "medium",
       assigneeId: s.assignee?.id ?? null,
       assigneeName: s.assignee?.name ?? null,
@@ -132,6 +139,7 @@ export function toBoardCard(
     totalLoggedSecs: ownSecs + subSecs,
     userLoggedSecs: userTimeByTicketId.get(t.id) ?? 0,
     estimatedTime: t.estimatedTime ?? null,
+    slaResolutionTargetMins: t.slaTimer?.source === "mailbox" ? t.slaTimer.resolutionTargetMins : null,
     startDate: t.startDate
       ? t.startDate.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
       : null,
@@ -234,7 +242,7 @@ async function collectAssignedSubtasks(
   const [completeStatuses, userTimeAggs] = await Promise.all([
     subDepartmentIds.length > 0
       ? prisma.subDepartmentStatus.findMany({
-          where: { subDepartmentId: { in: subDepartmentIds }, isComplete: true },
+          where: { subDepartmentId: { in: subDepartmentIds }, category: "COMPLETE" },
           select: { subDepartmentId: true, label: true },
         })
       : Promise.resolve([]),
@@ -611,7 +619,7 @@ async function collectBoardCards(where: BoardCardWhere = {}): Promise<BoardCardD
     buildTimeMaps(tickets, timeForUserId),
     subDepartmentIds.length > 0
       ? prisma.subDepartmentStatus.findMany({
-          where: { subDepartmentId: { in: subDepartmentIds }, isComplete: true },
+          where: { subDepartmentId: { in: subDepartmentIds }, category: "COMPLETE" },
           select: { subDepartmentId: true, label: true },
         })
       : Promise.resolve([]),
@@ -662,7 +670,7 @@ async function collectSubDepartmentReviewCards(
   const [{ totalMap, userMap }, completeStatuses] = await Promise.all([
     buildTimeMaps(tickets, forUserId),
     prisma.subDepartmentStatus.findMany({
-      where: { subDepartmentId: { in: subDepartmentIds }, isComplete: true },
+      where: { subDepartmentId: { in: subDepartmentIds }, category: "COMPLETE" },
       select: { subDepartmentId: true, label: true },
     }),
   ])
@@ -681,9 +689,9 @@ export async function getSubDepartmentStatuses(subDepartmentId: string | null | 
   const statuses = await prisma.subDepartmentStatus.findMany({
     where: { subDepartmentId },
     orderBy: { order: "asc" },
-    select: { id: true, label: true, color: true, order: true, isComplete: true, allowedLabels: true },
+    select: { id: true, label: true, color: true, order: true, category: true, isComplete: true, allowedLabels: true },
   })
-  return statuses.length > 0 ? statuses : DEFAULT_STATUSES
+  return statuses.length > 0 ? sortStatusesByCategory(statuses) : DEFAULT_STATUSES
 }
 
 export async function getSubDepartmentStatusesForSubDepartmentIds(
@@ -693,14 +701,15 @@ export async function getSubDepartmentStatusesForSubDepartmentIds(
   const rows = await prisma.subDepartmentStatus.findMany({
     where: { subDepartmentId: { in: subDepartmentIds } },
     orderBy: { order: "asc" },
-    select: { id: true, subDepartmentId: true, label: true, color: true, order: true, isComplete: true, allowedLabels: true },
+    select: { id: true, subDepartmentId: true, label: true, color: true, order: true, category: true, isComplete: true, allowedLabels: true },
   })
   const map = new Map<string, SubDepartmentStatusConfig[]>()
   for (const row of rows) {
     const arr = map.get(row.subDepartmentId) ?? []
-    arr.push({ id: row.id, label: row.label, color: row.color, order: row.order, isComplete: row.isComplete, allowedLabels: row.allowedLabels })
+    arr.push({ id: row.id, label: row.label, color: row.color, order: row.order, category: row.category, isComplete: row.isComplete, allowedLabels: row.allowedLabels })
     map.set(row.subDepartmentId, arr)
   }
+  for (const [id, statuses] of map) map.set(id, sortStatusesByCategory(statuses))
   return map
 }
 

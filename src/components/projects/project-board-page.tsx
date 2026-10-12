@@ -1,4 +1,6 @@
-"use client";
+"use client"
+
+import { statusCategory, categoryForStatus, sortStatusesByCategory } from "@/lib/status-category";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePersistedView, VIEW_KEYS } from "@/hooks/use-persisted-view";
@@ -154,7 +156,7 @@ function ProjectCard({ card: initialCard, href, canCreate = true }: { card: Boar
   const elapsedSecs = useLiveTimer(isRunning ? timerStartedAtMs : null);
   const displaySecs = initialCard.totalLoggedSecs + (isRunning ? elapsedSecs : 0);
   const canTrack =
-    normalizeStatus(initialCard.status) === "In Progress" &&
+    statusCategory({ label: initialCard.status, category: initialCard.statusCategory }) === "IN_PROGRESS" &&
     !!userId &&
     (initialCard.assigneeId === userId || initialCard.coAssignees.some((a) => a.id === userId));
 
@@ -560,7 +562,7 @@ function ListRow({
   const displaySecs = card.totalLoggedSecs + (isRunning ? elapsedSecs : 0);
   const userId = useAuthStore((s) => s.user?.id);
   const canTrack =
-    normalizeStatus(liveStatus) === "In Progress" &&
+    categoryForStatus(liveStatus, statuses) === "IN_PROGRESS" &&
     (card.assigneeId === userId || card.coAssignees.some((a) => a.id === userId));
 
   async function handleStartTimer(e: React.MouseEvent) {
@@ -966,9 +968,9 @@ export function ProjectBoardPage({
   const { stopTimer: stopTimerOnMove } = useTimerActions();
   const { data: clientStatuses = [] } = useSubDepartmentStatuses(subDepartmentId ?? "");
   const effectiveStatuses = useMemo(() => {
-    if (subDepartmentId && clientStatuses.length > 0) return clientStatuses;
-    if (statuses.length > 0) return statuses;
-    if (clientStatuses.length > 0) return clientStatuses;
+    if (subDepartmentId && clientStatuses.length > 0) return sortStatusesByCategory(clientStatuses);
+    if (statuses.length > 0) return sortStatusesByCategory(statuses);
+    if (clientStatuses.length > 0) return sortStatusesByCategory(clientStatuses);
     return DEFAULT_STATUSES;
   }, [subDepartmentId, statuses, clientStatuses]);
 
@@ -1111,7 +1113,7 @@ export function ProjectBoardPage({
   const doMove = useCallback((dbId: string, toStatus: string, chosenLabel?: string) => {
     if (
       moveTimerTicketDbId === dbId &&
-      normalizeStatus(toStatus) !== "In Progress"
+      categoryForStatus(toStatus, effectiveStatuses) !== "IN_PROGRESS"
     ) {
       stopTimerOnMove(moveTimerEntryId).catch(() => undefined);
     }
@@ -1135,10 +1137,10 @@ export function ProjectBoardPage({
           toast.error("Failed to move ticket", { description: getErrorMessage(err, "The card has been moved back.") });
         });
       return prev.map((c) =>
-        c.dbId === dbId ? { ...c, status: toStatus } : c,
+        c.dbId === dbId ? { ...c, status: toStatus, statusCategory: categoryForStatus(toStatus, effectiveStatuses), isComplete: categoryForStatus(toStatus, effectiveStatuses) === "COMPLETE" } : c,
       );
     });
-  }, [queryClient, moveTimerTicketDbId, moveTimerEntryId, stopTimerOnMove]);
+  }, [queryClient, moveTimerTicketDbId, moveTimerEntryId, stopTimerOnMove, effectiveStatuses]);
 
   const getCardSubDepartmentId = useCallback(
     (dbId: string) => localCards.find((c) => c.dbId === dbId)?.subDepartmentId,

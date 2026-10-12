@@ -1,4 +1,9 @@
-"use client";
+"use client"
+
+import { isCompleteStatus } from "@/lib/status-category";
+
+import { categoryForStatus } from "@/lib/status-category";
+import { deriveSubStatus } from "@/lib/ticket-sub-status";
 
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
@@ -98,7 +103,6 @@ import { useSubDepartmentStatuses } from "@/hooks/queries/use-sub-department-sta
 import { useLabels } from "@/hooks/queries/use-labels";
 import { buildLinkedLabelOptions } from "@/lib/status-label-choice";
 import {
-  normalizeStatus,
   uiPriorityFromDb,
 } from "@/components/board/board-types";
 import type {
@@ -1017,21 +1021,17 @@ export function TicketDetailPage({
           .flatMap((c) => [c, ...c.replies])
           .filter((c) => c.portalVisible && !c.deletedAt)
           .map((c) => ({
-            direction: c.externalAuthor ? "inbound" : "outbound",
+            direction: c.externalAuthor ? "inbound" as const : "outbound" as const,
             createdAt: c.createdAt,
           }))
       : [];
-    const conversation = [...liveMessages.filter((m) => m.id !== originMessageId && m.status !== "system"), ...portalThread];
-    if (conversation.length === 0) return null;
     const statusConfig = effectiveSubDepartmentStatuses.find(
       (s) => s.label === liveStatus,
     );
-    if (statusConfig?.isComplete || liveStatus === "Live") return null;
-    const last = conversation.sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    )[0];
-    return last.direction === "inbound"
+    if (statusConfig ? isCompleteStatus(statusConfig) : categoryForStatus(liveStatus, effectiveSubDepartmentStatuses) === "COMPLETE") return null;
+    const subStatus = deriveSubStatus([...liveMessages, ...portalThread], originMessageId);
+    if (!subStatus) return null;
+    return subStatus === "WAITING_FOR_SUPPORT"
       ? "awaiting-assignee"
       : "awaiting-customer";
   }, [liveMessages, liveComments, isPortalTicket, liveStatus, effectiveSubDepartmentStatuses, originMessageId]);
@@ -1780,10 +1780,10 @@ export function TicketDetailPage({
   const isTimerRunningHere = timerTicketDbId === dbId;
   useEffect(() => {
     if (!isTimerRunningHere) return;
-    if (normalizeStatus(liveStatus) !== "In Progress") {
+    if (categoryForStatus(liveStatus, effectiveSubDepartmentStatuses) !== "IN_PROGRESS") {
       stopTimerAction(timerEntryId).catch(() => undefined);
     }
-  }, [liveStatus, isTimerRunningHere, timerEntryId, stopTimerAction]);
+  }, [liveStatus, effectiveSubDepartmentStatuses, isTimerRunningHere, timerEntryId, stopTimerAction]);
 
   const stackLen = useDrawerStore((s) => s.stack.length);
   const popDrawer = useDrawerStore((s) => s.pop);
@@ -2144,7 +2144,7 @@ export function TicketDetailPage({
   }, [effectiveSubDepartmentStatuses, liveStatus, departmentLabelOptions]);
 
   // Time tracking is only available when the ticket is actively being worked on ("In Progress").
-  const isTicketActive = normalizeStatus(liveStatus) === "In Progress";
+  const isTicketActive = categoryForStatus(liveStatus, effectiveSubDepartmentStatuses) === "IN_PROGRESS";
 
   const doneSubs = subTickets.filter((s) => s.done).length;
   const subPercent = subTickets.length
@@ -3216,7 +3216,7 @@ export function TicketDetailPage({
                             }
                             className="group/sub flex min-h-[34px] items-center gap-2.5 rounded-full px-2 py-1 transition-colors hover:bg-sts-surface"
                           >
-                            {/* Completion checkbox (reflects status.isComplete) */}
+                            {/* Completion checkbox (reflects the Complete status category) */}
                             {st.done ? (
                               <CheckSquare className="size-4 shrink-0 text-sts-green" />
                             ) : (

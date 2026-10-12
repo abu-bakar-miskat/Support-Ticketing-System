@@ -1,3 +1,4 @@
+import { isCompleteStatus, isStatusCategory, inferStatusCategory } from "@/lib/status-category";
 import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
@@ -56,7 +57,7 @@ function parseBoard(value: unknown): SavedBoard | null {
     ? row.featureKeys.filter(isMarketplaceFeatureKey)
     : [];
   const statuses = parseStatuses(row.statuses);
-  if (statuses.length < 2 || !statuses.some((status) => status.isComplete)) return null;
+  if (statuses.length < 2 || !statuses.some((status) => isCompleteStatus(status))) return null;
   return {
     slug: row.slug,
     name: row.name.trim(),
@@ -80,11 +81,13 @@ function parseStatuses(value: unknown): OperationStatus[] {
     const color = typeof status.color === "string" && /^#[0-9a-fA-F]{6}$/.test(status.color) ? status.color : "#64748b";
     if (!label || seen.has(label.toLowerCase())) continue;
     seen.add(label.toLowerCase());
+    const category = isStatusCategory(status.category) ? status.category : inferStatusCategory({ label, order: statuses.length, isComplete: status.isComplete === true });
     statuses.push({
+      category,
       label,
       color,
       order: statuses.length,
-      isComplete: status.isComplete === true,
+      isComplete: category === "COMPLETE",
     });
   }
   return statuses;
@@ -171,7 +174,7 @@ export function validateBoardInput(input: unknown, existingSlugs: string[]): Sav
   const needsStatuses = featureKeys.includes("board") || featureKeys.includes("workflows");
   const statuses = parseStatuses(row.statuses);
   if (needsStatuses && statuses.length < 2) throw new Error("Add at least two statuses");
-  if (needsStatuses && !statuses.some((status) => status.isComplete)) throw new Error("Mark one status as done");
+  if (needsStatuses && !statuses.some((status) => isCompleteStatus(status))) throw new Error("Choose Complete for at least one status");
   const requestedSlug = typeof row.slug === "string" ? row.slug.trim() : "";
   let slug = requestedSlug;
   if (!slug) {

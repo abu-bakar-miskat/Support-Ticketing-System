@@ -1,3 +1,4 @@
+import { isCompleteStatus } from "@/lib/status-category"
 import { syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
 import { prisma } from "@/lib/db"
 import { createNotification } from "@/lib/notify"
@@ -40,7 +41,7 @@ export async function listSubDepartments(ctx: ApiKeyContext): Promise<ToolResult
       name: true,
       prefix: true,
       department: { select: { name: true } },
-      statuses: { orderBy: { order: "asc" }, select: { label: true, isComplete: true } },
+      statuses: { orderBy: { order: "asc" }, select: { label: true, category: true } },
     },
   })
   return {
@@ -545,7 +546,7 @@ export async function updateTicket(ctx: ApiKeyContext, input: UpdateTicketInput)
     const subDepartmentStatuses = await prisma.subDepartmentStatus.findMany({
       where: { subDepartmentId: ticket.subDepartmentId },
       orderBy: { order: "asc" },
-      select: { label: true, isComplete: true },
+      select: { label: true, category: true },
     })
     const target = subDepartmentStatuses.find((s) => s.label === input.status)
     if (!target) {
@@ -554,12 +555,12 @@ export async function updateTicket(ctx: ApiKeyContext, input: UpdateTicketInput)
         message: `Invalid status "${input.status}" for this subDepartment — valid: ${subDepartmentStatuses.map((s) => s.label).join(", ")}`,
       }
     }
-    statusChange = { to: target.label, isComplete: target.isComplete }
+    statusChange = { to: target.label, isComplete: isCompleteStatus(target) }
     data.status = target.label
-    data.closedAt = target.isComplete ? (ticket.closedAt ?? new Date()) : null
+    data.closedAt = isCompleteStatus(target) ? (ticket.closedAt ?? new Date()) : null
     // A closed ticket isn't waiting on anyone — the availability sweep only
     // revisits open tickets, so the flag would otherwise stick forever.
-    if (target.isComplete && ticket.labels.includes(AGENT_UNAVAILABLE_LABEL)) {
+    if (isCompleteStatus(target) && ticket.labels.includes(AGENT_UNAVAILABLE_LABEL)) {
       data.labels = clearAgentUnavailableLabel(ticket.labels)
     }
     changed.status = { from: ticket.status, to: target.label }

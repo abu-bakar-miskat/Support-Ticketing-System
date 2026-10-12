@@ -86,7 +86,7 @@ export async function PATCH(
   const subDepartmentStatuses = await prisma.subDepartmentStatus.findMany({
     where: { subDepartmentId: ticket.subDepartmentId },
     orderBy: { order: "asc" },
-    select: { label: true, isComplete: true, allowedLabels: true },
+    select: { label: true, category: true, isComplete: true, allowedLabels: true },
   })
 
   const currentIdx = subDepartmentStatuses.findIndex((s) => s.label === ticket.status)
@@ -106,7 +106,7 @@ export async function PATCH(
     )
   }
 
-  const isCompletion = nextStatus.isComplete
+  const isCompletion = nextStatus.category === "COMPLETE"
   const priorStatus = subDepartmentStatuses[currentIdx]
 
   const departmentId = ticket.subDepartment.departmentId
@@ -133,6 +133,7 @@ export async function PATCH(
       chosenLabel: resolvedChosen,
     }),
     to,
+    nextStatus.category,
   )
   // A closed ticket isn't waiting on anyone — and the availability sweep only
   // revisits open tickets, so the flag would otherwise stick forever.
@@ -149,6 +150,7 @@ export async function PATCH(
   // and the generic PATCH route so every status path behaves identically.
   const resolutionData = resolutionUpdateOnStatusChange({
     toStatus: to,
+    category: nextStatus.category,
     isCompletion,
     newClosedAt,
     currentInProgressStartedAt: ticket.inProgressStartedAt,
@@ -217,12 +219,12 @@ export async function PATCH(
 
   // Stop + persist any running timer if the ticket left "In Progress";
   // auto-start when moving into In Progress for the assignee who moved it.
-  await stopRunningTimersOnStatusChange(id, to)
+  await stopRunningTimersOnStatusChange(id, to, nextStatus.category)
   await startTimerOnStatusChange(id, to, {
     id: profile.id,
     name: profile.name,
     avatarUrl: profile.avatarUrl,
-  })
+  }, nextStatus.category)
 
   if (isCompletion) {
     const humanId = `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`

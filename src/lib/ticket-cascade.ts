@@ -6,7 +6,7 @@ import { clearAgentUnavailableLabel } from "@/lib/agent-unavailable"
 /**
  * When a parent ticket is moved to a complete status, automatically complete
  * all its sub-tickets that are not already in a complete status.
- * Each sub-ticket is updated to the first isComplete status configured for its subDepartment.
+ * Each sub-ticket is updated to the first Complete-category status configured for its subDepartment.
  */
 export async function cascadeCompleteToSubtickets(
   parentId: string,
@@ -21,7 +21,7 @@ export async function cascadeCompleteToSubtickets(
   const subSubDepartmentIds = [...new Set(subTickets.map((s) => s.subDepartmentId))]
 
   const completeStatuses = await prisma.subDepartmentStatus.findMany({
-    where: { subDepartmentId: { in: subSubDepartmentIds }, isComplete: true },
+    where: { subDepartmentId: { in: subSubDepartmentIds }, category: "COMPLETE" },
     select: { subDepartmentId: true, label: true, order: true },
     orderBy: { order: "asc" },
   })

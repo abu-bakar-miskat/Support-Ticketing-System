@@ -1,3 +1,4 @@
+import { sortStatusesByCategory } from "@/lib/status-category"
 import { creationEstimate } from "@/lib/ticket-estimates"
 import { prisma } from "@/lib/db"
 import { NextResponse, after } from "next/server"
@@ -102,7 +103,7 @@ async function createTicket(request: Request, profile: AuthProfile) {
   const title = (body.title as string)?.trim()
   const type = (body.type as string) || "Task"
   const priority = (body.priority as string) || (isDraft ? "Low" : "")
-  const status = (body.status as string)?.trim() || "To Do"
+  let status = typeof body.status === "string" ? body.status.trim() : ""
   const projectId = (body.projectId as string | null) || null
   const assigneeId = body.unassigned === true
     ? null
@@ -401,6 +402,15 @@ async function createTicket(request: Request, profile: AuthProfile) {
         select: { id: true, name: true, email: true },
       })
     : []
+
+  const workflowStatuses = sortStatusesByCategory(await prisma.subDepartmentStatus.findMany({
+    where: { subDepartmentId: resolvedSubDepartmentId },
+    select: { label: true, category: true, order: true },
+  }))
+  if (!status) status = workflowStatuses.find((s) => s.category === "TODO")?.label ?? workflowStatuses[0]?.label ?? "OPEN"
+  if (workflowStatuses.length && !workflowStatuses.some((s) => s.label === status)) {
+    return NextResponse.json({ error: "Invalid status for this sub-department" }, { status: 400 })
+  }
 
   // ticketNumber: 0 is a placeholder — the BEFORE INSERT trigger stamps the real per-team value
   const initialEstimate = creationEstimate(assigneeId, estimatedTime)

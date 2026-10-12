@@ -19,7 +19,7 @@ export function resolveAllowedResolutionMins(
   return null
 }
 
-import { normalizeStatus } from "@/components/board/board-types"
+import { statusCategory, type StatusCategory } from "@/lib/status-category"
 
 export type ResolutionOutcome = {
   /** Whole minutes elapsed from In Progress → resolution; null if not measurable. */
@@ -79,6 +79,7 @@ export type ResolutionUpdate = {
  */
 export function resolutionUpdateOnStatusChange(params: {
   toStatus: string
+  category?: StatusCategory
   isCompletion: boolean
   newClosedAt: Date | null
   currentInProgressStartedAt: Date | null
@@ -96,7 +97,7 @@ export function resolutionUpdateOnStatusChange(params: {
     now = new Date(),
   } = params
 
-  const enteringInProgress = normalizeStatus(toStatus) === "In Progress"
+  const enteringInProgress = statusCategory({ label: toStatus, category: params.category }) === "IN_PROGRESS"
 
   if (enteringInProgress && currentInProgressStartedAt === null) {
     return {

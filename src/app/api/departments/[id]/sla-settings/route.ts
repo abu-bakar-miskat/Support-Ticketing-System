@@ -1,3 +1,4 @@
+import { isCompleteStatus, type StatusCategory } from "@/lib/status-category"
 import { DEFAULT_STATUSES } from "@/components/board/board-types"
 import { isMailboxActiveStatus } from "@/lib/mailbox-sla"
 import { NextRequest, NextResponse } from "next/server"
@@ -52,13 +53,13 @@ function readBusinessHours(value: unknown): BusinessHours {
 
 const SETTINGS_SELECT = {
   slaConfig: true, businessHours: true,
-  subDepartments: { select: { id: true, statuses: { select: { label: true, isComplete: true }, orderBy: { order: "asc" as const } } } },
+  subDepartments: { select: { id: true, statuses: { select: { label: true, category: true }, orderBy: { order: "asc" as const } } } },
 } as const
 
-function availableActiveStatuses(department: { subDepartments: { id: string; statuses: { label: string; isComplete: boolean }[] }[] }, subDepartmentId: string | null): string[] {
+function availableActiveStatuses(department: { subDepartments: { id: string; statuses: { label: string; category: StatusCategory }[] }[] }, subDepartmentId: string | null): string[] {
   const subs = subDepartmentId ? department.subDepartments.filter((sub) => sub.id === subDepartmentId) : department.subDepartments
   const workflows = subs.length ? subs.map((sub) => sub.statuses.length ? sub.statuses : DEFAULT_STATUSES) : [DEFAULT_STATUSES]
-  return [...new Set(workflows.flat().filter((status) => !status.isComplete).map((status) => status.label))]
+  return [...new Set(workflows.flat().filter((status) => !isCompleteStatus(status)).map((status) => status.label))]
 }
 
 function settingsBody(slaRaw: unknown, bhRaw: unknown, availableStatuses: string[]) {

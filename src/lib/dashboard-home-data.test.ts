@@ -29,8 +29,11 @@ beforeEach(() => {
   vi.mocked(prisma.timeEntry.findMany).mockResolvedValue([]);
   vi.mocked(prisma.activityLog.findMany).mockResolvedValue([]);
   vi.mocked(prisma.subDepartmentStatus.findMany).mockResolvedValue([
-    { subDepartmentId: "a", label: "Approved", isComplete: true },
-    { subDepartmentId: "b", label: "Approved", isComplete: false },
+    { subDepartmentId: "a", label: "Approved", category: "COMPLETE", isComplete: true },
+    { subDepartmentId: "a", label: "Done", category: "COMPLETE", isComplete: true },
+    { subDepartmentId: "a", label: "In Progress", category: "IN_PROGRESS", isComplete: false },
+    { subDepartmentId: "a", label: "Blocked", category: "BLOCKED", isComplete: false },
+    { subDepartmentId: "b", label: "Approved", category: "TODO", isComplete: false },
   ] as never);
 });
 afterEach(() => vi.useRealTimers());
@@ -50,7 +53,7 @@ it("keeps full metrics and project counts while fetching details only for attent
     { ...attentionRow, id: "blocked", subDepartmentId: "a", status: "Blocked", dueDate: null },
   ] as never);
   const data = await getHomeDashboardData({ id: "agent" } as never);
-  expect(data.metrics).toMatchObject({ open: 6, completed: 1005, todo: 2, inProgress: 4, overdue: 1, dueThisWeek: 5 });
+  expect(data.metrics).toMatchObject({ open: 6, completed: 1005, todo: 2, inProgress: 3, overdue: 1, dueThisWeek: 5 });
   expect(data.projects[0].openCount).toBe(6);
   expect(data.attention.map((t) => [t.dbId, t.kind])).toEqual([["overdue", "overdue"], ["blocked", "blocked"]]);
   expect(prisma.ticket.findMany).toHaveBeenCalledWith(expect.objectContaining({

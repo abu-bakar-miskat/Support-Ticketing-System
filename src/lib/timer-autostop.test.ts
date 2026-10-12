@@ -1,3 +1,4 @@
+vi.mock("@/lib/status-category.server", () => ({ getTicketStatusCategory: vi.fn(async (_id, label) => label === "In Progress" ? "IN_PROGRESS" : "BLOCKED") }))
 vi.mock("@/lib/sla-engine", () => ({ checkAndNotifySla: vi.fn().mockResolvedValue(undefined), stopMailboxFirstResponseOnActiveStatus: vi.fn().mockResolvedValue(undefined) }))
 import { beforeEach, expect, it, vi } from "vitest"
 vi.mock("@/lib/db", () => ({ prisma: {
@@ -33,4 +34,13 @@ it("checks an estimate after persisting an automatically stopped session", async
   expect(vi.mocked(prisma.$transaction).mock.invocationCallOrder[0]).toBeLessThan(
     vi.mocked(checkAndNotifyEstimateOverrun).mock.invocationCallOrder[0],
   )
+})
+
+it("keeps work running between custom In progress statuses", async () => {
+  await stopRunningTimersOnStatusChange("manual-1", "Quality check", "IN_PROGRESS")
+  expect(prisma.timeEntry.findMany).not.toHaveBeenCalled()
+})
+it("stops work in the Blocked category even when the label is In Progress", async () => {
+  await stopRunningTimersOnStatusChange("manual-1", "In Progress", "BLOCKED")
+  expect(prisma.timeEntry.findMany).toHaveBeenCalled()
 })

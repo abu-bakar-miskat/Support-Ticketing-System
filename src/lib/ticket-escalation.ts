@@ -11,7 +11,7 @@
  * rather than crediting a human — same pattern as lib/github/advance-status.ts.
  */
 import { prisma } from "@/lib/db"
-import { normalizeStatus } from "@/components/board/board-types"
+import { statusCategory, type StatusCategory } from "@/lib/status-category"
 import { broadcastTicketEvent } from "@/lib/ticket-events"
 import { linkedLabelsForDepartment, labelsAfterStatusMove } from "@/lib/status-label-choice.server"
 import { stopRunningTimersOnStatusChange } from "@/lib/timer-autostop"
@@ -33,8 +33,8 @@ export function isEscalatedLabel(label: string): boolean {
  * guard is needed. Shared by every route that changes a ticket's status
  * (`/status`, `/move`, generic `PATCH`).
  */
-export function labelsAfterDeEscalation(labels: string[], toStatus: string): string[] {
-  if (normalizeStatus(toStatus) !== "In Progress") return labels
+export function labelsAfterDeEscalation(labels: string[], toStatus: string, category?: StatusCategory): string[] {
+  if (statusCategory({ label: toStatus, category }) !== "IN_PROGRESS") return labels
   return labels.filter((label) => !isEscalatedLabel(label))
 }
 
@@ -115,14 +115,14 @@ export async function escalateTicket(
   }
   // A closed ticket isn't waiting on anyone (the availability sweep only
   // revisits open tickets, so the flag would otherwise stick forever).
-  if (escalatedStatus?.isComplete) nextLabels = clearAgentUnavailableLabel(nextLabels)
+  if (escalatedStatus?.category === "COMPLETE") nextLabels = clearAgentUnavailableLabel(nextLabels)
 
   // FK-safe actor for the ActivityLog trigger; the creator satisfies the NOT
   // NULL actor when no human is driving the change (automation).
   const actorId = opts.actorId ?? ticket.creatorId
   const activitySource = opts.activitySource ? JSON.stringify(opts.activitySource) : null
 
-  const newClosedAt = escalatedStatus?.isComplete ? (ticket.closedAt ?? new Date()) : null
+  const newClosedAt = escalatedStatus?.category === "COMPLETE" ? (ticket.closedAt ?? new Date()) : null
   const updated = await prisma.$transaction(async (tx) => {
     await tx.$executeRaw`SELECT set_config('app.current_user_id', ${actorId}, true)`
     if (activitySource) {

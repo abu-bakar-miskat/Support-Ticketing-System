@@ -1,3 +1,4 @@
+import { inferStatusCategory } from "@/lib/status-category";
 import { emptyFeatureSetup, type SavedFeature } from "@/lib/feature-setup";
 
 /**
@@ -132,6 +133,7 @@ function columns(
     label: row.label,
     color: row.color,
     order,
-    isComplete: row.isComplete ?? false,
+    category: inferStatusCategory({ ...row, order }),
+    isComplete: inferStatusCategory({ ...row, order }) === "COMPLETE",
   }));
 }

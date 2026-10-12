@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Check, GripVertical, Loader2, Plus, RotateCcw } from "lucide-react";
+import { GripVertical, Loader2, Plus, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FEATURE_ICONS } from "@/components/settings/feature-preview";
 import { DEFAULT_SUB_DEPARTMENT_STATUSES } from "@/lib/board-columns";
@@ -21,10 +21,12 @@ import {
   TEMPLATE_FEATURE_LABELS,
   type MarketplaceFeatureKey,
 } from "@/lib/template-features";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { STATUS_CATEGORIES, STATUS_CATEGORY_LABELS, statusCategory, type StatusCategory } from "@/lib/status-category";
 import { cn } from "@/lib/utils";
 import { ListSearchInput, SortDropdown, byText, useListControls } from "@/components/ui/list-controls";
 
-type StatusDraft = { label: string; color: string; isComplete: boolean };
+type StatusDraft = { label: string; color: string; category: StatusCategory; isComplete: boolean };
 type ListDraft = { name: string; statuses: string[] };
 
 type FeatureDraft = {
@@ -65,7 +67,7 @@ function templateDraft(saved: SavedFeature): FeatureDraft {
     key: saved.key,
     explanation: saved.explanation || MARKETPLACE_FEATURE_COPY[saved.key].explanation,
     useCase: saved.useCase || MARKETPLACE_FEATURE_COPY[saved.key].useCase,
-    statuses: saved.statuses,
+    statuses: saved.statuses.map((status) => ({ ...status, category: statusCategory(status), isComplete: statusCategory(status) === "COMPLETE" })),
     lists: saved.lists,
     setup: savedFeatureToSetup(saved),
   };
@@ -517,7 +519,7 @@ function StatusEditor({
         <Button
           variant="ghost"
           size="sm"
-          onClick={() => onChange({ ...draft, statuses: [...draft.statuses, { label: "", color: "#64748b", isComplete: false }] })}
+          onClick={() => onChange({ ...draft, statuses: [...draft.statuses, { label: "", color: "#64748b", category: "TODO", isComplete: false }] })}
         >
           <Plus />
           Add status
@@ -562,35 +564,16 @@ function StatusEditor({
             value={status.label}
             onChange={(event) => patchStatus(index, { label: event.target.value })}
           />
-          <button
-            type="button"
-            role="switch"
-            aria-checked={status.isComplete}
-            onClick={() => patchStatus(index, { isComplete: !status.isComplete })}
-            className={cn(
-              "inline-flex h-8 shrink-0 items-center gap-2 rounded-full border px-2 pr-2.5 font-sans text-[12px] font-medium transition-colors",
-              status.isComplete
-                ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                : "border-sts-card-border bg-sts-surface text-sts-muted hover:text-sts-foreground",
-            )}
-          >
-            <span
-              className={cn(
-                "relative h-4 w-7 rounded-full transition-colors",
-                status.isComplete ? "bg-emerald-500" : "bg-sts-card-border",
-              )}
-            >
-              <span
-                className={cn(
-                  "absolute top-0.5 flex size-3 items-center justify-center rounded-full bg-white shadow-sm transition-transform",
-                  status.isComplete ? "translate-x-3.5" : "translate-x-0.5",
-                )}
-              >
-                {status.isComplete && <Check className="size-2 text-emerald-600" strokeWidth={3} />}
-              </span>
-            </span>
-            Done
-          </button>
+          <Select value={status.category} onValueChange={(value) => {
+            if (value) patchStatus(index, { category: value as StatusCategory, isComplete: value === "COMPLETE" });
+          }}>
+            <SelectTrigger aria-label={`Category for ${status.label || "status"}`} className="min-w-32 font-sans text-xs">
+              <SelectValue>{STATUS_CATEGORY_LABELS[status.category]}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_CATEGORIES.map((category) => <SelectItem key={category} value={category}>{STATUS_CATEGORY_LABELS[category]}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Button
             variant="ghost"
             size="sm"

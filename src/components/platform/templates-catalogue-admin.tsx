@@ -1,5 +1,7 @@
 "use client";
 
+import type { StatusCategory } from "@/lib/status-category";
+
 import { Tip } from "@/components/ui/tooltip";
 import { useMemo, useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
@@ -19,7 +21,7 @@ import { cn } from "@/lib/utils";
 
 type TemplateSetup = {
   key: string;
-  statuses: { label: string; color: string; isComplete: boolean }[];
+  statuses: { label: string; color: string; category?: StatusCategory; isComplete: boolean }[];
   lists: { name: string; statuses: string[] }[];
   tags: { name: string; color: string }[];
   sla: { name: string; firstResponseMins: number; resolutionMins: number }[];

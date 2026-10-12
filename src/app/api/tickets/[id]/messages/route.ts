@@ -1,3 +1,4 @@
+import { getTicketStatusCategory } from "@/lib/status-category.server"
 import { getMailboxOriginMessageId, isMailboxReceipt } from "@/lib/mailbox-ticket-origin"
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth, assertTicketAccess } from "@/lib/auth"
@@ -6,7 +7,6 @@ import { RESEND_RECEIVING_ENABLED, getEmailConfig } from "@/lib/email-config"
 import { sendCustomerReplyEmail } from "@/lib/email"
 import { sanitizeInboundHtml } from "@/lib/inbound-email"
 import { OUTBOUND_MAX_TOTAL_BYTES } from "@/lib/message-attachments"
-import { normalizeStatus } from "@/components/board/board-types"
 import { stopFirstResponseOnPublicAgentMessage } from "@/lib/sla-engine"
 import { clearReopenedLabelOnReply } from "@/lib/ticket-column-moves"
 import { syncWorkTimerWithConversation } from "@/lib/timer-conversation-sync"
@@ -199,13 +199,12 @@ export async function POST(
   // so the DB update is ready to await before we respond. An agent replying to
   // an escalated ticket has picked it up, so it moves to In Progress too.
   // ("ESCALATED" normalizes to "Blocked", so it needs its own check.)
-  const shouldMoveToInProgress =
-    normalizeStatus(ticket.status) === "To Do" || isEscalatedLabel(ticket.status)
+  const currentCategory = await getTicketStatusCategory(ticketId, ticket.status)
+  const shouldMoveToInProgress = currentCategory === "TODO" || (currentCategory === "BLOCKED" && isEscalatedLabel(ticket.status))
   const inProgressStatusPromise = shouldMoveToInProgress
     ? prisma.subDepartmentStatus.findFirst({
-        where: { subDepartmentId: ticket.subDepartmentId, isComplete: false },
+        where: { subDepartmentId: ticket.subDepartmentId, category: "IN_PROGRESS" },
         orderBy: { order: "asc" },
-        skip: 1,
       })
     : Promise.resolve(null)
 

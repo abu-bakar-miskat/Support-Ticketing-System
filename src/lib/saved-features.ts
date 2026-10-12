@@ -1,3 +1,5 @@
+import { isCompleteStatus } from "@/lib/status-category";
+import { isStatusCategory, inferStatusCategory } from "@/lib/status-category";
 import "server-only";
 import { prisma } from "@/lib/db";
 import { DEFAULT_FEATURE_TEMPLATES } from "@/lib/default-feature-templates";
@@ -26,7 +28,7 @@ export function validateFeatureInput(input: unknown, existingIds: string[]): Sav
   const statuses = parseStatuses(row.statuses);
   const needsStatuses = row.key === "board" || row.key === "workflows";
   if (needsStatuses && statuses.length < 2) throw new Error("Add at least two statuses");
-  if (needsStatuses && !statuses.some((status) => status.isComplete)) throw new Error("Mark one status as done");
+  if (needsStatuses && !statuses.some((status) => isCompleteStatus(status))) throw new Error("Choose Complete for at least one status");
   const requestedId = typeof row.id === "string" ? row.id.trim() : "";
   return {
     id: requestedId || nextId(row.key, name, existingIds),
@@ -198,7 +200,8 @@ function parseStatuses(value: unknown): SavedFeature["statuses"] {
     if (!label || seen.has(label.toLowerCase())) continue;
     seen.add(label.toLowerCase());
     const color = typeof status.color === "string" && /^#[0-9a-fA-F]{6}$/.test(status.color) ? status.color : "#64748b";
-    statuses.push({ label, color, order: statuses.length, isComplete: status.isComplete === true });
+    const category = isStatusCategory(status.category) ? status.category : inferStatusCategory({ label, order: statuses.length, isComplete: status.isComplete === true });
+    statuses.push({ label, color, order: statuses.length, category, isComplete: category === "COMPLETE" });
   }
   return statuses;
 }

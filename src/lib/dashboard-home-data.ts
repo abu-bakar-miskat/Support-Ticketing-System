@@ -2,7 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { getProfileDeptScope, buildProjectDeptWhere } from "@/lib/dept-scope";
 import { timeAgo, formatDuration } from "@/lib/format";
-import { normalizeStatus } from "@/components/board/board-types";
+import { statusCategory } from "@/lib/status-category";
 import type {
   HomeDashboardData,
   AttentionTask,
@@ -168,42 +168,15 @@ async function collectHomeDashboardData(profile: Profile): Promise<HomeDashboard
     statusSubDepartmentIds.length > 0
       ? await prisma.subDepartmentStatus.findMany({
           where: { subDepartmentId: { in: statusSubDepartmentIds } },
-          select: { subDepartmentId: true, label: true, isComplete: true },
+          select: { subDepartmentId: true, label: true, category: true },
           orderBy: { order: "asc" },
         })
       : [];
 
-  const completeBySubDepartment = new Map<string, Set<string>>();
-  const inProgressBySubDepartment = new Map<string, Set<string>>();
-
-  for (const s of allSubDepartmentStatuses) {
-    if (s.isComplete) {
-      const set = completeBySubDepartment.get(s.subDepartmentId) ?? new Set<string>();
-      set.add(s.label);
-      completeBySubDepartment.set(s.subDepartmentId, set);
-    } else {
-      const canonical = normalizeStatus(s.label);
-      if (
-        canonical === "In Progress" ||
-        canonical === "Pull Request" ||
-        canonical === "Blocked"
-      ) {
-        const set = inProgressBySubDepartment.get(s.subDepartmentId) ?? new Set<string>();
-        set.add(s.label);
-        inProgressBySubDepartment.set(s.subDepartmentId, set);
-      }
-    }
-  }
-
-  const isTicketComplete = (t: { subDepartmentId: string; status: string }) =>
-    completeBySubDepartment.get(t.subDepartmentId)?.has(t.status) || normalizeStatus(t.status) === "Live";
-
-  const isTicketInProgress = (t: { subDepartmentId: string; status: string }) =>
-    !isTicketComplete(t) &&
-    (inProgressBySubDepartment.get(t.subDepartmentId)?.has(t.status) ||
-      normalizeStatus(t.status) === "In Progress" ||
-      normalizeStatus(t.status) === "Pull Request" ||
-      normalizeStatus(t.status) === "Blocked");
+  const categories = new Map(allSubDepartmentStatuses.map((s) => [`${s.subDepartmentId}::${s.label}`, statusCategory(s)]));
+  const ticketCategory = (t: { subDepartmentId: string; status: string }) => categories.get(`${t.subDepartmentId}::${t.status}`) ?? statusCategory({ label: t.status });
+  const isTicketComplete = (t: { subDepartmentId: string; status: string }) => ticketCategory(t) === "COMPLETE";
+  const isTicketInProgress = (t: { subDepartmentId: string; status: string }) => ticketCategory(t) === "IN_PROGRESS";
 
   // ── Teams I lead (sub-manager overview) ───────────────────────────────────
   // Aggregate stats, roster, and a recent-ticket feed for each sub-department
@@ -312,11 +285,11 @@ async function collectHomeDashboardData(profile: Profile): Promise<HomeDashboard
   const sum = (groups: { _count: { _all: number } }[]) => groups.reduce((n, g) => n + g._count._all, 0);
   const openGroups = ticketGroups.filter((t) => !isTicketComplete(t));
   const completedCount = sum(ticketGroups.filter(isTicketComplete));
-  const todoCount = sum(openGroups.filter((t) => !isTicketInProgress(t)));
+  const todoCount = sum(openGroups.filter((t) => ticketCategory(t) === "TODO"));
   const inProgressCount = sum(ticketGroups.filter(isTicketInProgress));
   // Fetch details only for the attention list, not every historical assignment.
   const openStatuses = [...new Set(openGroups.map((t) => t.status))];
-  const blockedStatuses = openStatuses.filter((s) => normalizeStatus(s) === "Blocked");
+  const blockedStatuses = [...new Set(openGroups.filter((t) => ticketCategory(t) === "BLOCKED").map((t) => t.status))];
   const attentionRows = openStatuses.length ? await prisma.ticket.findMany({
     where: {
       ...ticketWhere,
@@ -335,14 +308,14 @@ async function collectHomeDashboardData(profile: Profile): Promise<HomeDashboard
 
   // ── Personal metrics ──────────────────────────────────────────────────────
   const overdueTickets = openTickets.filter(
-    (t) => t.dueDate && t.dueDate < startOfToday && normalizeStatus(t.status) !== "Blocked",
+    (t) => t.dueDate && t.dueDate < startOfToday && ticketCategory(t) !== "BLOCKED",
   );
-  const overdueCount = sum(overdueGroups.filter((t) => !isTicketComplete(t) && normalizeStatus(t.status) !== "Blocked"));
+  const overdueCount = sum(overdueGroups.filter((t) => !isTicketComplete(t) && ticketCategory(t) !== "BLOCKED"));
   const dueThisWeekCount = sum(dueWeekGroups.filter((t) => !isTicketComplete(t)));
   const timeTodaySecs = secsByDay[dayOfWeek];
 
   // ── Needs attention: overdue → due soon (3d) → blocked ────────────────────
-  const isBlocked = (t: { status: string }) => normalizeStatus(t.status) === "Blocked";
+  const isBlocked = (t: { subDepartmentId: string; status: string }) => ticketCategory(t) === "BLOCKED";
 
   const toAttention = (
     t: (typeof openTickets)[number],

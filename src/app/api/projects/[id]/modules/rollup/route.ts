@@ -1,3 +1,4 @@
+import { isCompleteStatus } from "@/lib/status-category";
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
@@ -103,7 +104,7 @@ async function loadModuleRollup(id: string) {
   const statuses: { label: string; color: string }[] = []
   for (const subDepartmentId of statusSubDepartmentIds) {
     for (const s of statusMap.get(subDepartmentId) ?? []) {
-      if (s.isComplete) {
+      if (isCompleteStatus(s)) {
         if (!completeMap.has(subDepartmentId)) completeMap.set(subDepartmentId, new Set())
         completeMap.get(subDepartmentId)!.add(s.label)
       }

@@ -6,11 +6,12 @@ const m = vi.hoisted(() => ({
   setup: vi.fn(), after: vi.fn(), email: vi.fn(), notify: vi.fn(), event: vi.fn(), members: vi.fn(),
   eligibility: vi.fn(), sla: vi.fn(), rules: vi.fn(),
   ticket: { create: vi.fn(), findUnique: vi.fn() }, project: { findUnique: vi.fn() },
+  subDepartmentStatus: { findMany: vi.fn() },
   subDepartment: { findUnique: vi.fn() }, profile: { findUnique: vi.fn(), findMany: vi.fn() },
   attachment: { updateMany: vi.fn() }, transaction: vi.fn(),
 }))
 vi.mock("next/server", async original => ({ ...await original<typeof import("next/server")>(), after: m.after }))
-vi.mock("@/lib/db", () => ({ prisma: { ticket: m.ticket, project: m.project, subDepartment: m.subDepartment,
+vi.mock("@/lib/db", () => ({ prisma: { ticket: m.ticket, project: m.project, subDepartment: m.subDepartment, subDepartmentStatus: m.subDepartmentStatus,
   profile: m.profile, attachment: m.attachment, $transaction: m.transaction } }))
 vi.mock("@/lib/auth", () => ({ requireAuth: m.auth, assertTicketEditAccess: vi.fn().mockResolvedValue(null) }))
 vi.mock("@/lib/prisma-scope", () => ({ resolveProfileTicketScope: m.scope }))
@@ -46,6 +47,7 @@ const tx = { ticket: m.ticket, attachment: m.attachment }
 
 beforeEach(() => {
   vi.clearAllMocks()
+  m.subDepartmentStatus.findMany.mockResolvedValue([{ label: "To Do", category: "TODO", order: 0 }])
   m.auth.mockResolvedValue({ profile, error: null })
   m.scope.mockResolvedValue({ kind: "tenant", tenantIds: ["tenant-1"], subDepartmentTeamIds: ["sub-1"], grantedTicketIds: ["granted"] })
   m.projectScope.mockResolvedValue(true)
@@ -203,4 +205,14 @@ it.each([undefined, "user-2"])("saves the creation estimate for the primary assi
 it("does not invent a personal estimate when creation supplies no estimate", async () => {
   await POST(request(valid))
   expect(m.ticket.create.mock.calls[0][0].data).not.toHaveProperty("estimates")
+})
+
+it("creates in the team's custom To-do status when no status is supplied", async () => {
+  m.subDepartmentStatus.findMany.mockResolvedValue([{ label: "Testing", category: "IN_PROGRESS", order: 0 }, { label: "Incoming", category: "TODO", order: 9 }])
+  expect((await POST(request(valid))).status).toBe(201)
+  expect(m.ticket.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: "Incoming" }) }))
+})
+it("rejects a status that belongs to another workflow", async () => {
+  expect((await POST(request({ ...valid, status: "Unknown" }))).status).toBe(400)
+  expect(m.ticket.create).not.toHaveBeenCalled()
 })

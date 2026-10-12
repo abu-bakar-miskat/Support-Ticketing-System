@@ -1,3 +1,4 @@
+import { getTicketStatusCategory } from "@/lib/status-category.server";
 import { getWorkCycleStart } from "@/lib/work-cycle";
 import { isMailboxReceipt } from "@/lib/mailbox-ticket-origin";
 import "server-only";
@@ -14,7 +15,7 @@ import {
 import { fetchProjectDepartmentPeople } from "@/lib/project-department-people";
 import { canEditTicket, canEditTicketDescription, canDeleteTicket } from "@/lib/ticket-date-permissions";
 import { RESEND_RECEIVING_ENABLED } from "@/lib/email-config";
-import { isDueOverdue, isBlockedStatus } from "@/lib/format";
+import { isDueOverdue } from "@/lib/format";
 import { serializeTicketDateIso } from "@/lib/ticket-datetime";
 import { buildGitHubDevData } from "@/lib/github/dev-data";
 import type { getProfile } from "@/lib/profile";
@@ -594,15 +595,15 @@ export async function getTicketDetailPayload(
     Math.floor((now - ticket.createdAt.getTime()) / 86_400_000),
   );
   const dueOverdue =
-    isDueOverdue(ticket.dueDate, new Date(now)) && !isBlockedStatus(ticket.status);
+    isDueOverdue(ticket.dueDate, new Date(now)) && (await getTicketStatusCategory(ticket.id, ticket.status)) !== "BLOCKED";
 
   // A sub-ticket counts as complete when its status is one flagged
-  // `isComplete` on its own subDepartment. Sub-tickets may live on a different subDepartment
+  // the Complete category on its own subDepartment. Sub-tickets may live on a different subDepartment
   // than the parent, so resolve the complete-status labels per subDepartment.
   const subSubDepartmentIds = [...new Set(ticket.subTickets.map((st) => st.subDepartmentId))];
   const completeStatusRows = subSubDepartmentIds.length
     ? await prisma.subDepartmentStatus.findMany({
-        where: { subDepartmentId: { in: subSubDepartmentIds }, isComplete: true },
+        where: { subDepartmentId: { in: subSubDepartmentIds }, category: "COMPLETE" },
         select: { subDepartmentId: true, label: true },
       })
     : [];

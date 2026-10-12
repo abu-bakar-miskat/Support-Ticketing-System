@@ -1,3 +1,4 @@
+import { categoryForStatus, type StatusCategory } from "@/lib/status-category";
 import type { QueryClient } from "@tanstack/react-query";
 import type { TicketDetailProps } from "@/lib/api/tickets";
 import { ticketKeys } from "@/hooks/queries/keys";
@@ -5,12 +6,12 @@ import { formatTicketDue, isBlockedStatus } from "@/lib/format";
 
 function formatDueDisplay(
   dueDateIso: string | null,
-  opts: { isStatusComplete?: boolean; status?: string } = {},
+  opts: { isStatusComplete?: boolean; status?: string; category?: StatusCategory } = {},
 ): { dueDate: string | null; dueOverdue: boolean } {
   const { due, dueOverdue } = formatTicketDue(
     dueDateIso ? new Date(dueDateIso) : null,
     new Date(),
-    { isStatusComplete: opts.isStatusComplete, isBlocked: isBlockedStatus(opts.status) },
+    { isStatusComplete: opts.isStatusComplete, isBlocked: isBlockedStatus(opts.status, opts.category) },
   );
   return { dueDate: due, dueOverdue };
 }
@@ -30,6 +31,7 @@ export function patchTicketDetailDatesInCache(
       const { dueDate, dueOverdue } = formatDueDisplay(dueDateIso, {
         ...opts,
         status: old.status,
+        category: categoryForStatus(old.status, old.subDepartmentStatuses),
       });
       return {
         ...old,

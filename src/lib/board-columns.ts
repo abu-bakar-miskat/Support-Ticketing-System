@@ -1,13 +1,8 @@
+import { inferStatusCategory, type StatusCategory } from "@/lib/status-category";
 /**
- * Sub-department board statuses (SRS slice 04, C-03 / DAT-02 / DAT-03).
- *
- * The board is the ordered set of `SubDepartmentStatus`es owned by a
- * sub-department; tickets are grouped by `Ticket.status` matched against those
- * labels. Every status carries a `statusType`; board logic keys on that type,
- * never the display label (C-03). This module holds the pure, isomorphic pieces
- * (defaults, type helpers) plus a transaction-scoped seeder — it deliberately
- * does NOT import `prisma`, so it stays unit-testable and usable inside any
- * `$transaction` callback.
+ * Custom board statuses are owned by a sub-department. Their saved lifecycle
+ * category drives behaviour; their label remains the ticket's display status.
+ * The seeder accepts a transaction so board creation stays atomic.
  */
 
 export type StatusType = "OPEN" | "PAUSED" | "ESCALATED" | "RESOLVED";
@@ -19,15 +14,16 @@ export type StatusType = "OPEN" | "PAUSED" | "ESCALATED" | "RESOLVED";
  */
 export const DEFAULT_SUB_DEPARTMENT_STATUSES: readonly {
   label: string;
+  category: StatusCategory;
   color: string;
   order: number;
   isComplete: boolean;
 }[] = [
-  { label: "OPEN", color: "#94a3b8", order: 0, isComplete: false },
-  { label: "IN PROGRESS", color: "#0a76b9", order: 1, isComplete: false },
-  { label: "PAUSED", color: "#f59e0b", order: 2, isComplete: false },
-  { label: "ESCALATED", color: "#dc2626", order: 3, isComplete: false },
-  { label: "RESOLVED", color: "#16a34a", order: 4, isComplete: true },
+  { label: "OPEN", category: "TODO", color: "#94a3b8", order: 0, isComplete: false },
+  { label: "IN PROGRESS", category: "IN_PROGRESS", color: "#0a76b9", order: 1, isComplete: false },
+  { label: "PAUSED", category: "BLOCKED", color: "#f59e0b", order: 2, isComplete: false },
+  { label: "ESCALATED", category: "BLOCKED", color: "#dc2626", order: 3, isComplete: false },
+  { label: "RESOLVED", category: "COMPLETE", color: "#16a34a", order: 4, isComplete: true },
 ];
 
 export const STATUS_TYPES: readonly StatusType[] = ["OPEN", "PAUSED", "ESCALATED", "RESOLVED"];
@@ -65,7 +61,7 @@ type SeedStatusTx = {
 export async function seedSubDepartmentStatuses(
   tx: SeedStatusTx,
   subDepartmentId: string,
-  statuses: readonly { label: string; color: string; order: number; isComplete: boolean }[] = DEFAULT_SUB_DEPARTMENT_STATUSES,
+  statuses: readonly { category?: StatusCategory; label: string; color: string; order: number; isComplete: boolean }[] = DEFAULT_SUB_DEPARTMENT_STATUSES,
 ): Promise<void> {
   const existing = await tx.subDepartmentStatus.findFirst({
     where: { subDepartmentId },
@@ -78,7 +74,8 @@ export async function seedSubDepartmentStatuses(
       label: s.label,
       color: s.color,
       order: s.order,
-      isComplete: s.isComplete,
+      category: s.category ?? inferStatusCategory(s),
+      isComplete: (s.category ?? inferStatusCategory(s)) === "COMPLETE",
     })),
   });
 }

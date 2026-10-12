@@ -1,4 +1,6 @@
-"use client";
+"use client"
+
+import { statusCategory, categoryForStatus, sortStatusesByCategory, STATUS_CATEGORY_LABELS } from "@/lib/status-category";
 
 import React, {
   useCallback,
@@ -168,7 +170,7 @@ function BoardCard({
   const currentUser = useCurrentUser();
   const userId = currentUser?.id;
   const canTrack =
-    normalizeStatus(initialCard.status) === "In Progress" &&
+    statusCategory(statuses.find((s) => s.label === initialCard.status) ?? { label: initialCard.status, category: initialCard.statusCategory }) === "IN_PROGRESS" &&
     (initialCard.assigneeId === userId ||
       initialCard.coAssignees.some((a) => a.id === userId));
 
@@ -590,6 +592,7 @@ function BoardColumn({
           : undefined
       }
     >
+      <p className="font-sans text-[10px] font-medium text-sts-muted uppercase tracking-wide">{STATUS_CATEGORY_LABELS[statusCategory(status)]}</p>
       <div className="flex h-6 shrink-0 items-center gap-2">
         <span
           className="block size-[7px] shrink-0 rounded-full"
@@ -804,7 +807,7 @@ export function BoardPage({
       subDepartmentId: "all",
       subDepartmentName: "All sub departments",
       cards: [],
-      statuses: mergedStatuses,
+      statuses: sortStatusesByCategory(mergedStatuses),
     };
   }, [subDepartmentBoardGroups.length, boardSubDepartmentIds, subDepartmentStatusesBySubDepartmentId]);
 
@@ -825,7 +828,7 @@ export function BoardPage({
         : fallbackStatuses;
     }
     const live = subDepartmentStatusesBySubDepartmentId.get(activeSubDepartmentId);
-    return live?.length ? live : fallbackStatuses;
+    return sortStatusesByCategory(live?.length ? live : fallbackStatuses);
   }, [
     activeSubDepartmentId,
     allSubDepartmentsMergedGroup,
@@ -933,13 +936,14 @@ export function BoardPage({
       prev.map((c) => {
         if (c.dbId !== dbId) return c;
         const target = resolveStatusesForCard(c.subDepartmentId).find((s) => s.label === toStatus);
-        const isComplete = !!target?.isComplete || toStatus === "Live";
-        return { ...c, status: toStatus, isComplete };
+        const category = statusCategory(target ?? { label: toStatus });
+        const isComplete = category === "COMPLETE";
+        return { ...c, status: toStatus, statusCategory: category, isComplete };
       }),
     );
     if (
       timerTicketDbId === dbId &&
-      normalizeStatus(toStatus) !== "In Progress"
+      categoryForStatus(toStatus, resolveStatusesForCard(previousCard.subDepartmentId)) !== "IN_PROGRESS"
     ) {
       stopTimerOnMove(timerEntryId).catch(() => undefined);
     }
@@ -958,7 +962,7 @@ export function BoardPage({
         setLocalCards((prev) =>
           prev.map((c) =>
             c.dbId === dbId && c.status === toStatus
-              ? { ...c, status: previousCard.status, isComplete: previousCard.isComplete }
+              ? { ...c, status: previousCard.status, isComplete: previousCard.isComplete, statusCategory: previousCard.statusCategory }
               : c,
           ),
         );

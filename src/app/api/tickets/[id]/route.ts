@@ -1,3 +1,4 @@
+import type { StatusCategory } from "@/lib/status-category"
 import { syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
 import { checkAndNotifyEstimateOverrun } from "@/lib/time-estimate-notify"
 import { NextRequest, NextResponse, after } from "next/server"
@@ -120,6 +121,7 @@ export async function PATCH(
     )
   }
 
+  let nextStatusCategory: StatusCategory | undefined
   const updateData: {
     title?: string
     assigneeId?: string | null
@@ -172,9 +174,11 @@ export async function PATCH(
     updateData.status = status.trim()
     const subDepartmentStatus = await prisma.subDepartmentStatus.findFirst({
       where: { subDepartmentId: ticket.subDepartmentId, label: updateData.status },
-      select: { isComplete: true },
+      select: { category: true, isComplete: true },
     })
-    const isCompletion = !!subDepartmentStatus?.isComplete
+    if (!subDepartmentStatus) return NextResponse.json({ error: "Invalid status for this sub-department" }, { status: 400 })
+    nextStatusCategory = subDepartmentStatus.category
+    const isCompletion = subDepartmentStatus.category === "COMPLETE"
     updateData.closedAt = isCompletion ? (ticket.closedAt ?? new Date()) : null
 
     // Start the resolution timer on entry to "In Progress"; stop it + record the
@@ -184,6 +188,7 @@ export async function PATCH(
       updateData,
       resolutionUpdateOnStatusChange({
         toStatus: updateData.status,
+        category: subDepartmentStatus.category,
         isCompletion,
         newClosedAt: updateData.closedAt,
         currentInProgressStartedAt: ticket.inProgressStartedAt,
@@ -365,7 +370,7 @@ export async function PATCH(
     // Starting active work de-escalates: drop the "Escalated" label on entry to
     // In Progress, matching /status and /move.
     const base = updateData.labels ?? ticket.labels
-    const deEscalated = labelsAfterDeEscalation(base, updateData.status as string)
+    const deEscalated = labelsAfterDeEscalation(base, updateData.status as string, nextStatusCategory)
     if (deEscalated.length !== base.length) {
       updateData.labels = deEscalated
     }
@@ -637,12 +642,12 @@ export async function PATCH(
   if (hasStatus && updated.status !== ticket.status) {
     after(() => runWithScope(uniqueTicketReadScope(profile, id), async () => {
       if (ticket.closedAt !== updateData.closedAt) await syncResolutionTimerOnClosedAtChange(id, updateData.closedAt ?? null).catch(() => undefined)
-      await stopRunningTimersOnStatusChange(id, updated.status).catch(() => undefined)
+      await stopRunningTimersOnStatusChange(id, updated.status, nextStatusCategory).catch(() => undefined)
       await startTimerOnStatusChange(id, updated.status, {
         id: profile.id,
         name: profile.name,
         avatarUrl: profile.avatarUrl,
-      }).catch(() => undefined)
+      }, nextStatusCategory).catch(() => undefined)
     }))
     if (updateData.closedAt) {
       cascadeCompleteToSubtickets(id).catch(() => undefined)

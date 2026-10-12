@@ -1,4 +1,5 @@
-export type SubDepartmentStatusRow = { label: string; order: number; isComplete: boolean }
+import { isCompleteStatus, type StatusCategory } from "@/lib/status-category"
+export type SubDepartmentStatusRow = { label: string; order: number; category?: StatusCategory; isComplete?: boolean }
 
 /**
  * Decides whether a webhook may move a ticket to targetLabel.
@@ -16,8 +17,8 @@ export function pickStatusMove(
   const target = statuses.find((s) => s.label === targetLabel)
   if (!current || !target) return null
   if (target.order <= current.order) return null
-  if (target.isComplete && hasIntake) return null
-  return { label: target.label, isComplete: target.isComplete }
+  if (isCompleteStatus(target) && hasIntake) return null
+  return { label: target.label, isComplete: isCompleteStatus(target) }
 }
 
 export type GitHubStatusEvent =
@@ -37,7 +38,7 @@ const REVIEW_ALIASES = ["in review", "review", "code review", "pull request"]
 function resolveReviewLabel(statuses: SubDepartmentStatusRow[]): string | null {
   const lower = (l: string) => l.toLowerCase()
   for (const alias of REVIEW_ALIASES) {
-    const match = statuses.find((s) => !s.isComplete && lower(s.label) === alias)
+    const match = statuses.find((s) => !isCompleteStatus(s) && lower(s.label) === alias)
     if (match) return match.label
   }
   return null
@@ -46,8 +47,8 @@ function resolveReviewLabel(statuses: SubDepartmentStatusRow[]): string | null {
 function resolveLiveLabel(statuses: SubDepartmentStatusRow[]): string | null {
   const lower = (l: string) => l.toLowerCase()
   return (
-    statuses.find((s) => lower(s.label) === "live")?.label ??
-    statuses.find((s) => s.isComplete)?.label ??
+    statuses.find((s) => lower(s.label) === "live" && isCompleteStatus(s))?.label ??
+    statuses.find((s) => isCompleteStatus(s))?.label ??
     null
   )
 }

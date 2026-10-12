@@ -1,3 +1,4 @@
+vi.mock("@/lib/status-category.server", () => ({ getTicketStatusCategory: vi.fn().mockResolvedValue("IN_PROGRESS") }))
 vi.mock("@/lib/work-cycle", () => ({ getWorkCycleStart: vi.fn().mockResolvedValue(null) }))
 vi.mock("@/lib/sla-engine", () => ({ syncResolutionTimerOnClosedAtChange: vi.fn().mockResolvedValue(undefined), startMailboxResolutionOnWork: vi.fn().mockResolvedValue(undefined) }))
 import { beforeEach, describe, expect, it, vi } from "vitest"
@@ -79,4 +80,17 @@ it("ignores previous-cycle outbound waits and sessions when reopening", async ()
   mockFindRunning.mockResolvedValueOnce({ id: "current-cycle-running" } as never)
   await startTimerOnStatusChange("ticket-1", "In Progress", { id: "agent-1", name: "Agent" })
   expect(mockFindRunning).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ OR: [{ endedAt: null }, { startedAt: { gte: cycleStart } }] }) }))
+})
+
+
+it("allows an arbitrary status in In progress to reach work-session reconciliation", async () => {
+  mockFindTicket.mockResolvedValue({ closedAt: null, assigneeId: "agent-1", assignees: [], messages: [] } as never)
+  mockFindRunning.mockResolvedValueOnce({ id: "running-entry" } as never)
+  await startTimerOnStatusChange("ticket-1", "Quality check", { id: "agent-1", name: "Agent" }, "IN_PROGRESS")
+  expect(mockFindRunning).toHaveBeenCalledOnce()
+})
+
+it("does not start work for a status named In Progress when its category is Blocked", async () => {
+  await startTimerOnStatusChange("ticket-1", "In Progress", { id: "agent-1", name: "Agent" }, "BLOCKED")
+  expect(mockFindTicket).not.toHaveBeenCalled()
 })

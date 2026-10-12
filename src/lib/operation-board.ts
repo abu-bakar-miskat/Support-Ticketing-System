@@ -1,3 +1,4 @@
+import { statusCategory } from "@/lib/status-category";
 import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
@@ -120,7 +121,7 @@ export async function applyOperationBoard(
       await tx.subDepartmentStatus.deleteMany({ where: { subDepartmentId: sub.id } });
     }
     await tx.subDepartmentStatus.createMany({
-      data: effective.statuses.map((status) => ({ ...status, subDepartmentId: sub.id })),
+      data: effective.statuses.map((status) => ({ ...status, category: statusCategory(status), isComplete: statusCategory(status) === "COMPLETE", subDepartmentId: sub.id })),
     });
   }
 }

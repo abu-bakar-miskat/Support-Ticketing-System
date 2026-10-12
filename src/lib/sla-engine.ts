@@ -1,5 +1,5 @@
+import { getTicketStatusCategory } from "@/lib/status-category.server";
 import { metricReport, customerWaitingMs } from "@/lib/sla-reporting";
-import { normalizeStatus } from "@/components/board/board-types";
 import { broadcastTicketEvent } from "@/lib/ticket-events";
 import { readFormSlaSnapshot, FORM_SLA_SOURCE } from "@/lib/form-sla";
 import { readMailboxSnapshot, isMailboxActiveStatus, mailboxWaitingIntervals, statusDestination, isWaitingForCustomer, type MailboxSlaSnapshot } from "@/lib/mailbox-sla";
@@ -562,7 +562,7 @@ export async function syncResolutionTimerOnClosedAtChange(ticketId: string, clos
       where: { id: ticketId },
       select: { status: true, closedAt: true, deletedAt: true, creatorId: true, assigneeId: true, resolutionDurationMins: true },
     });
-    if (!ticket || ticket.closedAt || ticket.deletedAt || normalizeStatus(ticket.status) !== "In Progress") return;
+    if (!ticket || ticket.closedAt || ticket.deletedAt || (await getTicketStatusCategory(ticketId, ticket.status)) !== "IN_PROGRESS") return;
     // A normal open-status transition cannot reset a live cycle. Manual tickets
     // have no SlaTimer; their persisted completion total supplies the guard.
     if (timer ? timer.resolutionStoppedAt === null : ticket.resolutionDurationMins == null) return;

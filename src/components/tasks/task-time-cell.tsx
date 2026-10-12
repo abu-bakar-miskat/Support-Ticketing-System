@@ -1,9 +1,10 @@
 "use client";
 
+import { statusCategory, type StatusCategory } from "@/lib/status-category";
 import { useState } from "react";
 import { Play, Pause } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatTaskTimeDisplay, normalizeStatus } from "@/components/board/board-types";
+import { formatTaskTimeDisplay } from "@/components/board/board-types";
 import { useLiveTimer } from "@/hooks/use-live-timer";
 import { useTimerActions } from "@/hooks/use-timer-actions";
 import { useAuthStore, useTimerStore } from "@/store";
@@ -16,6 +17,7 @@ type Props = {
   humanId: string;
   title: string;
   status: string;
+  category?: StatusCategory;
   assigneeId: string | null;
   coAssigneeIds: string[];
   userLoggedSecs: number;
@@ -27,6 +29,7 @@ export function TaskTimeCell({
   humanId,
   title,
   status,
+  category,
   assigneeId,
   coAssigneeIds,
   userLoggedSecs,
@@ -46,7 +49,7 @@ export function TaskTimeCell({
   const timeLabel = formatTaskTimeDisplay(displaySecs, estimatedTime);
 
   const canTrack =
-    normalizeStatus(status) === "In Progress" &&
+    statusCategory({ label: status, category }) === "IN_PROGRESS" &&
     !!userId &&
     (assigneeId === userId || coAssigneeIds.includes(userId));
 

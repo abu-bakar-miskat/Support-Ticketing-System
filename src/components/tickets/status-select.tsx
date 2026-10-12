@@ -1,5 +1,6 @@
 "use client"
 
+import { sortStatusesByCategory, categoryForStatus } from "@/lib/status-category"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
@@ -121,8 +122,8 @@ export function StatusSelect({
         invalidateTaskCaches(queryClient)
         // Hybrid timer auto-start/stop runs in after() — sync once it has settled
         if (
-          normalizeStatus(status) === "In Progress" ||
-          normalizeStatus(previous) === "In Progress"
+          categoryForStatus(status, statuses) === "IN_PROGRESS" ||
+          categoryForStatus(previous, statuses) === "IN_PROGRESS"
         ) {
           const { useTimerStore } = await import("@/store")
           window.setTimeout(() => {
@@ -201,15 +202,10 @@ export function StatusSelect({
           </SelectValue>
         </SelectTrigger>
         <SelectContent className={sidebarSelectContentClass}>
-          {statuses.map((s) => (
+          {sortStatusesByCategory(statuses).map((s) => (
             <SelectItem key={s.id} value={s.label} className={sidebarSelectItemClass}>
-              <span className="flex items-center gap-2">
-                <span
-                  className={coloredDotClass("md")}
-                  style={{ backgroundColor: s.color }}
-                />
-                {s.label}
-              </span>
+              <span className={coloredDotClass()} style={{ backgroundColor: s.color }} />
+              {s.label}
             </SelectItem>
           ))}
         </SelectContent>

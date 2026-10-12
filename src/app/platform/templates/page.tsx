@@ -1,3 +1,4 @@
+import { statusCategory } from "@/lib/status-category";
 import { redirect } from "next/navigation"
 import { getProfile } from "@/lib/profile"
 import { prisma } from "@/lib/db"
@@ -45,7 +46,8 @@ export default async function TemplatesCataloguePage() {
             statuses: saved.statuses.map((status) => ({
               label: status.label,
               color: status.color,
-              isComplete: status.isComplete,
+              category: statusCategory(status),
+              isComplete: statusCategory(status) === "COMPLETE",
             })),
             lists: saved.lists,
             tags: saved.tags,

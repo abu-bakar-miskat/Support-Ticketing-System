@@ -10,10 +10,14 @@ export const getDashboardBadgesData = cache(async (profile: AuthProfile) => {
   const deptIds = deptScope?.subDepartmentIds;
   const activeDeptId = deptScope?.activeDeptId ?? null;
   const personalIds = personalScope?.subDepartmentIds;
+  const completeStatuses = await runAsSystem(() => prisma.subDepartmentStatus.findMany({
+    where: { category: "COMPLETE", ...(personalIds?.length ? { subDepartmentId: { in: personalIds } } : {}) },
+    select: { subDepartmentId: true, label: true },
+  }));
   const [myTasksCount, mentionsCount, inboxCount] = await runAsSystem(() => Promise.all([
     prisma.ticket.count({ where: {
       assigneeId: profile.id, deletedAt: null,
-      status: { notIn: ["Live", "Done", "Completed", "Closed"] },
+      ...(completeStatuses.length ? { NOT: completeStatuses.map((s) => ({ subDepartmentId: s.subDepartmentId, status: s.label })) } : {}),
       ...(personalIds && personalIds.length > 0 ? { subDepartmentId: { in: personalIds } } : {}),
     } }),
     prisma.mention.count({ where: {

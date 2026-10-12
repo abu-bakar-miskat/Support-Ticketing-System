@@ -1,4 +1,8 @@
-"use client";
+"use client"
+
+import { isCompleteStatus } from "@/lib/status-category";
+
+import { categoryForStatus } from "@/lib/status-category";
 
 import { useCallback, useRef, useState, useEffect, useTransition, useMemo } from "react";
 import { createPortal } from "react-dom";
@@ -87,7 +91,7 @@ import {
   ProjectAssetsTab,
 } from "@/components/projects/project-profile-tab";
 import { avatarColorFor } from "@/lib/avatar";
-import { formatTicketDue, formatDateTime, isBlockedStatus } from "@/lib/format";
+import { formatTicketDue, formatDateTime } from "@/lib/format";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { UserListItem, userListPickerButtonClass } from "@/components/ui/user-list-item";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -645,7 +649,7 @@ function SubDepartmentStatusBreakdown({
             (a, b) => a.order - b.order,
           );
           const completeLabels = new Set(
-            g.statuses.filter((s) => s.isComplete).map((s) => s.label),
+            g.statuses.filter((s) => isCompleteStatus(s)).map((s) => s.label),
           );
           const total = g.cards.length;
           const done = g.cards.filter((c) => completeLabels.has(c.status)).length;
@@ -820,7 +824,7 @@ function TicketList({
     statuses.map((s) => [s.label, s.color]),
   );
   const completeStatuses = new Set(
-    statuses.filter((s) => s.isComplete).map((s) => s.label),
+    statuses.filter((s) => isCompleteStatus(s)).map((s) => s.label),
   );
   const filtered = tickets.filter((t) => {
     if (
@@ -928,7 +932,7 @@ function TicketList({
             {filtered.map((t) => {
               const due = dueLabel(t.dueDate, {
                 isStatusComplete: completeStatuses.has(t.status),
-                isBlocked: isBlockedStatus(t.status),
+                isBlocked: categoryForStatus(t.status, statuses) === "BLOCKED",
               });
               return (
                 <Link
@@ -1153,7 +1157,7 @@ function OverviewTab({
   // Summary stats derived from all tickets (including sub-tickets)
   const totalTickets = recentTickets.length;
   const completeStatusLabels = new Set(
-    statuses.filter((s) => s.isComplete).map((s) => s.label),
+    statuses.filter((s) => isCompleteStatus(s)).map((s) => s.label),
   );
   const doneTickets = recentTickets.filter((t) =>
     completeStatusLabels.has(t.status),

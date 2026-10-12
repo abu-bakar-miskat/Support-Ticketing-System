@@ -17,6 +17,7 @@
 export type SubStatus = "WAITING_FOR_SUPPORT" | "WAITING_FOR_CUSTOMER";
 
 export type ConversationMessage = {
+  id?: string;
   /** inbound = from the customer; outbound = from an agent. */
   direction: "inbound" | "outbound";
   /** MessageStatus; "system" messages are excluded from the derivation. */
@@ -31,9 +32,14 @@ const ts = (v: Date | string | number): number => new Date(v).getTime();
  * non-system message by `createdAt` decides. Returns null when the ticket has no
  * public (non-system) message yet.
  */
-export function deriveSubStatus(messages: readonly ConversationMessage[]): SubStatus | null {
+export function deriveSubStatus(
+  messages: readonly ConversationMessage[],
+  originMessageId: string | null = null,
+): SubStatus | null {
   let last: ConversationMessage | null = null;
   for (const m of messages) {
+    // Older mailbox tickets stored the description email in the reply thread.
+    if (originMessageId && m.id === originMessageId) continue;
     if (m.status === "system" || m.status === "quarantined") continue;
     if (last === null || ts(m.createdAt) >= ts(last.createdAt)) last = m;
   }

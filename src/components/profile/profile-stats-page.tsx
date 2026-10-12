@@ -1,4 +1,6 @@
-"use client";
+"use client"
+
+import type { StatusCategory } from "@/lib/status-category";;
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
@@ -46,6 +48,7 @@ type TicketSummary = {
   assignee: { name: string; avatarUrl: string | null } | null;
   department: { id: string; name: string } | null;
   isOutsideContribution: boolean;
+  category: StatusCategory;
   isComplete: boolean;
 };
 type Stats = {
@@ -246,7 +249,7 @@ function TicketList({
           </div>
         ) : (
           tickets.map((t) => {
-            const ov = !t.isComplete && t.dueDate && new Date(t.dueDate) < new Date();
+            const ov = t.category !== "COMPLETE" && t.category !== "BLOCKED" && t.dueDate && new Date(t.dueDate) < new Date();
             return (
               <Link
                 key={t.id}

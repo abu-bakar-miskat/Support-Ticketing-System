@@ -1,3 +1,4 @@
+import { statusCategory, type StatusCategory } from "@/lib/status-category"
 export function startOfLocalDay(date: Date): Date {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate())
 }
@@ -24,8 +25,8 @@ export function isDueOverdue(
  * alias. Blocked tickets are never counted as overdue — work is paused, not
  * late — so this is used everywhere overdue is computed.
  */
-export function isBlockedStatus(status: string | null | undefined): boolean {
-  return !!status && status.trim().toLowerCase() === "blocked"
+export function isBlockedStatus(status: string | null | undefined, category?: StatusCategory): boolean {
+  return !!status && statusCategory({ label: status, category }) === "BLOCKED"
 }
 
 export type TicketDueDisplay = {

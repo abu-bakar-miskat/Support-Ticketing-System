@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { DEFAULT_FEATURE_TEMPLATES } from "./default-feature-templates";
+import { STATUS_CATEGORIES } from "./status-category";
 import { DEFAULT_SUB_DEPARTMENT_STATUSES } from "./board-columns";
 import {
   OPERATION_TEMPLATES,
@@ -8,6 +10,15 @@ import {
 } from "./operation-templates";
 
 describe("operation templates", () => {
+  it("provides explicit categories for every built-in feature and board status", () => {
+    for (const template of [...OPERATION_TEMPLATES, ...DEFAULT_FEATURE_TEMPLATES]) {
+      for (const status of template.statuses) {
+        expect(STATUS_CATEGORIES).toContain(status.category);
+        expect(status.isComplete).toBe(status.category === "COMPLETE");
+      }
+    }
+  });
+
   it("gives every operation its own board and lists that use those statuses", () => {
     const slugs = new Set<string>();
     for (const operation of OPERATION_TEMPLATES) {

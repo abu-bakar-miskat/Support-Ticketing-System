@@ -43,7 +43,7 @@ export async function advanceTicketStatus(
   const statuses = await prisma.subDepartmentStatus.findMany({
     where: { subDepartmentId: ticket.subDepartmentId },
     orderBy: { order: "asc" },
-    select: { label: true, order: true, isComplete: true },
+    select: { label: true, order: true, category: true },
   })
 
   const targetLabel = resolveTargetLabel(event, statuses, ticket.subDepartment.githubStatusMap)

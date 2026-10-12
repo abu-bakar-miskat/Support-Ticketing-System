@@ -162,7 +162,7 @@ export async function getOpenTicketCounts(
   userIds: string[],
 ): Promise<{ userId: string; count: number }[]> {
   const completionStatuses = await prisma.subDepartmentStatus.findMany({
-    where: { subDepartmentId, isComplete: true },
+    where: { subDepartmentId, category: "COMPLETE" },
     select: { label: true },
   })
   const completedLabels = completionStatuses.map((s) => s.label)

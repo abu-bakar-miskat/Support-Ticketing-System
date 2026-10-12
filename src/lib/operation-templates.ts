@@ -1,3 +1,4 @@
+import { inferStatusCategory, type StatusCategory } from "@/lib/status-category";
 import { DEFAULT_SUB_DEPARTMENT_STATUSES } from "@/lib/board-columns";
 import type { FeatureSetup } from "@/lib/feature-setup";
 import type { TemplateFeatureKey } from "@/lib/template-features";
@@ -8,6 +9,7 @@ import type { TemplateFeatureKey } from "@/lib/template-features";
  * that show only the columns that matter for that kind of work.
  */
 export type OperationStatus = {
+  category?: StatusCategory;
   label: string;
   color: string;
   order: number;
@@ -40,7 +42,8 @@ function columns(
     label: row.label,
     color: row.color,
     order,
-    isComplete: row.isComplete ?? false,
+    category: inferStatusCategory({ ...row, order }),
+    isComplete: inferStatusCategory({ ...row, order }) === "COMPLETE",
   }));
 }
 

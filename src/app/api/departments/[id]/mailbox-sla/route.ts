@@ -1,3 +1,4 @@
+import { isCompleteStatus, type StatusCategory } from "@/lib/status-category"
 import { isMailboxActiveStatus } from "@/lib/mailbox-sla"
 import { DEFAULT_STATUSES } from "@/components/board/board-types"
 import type { Prisma } from "@/generated/prisma/client"
@@ -19,16 +20,16 @@ function canEditMailboxSla(profile: ProfileLike, departmentId: string): boolean 
 
 const SELECT = {
   tenantId: true, slaConfig: true, mailboxFirstResponseMins: true, mailboxResolutionMins: true,
-  subDepartments: { select: { statuses: { select: { label: true, isComplete: true }, orderBy: { order: "asc" as const } } } },
+  subDepartments: { select: { statuses: { select: { label: true, category: true }, orderBy: { order: "asc" as const } } } },
   mailboxConnections: { select: { id: true, address: true, slaFirstResponseMins: true, slaResolutionMins: true } },
 } as const
 
-function availableStatuses(dept: { subDepartments?: { statuses: { label: string; isComplete: boolean }[] }[] }) {
+function availableStatuses(dept: { subDepartments?: { statuses: { label: string; category: StatusCategory }[] }[] }) {
   const workflows = dept.subDepartments?.length ? dept.subDepartments.map((sub) => sub.statuses.length ? sub.statuses : DEFAULT_STATUSES) : [DEFAULT_STATUSES]
-  return [...new Set(workflows.flat().filter((status) => !status.isComplete).map((status) => status.label))]
+  return [...new Set(workflows.flat().filter((status) => !isCompleteStatus(status)).map((status) => status.label))]
 }
 
-function toBody(dept: { mailboxFirstResponseMins: number | null; mailboxResolutionMins: number | null; slaConfig?: unknown; subDepartments?: { statuses: { label: string; isComplete: boolean }[] }[]; mailboxConnections?: { id: string; address: string; slaFirstResponseMins: number | null; slaResolutionMins: number | null }[] }) {
+function toBody(dept: { mailboxFirstResponseMins: number | null; mailboxResolutionMins: number | null; slaConfig?: unknown; subDepartments?: { statuses: { label: string; category: StatusCategory }[] }[]; mailboxConnections?: { id: string; address: string; slaFirstResponseMins: number | null; slaResolutionMins: number | null }[] }) {
   return {
     availableStatuses: availableStatuses(dept),
     firstResponseMins: dept.mailboxFirstResponseMins,

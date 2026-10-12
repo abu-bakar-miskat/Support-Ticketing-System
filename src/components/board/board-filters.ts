@@ -1,3 +1,4 @@
+import { statusCategory } from "@/lib/status-category";
 import {
   endOfWeek,
   isSameDay,
@@ -5,7 +6,7 @@ import {
   parseISO,
   startOfDay,
 } from "date-fns";
-import { normalizeStatus, type BoardCardData } from "@/components/board/board-types";
+import { type BoardCardData } from "@/components/board/board-types";
 import { isDueOverdue } from "@/lib/format";
 
 export type PriorityFilter = "all" | "urgent" | "critical" | "high_plus" | "high" | "medium" | "low";
@@ -61,8 +62,8 @@ export function matchesDateFilter(card: BoardCardData, filter: DateFilter): bool
   if (filter === "overdue") {
     return (
       isDueOverdue(due) &&
-      normalizeStatus(card.status) !== "Live" &&
-      normalizeStatus(card.status) !== "Blocked"
+      statusCategory({ label: card.status, category: card.statusCategory, isComplete: card.isComplete }) !== "COMPLETE" &&
+      statusCategory({ label: card.status, category: card.statusCategory }) !== "BLOCKED"
     );
   }
   if (filter === "today") return isSameDay(due, today);
@@ -99,8 +100,8 @@ export function matchesTargetDateFilter(
 
   const today = startOfDay(new Date());
   const notDone =
-    normalizeStatus(card.status) !== "Live" &&
-    normalizeStatus(card.status) !== "Blocked";
+    statusCategory({ label: card.status, category: card.statusCategory, isComplete: card.isComplete }) !== "COMPLETE" &&
+    statusCategory({ label: card.status, category: card.statusCategory }) !== "BLOCKED";
 
   return card.targetDateIsos.some((iso) => {
     const d = parseISO(iso);

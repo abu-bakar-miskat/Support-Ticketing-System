@@ -1,4 +1,6 @@
-"use client";
+"use client"
+
+import { statusCategory, categoryForStatus, sortStatusesByCategory, STATUS_CATEGORY_LABELS } from "@/lib/status-category";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePersistedView, VIEW_KEYS } from "@/hooks/use-persisted-view";
@@ -143,7 +145,7 @@ function DraggableBoardCard({ task, statuses }: { task: BoardCardData; statuses:
   const elapsedSecs = useLiveTimer(isRunning ? timerStartedAtMs : null);
   const displaySecs = task.userLoggedSecs + (isRunning ? elapsedSecs : 0);
   const canTrack =
-    normalizeStatus(task.status) === "In Progress" &&
+    statusCategory({ label: task.status, category: task.statusCategory }) === "IN_PROGRESS" &&
     !!userId &&
     (task.assigneeId === userId || task.coAssignees.some((a) => a.id === userId));
 
@@ -608,10 +610,11 @@ function TaskListRow({ task, colorMap, statuses }: { task: BoardCardData; colorM
             humanId={task.humanId}
             title={task.title}
             status={liveStatus}
+            category={categoryForStatus(liveStatus, statuses)}
             assigneeId={liveAssigneeId}
             coAssigneeIds={task.coAssignees.map((a) => a.id)}
             userLoggedSecs={task.userLoggedSecs}
-            estimatedTime={task.estimatedTime}
+            estimatedTime={task.slaResolutionTargetMins ?? task.estimatedTime}
           />
         </td>
         <td className={cn(COL_CREATED, "overflow-hidden", LIST_TD)}>
@@ -782,6 +785,7 @@ function BoardColumn({
       )}
       style={isActive ? ({ "--tw-ring-color": status.color } as React.CSSProperties) : undefined}
     >
+      <p className="font-sans text-[10px] font-medium text-sts-muted uppercase tracking-wide">{STATUS_CATEGORY_LABELS[statusCategory(status)]}</p>
       <div className="flex h-6 shrink-0 items-center gap-2">
         <span className="block size-[7px] shrink-0 rounded-full" style={{ backgroundColor: status.color }} />
         <span className="font-sans text-[12px] font-semibold text-sts-foreground">{status.label}</span>
@@ -892,7 +896,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
 
   const sortedStatuses = useMemo(() => {
     const allStatuses = Object.values(subDepartmentStatusMap).flat()
-    if (allStatuses.length === 0) return [...subDepartmentStatuses].sort((a, b) => a.order - b.order)
+    if (allStatuses.length === 0) return sortStatusesByCategory(subDepartmentStatuses)
     // Deduplicate by label — keep first occurrence
     const seen = new Set<string>()
     const merged: SubDepartmentStatusConfig[] = []
@@ -902,7 +906,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
         merged.push(s)
       }
     }
-    return merged.sort((a, b) => a.order - b.order)
+    return sortStatusesByCategory(merged)
   }, [subDepartmentStatuses, subDepartmentStatusMap]);
 
   const colorMap = useMemo(() => {
@@ -1143,24 +1147,25 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
   );
 
   const doMove = useCallback((dbId: string, toStatus: string, chosenLabel?: string) => {
-    if (boardTimerTicketDbId === dbId && normalizeStatus(toStatus) !== "In Progress") {
+    if (boardTimerTicketDbId === dbId && categoryForStatus(toStatus, resolveStatusesForCard(localTasks.find((t) => t.dbId === dbId)?.subDepartmentId ?? "")) !== "IN_PROGRESS") {
       stopTimerOnMove(boardTimerEntryId).catch(() => undefined);
     }
     const previous = localTasks.find((c) => c.dbId === dbId);
     if (!previous || previous.status === toStatus) return;
-    setLocalTasks((prev) => prev.map((c) => (c.dbId === dbId ? { ...c, status: toStatus } : c)));
+    const category = categoryForStatus(toStatus, resolveStatusesForCard(previous.subDepartmentId));
+    setLocalTasks((prev) => prev.map((c) => (c.dbId === dbId ? { ...c, status: toStatus, statusCategory: category, isComplete: category === "COMPLETE" } : c)));
     // API call lives outside the state updater (StrictMode runs updaters twice).
     moveTicket(dbId, { status: toStatus, chosenLabel })
       .then(() => invalidateTaskCaches(queryClient))
       .catch((err: unknown) => {
         setLocalTasks((prev) =>
           prev.map((c) =>
-            c.dbId === dbId && c.status === toStatus ? { ...c, status: previous.status } : c,
+            c.dbId === dbId && c.status === toStatus ? { ...c, status: previous.status, statusCategory: previous.statusCategory, isComplete: previous.isComplete } : c,
           ),
         );
         toastError(`Couldn't move ${previous.humanId}`, err);
       });
-  }, [queryClient, boardTimerTicketDbId, boardTimerEntryId, stopTimerOnMove, localTasks]);
+  }, [queryClient, boardTimerTicketDbId, boardTimerEntryId, stopTimerOnMove, localTasks, resolveStatusesForCard]);
 
   const getCardSubDepartmentId = useCallback(
     (dbId: string) => localTasks.find((c) => c.dbId === dbId)?.subDepartmentId,
@@ -1597,7 +1602,8 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                   label,
                   color: "#64748b",
                   order: 999,
-                  isComplete: ["Live", "Done", "Completed", "Closed"].includes(label),
+                  category: filteredByStatus.get(label)?.[0]?.statusCategory ?? "TODO",
+                  isComplete: filteredByStatus.get(label)?.[0]?.statusCategory === "COMPLETE",
                 }}
                 cards={filteredByStatus.get(label) ?? []}
                 statusesForCard={resolveStatusesForCard}

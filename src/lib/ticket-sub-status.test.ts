@@ -58,6 +58,17 @@ describe("deriveSubStatus — BD-07", () => {
       null,
     );
   });
+
+  it("labels a mailbox ticket only after its conversation starts", () => {
+    const origin = msg({ id: "origin", direction: "inbound" });
+    const receipt = msg({ direction: "inbound", status: "system" });
+    const quarantined = msg({ direction: "inbound", status: "quarantined", createdAt: "2026-01-01T13:00:00Z" });
+    const agentReply = msg({ direction: "outbound", createdAt: "2026-01-01T10:00:00Z" });
+    const customerReply = msg({ direction: "inbound", createdAt: "2026-01-01T11:00:00Z" });
+    expect(deriveSubStatus([origin, receipt, quarantined], "origin")).toBeNull();
+    expect(subStatusLabel(deriveSubStatus([origin, agentReply, receipt, quarantined], "origin"))).toBe("Waiting for customer");
+    expect(subStatusLabel(deriveSubStatus([origin, agentReply, customerReply, quarantined], "origin"))).toBe("Waiting for assignee");
+  });
 });
 
 describe("subStatusLabel", () => {

@@ -1,10 +1,9 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { getProfileDeptScope } from "@/lib/dept-scope";
-import { isBlockedStatus } from "@/lib/format";
+import { categoryForStatus } from "@/lib/status-category";
 import { runAsSystem } from "@/lib/request-scope";
 import {
-  DONE_STATUSES,
   IN_REVIEW_STATUSES,
   buildMemberWorkloads,
   buildDigest,
@@ -70,7 +69,9 @@ async function collectManagerDashboardData(profile: Profile): Promise<ManagerDas
     nowDhaka.getDate(),
   );
 
-  const FINISHED_STATUSES = ["Live", "Done", "Completed", "Closed"];
+  const statuses = await prisma.subDepartmentStatus.findMany({ where: { subDepartmentId: { in: subDepartmentIds } }, select: { subDepartmentId: true, label: true, category: true } });
+  const completeStatuses = statuses.filter((s) => s.category === "COMPLETE");
+  const ticketCategory = (t: { subDepartment: { id: string }; status: string }) => categoryForStatus(t.status, statuses.filter((s) => s.subDepartmentId === t.subDepartment.id));
 
   const [
     openTickets,
@@ -88,7 +89,7 @@ async function collectManagerDashboardData(profile: Profile): Promise<ManagerDas
         where: {
           deletedAt: null,
           subDepartmentId: { in: subDepartmentIds },
-          status: { notIn: FINISHED_STATUSES },
+          ...(completeStatuses.length ? { NOT: completeStatuses.map((s) => ({ subDepartmentId: s.subDepartmentId, status: s.label })) } : {}),
         },
         orderBy: { updatedAt: "desc" },
         take: 500,
@@ -114,6 +115,7 @@ async function collectManagerDashboardData(profile: Profile): Promise<ManagerDas
         select: {
           status: true,
           dueDate: true,
+          subDepartment: { select: { id: true } },
         },
       }),
       prisma.profile.findMany({
@@ -226,6 +228,7 @@ async function collectManagerDashboardData(profile: Profile): Promise<ManagerDas
     humanId: `${t.subDepartment.prefix}-${t.ticketNumber}`,
     title: t.title,
     status: t.status,
+    category: ticketCategory(t),
     priority: t.priority,
     dueDate: t.dueDate?.toISOString() ?? null,
     updatedAt: t.updatedAt.toISOString(),
@@ -240,8 +243,8 @@ async function collectManagerDashboardData(profile: Profile): Promise<ManagerDas
     (t) =>
       t.dueDate &&
       t.dueDate < startOfToday &&
-      !DONE_STATUSES.includes(t.status) &&
-      !isBlockedStatus(t.status),
+      ticketCategory(t) !== "COMPLETE" &&
+      ticketCategory(t) !== "BLOCKED",
   );
   const unassignedRows = openTickets.filter(
     (t) => !t.assigneeId && !IN_REVIEW_STATUSES.includes(t.status),
@@ -254,6 +257,7 @@ async function collectManagerDashboardData(profile: Profile): Promise<ManagerDas
     title: t.title,
     priority: t.priority,
     status: t.status,
+    category: ticketCategory(t),
     dueDate: t.dueDate?.toISOString() ?? null,
     updatedAt: t.updatedAt.toISOString(),
     comments: t._count.comments,

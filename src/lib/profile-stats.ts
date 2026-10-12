@@ -1,3 +1,4 @@
+import { statusCategory, type StatusCategory } from "@/lib/status-category";
 import "server-only"
 import { prisma } from "@/lib/db"
 import {
@@ -5,7 +6,7 @@ import {
   getProfileDeptScope,
   effectiveTicketDept,
 } from "@/lib/dept-scope"
-import { isDueOverdue, isBlockedStatus } from "@/lib/format"
+import { isDueOverdue } from "@/lib/format"
 import { fetchContributionsByDay } from "@/lib/profile/github-contributions"
 import type { ContributionCalendar } from "@/lib/profile/contribution-buckets"
 import { formatHm } from "@/lib/time-data"
@@ -14,11 +15,6 @@ const URGENT_PRIORITIES = new Set(["Critical", "High", "Urgent"])
 
 function isUrgent(priority: string) {
   return URGENT_PRIORITIES.has(priority)
-}
-
-function isReview(status: string) {
-  const s = status.toLowerCase()
-  return s.includes("pull request") || s.includes("review") || s === "pr"
 }
 
 const TICKET_SELECT = {
@@ -68,6 +64,7 @@ export type ProfileStatsTicketSummary = {
   assignee: { name: string; avatarUrl: string | null } | null
   department: { id: string; name: string } | null
   isOutsideContribution: boolean
+  category: StatusCategory
   isComplete: boolean
 }
 
@@ -198,7 +195,7 @@ async function getTargetHomeDepartmentIds(targetId: string): Promise<Set<string>
 function toTicketSummary(
   t: TicketRow,
   homeDeptIds: Set<string>,
-  doneBySubDepartment: Map<string, Set<string>>,
+  categoryByStatus: Map<string, StatusCategory>,
 ): ProfileStatsTicketSummary {
   const dept = effectiveTicketDept(t)
   const deptId = dept?.id ?? null
@@ -221,7 +218,8 @@ function toTicketSummary(
       : null,
     department: dept ? { id: dept.id, name: dept.name } : null,
     isOutsideContribution: isOutside,
-    isComplete: doneBySubDepartment.get(t.subDepartment.id)?.has(t.status) ?? false,
+    category: categoryByStatus.get(`${t.subDepartment.id}::${t.status}`) ?? statusCategory({ label: t.status }),
+    isComplete: categoryByStatus.get(`${t.subDepartment.id}::${t.status}`) === "COMPLETE",
   }
 }
 
@@ -477,14 +475,17 @@ async function collectProfileStats(opts: {
   ]
   const completeStatuses = uniqueSubDepartmentIds.length > 0
     ? await prisma.subDepartmentStatus.findMany({
-        where: { subDepartmentId: { in: uniqueSubDepartmentIds }, isComplete: true },
-        select: { subDepartmentId: true, label: true },
+        where: { subDepartmentId: { in: uniqueSubDepartmentIds } },
+        select: { subDepartmentId: true, label: true, category: true },
       })
     : []
 
   // Per-team complete label sets for accurate classification
+  const categoryByStatus = new Map<string, StatusCategory>()
   const doneBySubDepartment = new Map<string, Set<string>>()
   for (const s of completeStatuses) {
+    categoryByStatus.set(`${s.subDepartmentId}::${s.label}`, statusCategory(s))
+    if (statusCategory(s) !== "COMPLETE") continue
     const set = doneBySubDepartment.get(s.subDepartmentId) ?? new Set<string>()
     set.add(s.label)
     doneBySubDepartment.set(s.subDepartmentId, set)
@@ -492,22 +493,21 @@ async function collectProfileStats(opts: {
   const isDone = (t: { subDepartment: { id: string }; status: string }) =>
     doneBySubDepartment.get(t.subDepartment.id)?.has(t.status) ?? false
 
+  const ticketCategory = (t: { subDepartment: { id: string }; status: string }) => categoryByStatus.get(`${t.subDepartment.id}::${t.status}`) ?? statusCategory({ label: t.status })
+
   const cats = {
     total: allTickets,
     completed: allTickets.filter(isDone),
     inProgress: allTickets.filter(
       (t) =>
         !isDone(t) &&
-        !isReview(t.status) &&
-        !isBlockedStatus(t.status) &&
-        t.status !== "Not Started" &&
-        t.status !== "To Do",
+        ticketCategory(t) === "IN_PROGRESS",
     ),
     overdue: allTickets.filter(
-      (t) => isDueOverdue(t.dueDate, now) && !isDone(t) && !isBlockedStatus(t.status),
+      (t) => isDueOverdue(t.dueDate, now) && !isDone(t) && ticketCategory(t) !== "BLOCKED",
     ),
-    blocked: allTickets.filter((t) => isBlockedStatus(t.status) && !isDone(t)),
-    review: reviewTickets,
+    blocked: allTickets.filter((t) => ticketCategory(t) === "BLOCKED" && !isDone(t)),
+    review: reviewTickets.filter((t) => ticketCategory(t) === "IN_PROGRESS"),
   }
 
   const completedWithDue = cats.completed.filter((t) => t.dueDate)
@@ -564,7 +564,7 @@ async function collectProfileStats(opts: {
     e.total++
     e.storyPoints += t.storyPoints ?? 0
     if (isDone(t)) e.completed++
-    if (isDueOverdue(t.dueDate, now) && !isDone(t) && !isBlockedStatus(t.status)) {
+    if (isDueOverdue(t.dueDate, now) && !isDone(t) && ticketCategory(t) !== "BLOCKED") {
       e.overdue++
     }
     projMap.set(t.project.id, e)
@@ -609,7 +609,7 @@ async function collectProfileStats(opts: {
     e.total++
     e.storyPoints += t.storyPoints ?? 0
     if (isDone(t)) e.completed++
-    if (isDueOverdue(t.dueDate, now) && !isDone(t) && !isBlockedStatus(t.status)) {
+    if (isDueOverdue(t.dueDate, now) && !isDone(t) && ticketCategory(t) !== "BLOCKED") {
       e.overdue++
     }
   }
@@ -718,13 +718,13 @@ async function collectProfileStats(opts: {
         totalLabel: formatHm(totalSecs),
       },
       tickets: {
-        total: cats.total.map((t) => toTicketSummary(t, homeDeptIds, doneBySubDepartment)),
-        completed: cats.completed.map((t) => toTicketSummary(t, homeDeptIds, doneBySubDepartment)),
-        inProgress: cats.inProgress.map((t) => toTicketSummary(t, homeDeptIds, doneBySubDepartment)),
-        overdue: cats.overdue.map((t) => toTicketSummary(t, homeDeptIds, doneBySubDepartment)),
-        blocked: cats.blocked.map((t) => toTicketSummary(t, homeDeptIds, doneBySubDepartment)),
-        review: cats.review.map((t) => toTicketSummary(t, homeDeptIds, doneBySubDepartment)),
-        created: createdTickets.map((t) => toTicketSummary(t, homeDeptIds, doneBySubDepartment)),
+        total: cats.total.map((t) => toTicketSummary(t, homeDeptIds, categoryByStatus)),
+        completed: cats.completed.map((t) => toTicketSummary(t, homeDeptIds, categoryByStatus)),
+        inProgress: cats.inProgress.map((t) => toTicketSummary(t, homeDeptIds, categoryByStatus)),
+        overdue: cats.overdue.map((t) => toTicketSummary(t, homeDeptIds, categoryByStatus)),
+        blocked: cats.blocked.map((t) => toTicketSummary(t, homeDeptIds, categoryByStatus)),
+        review: cats.review.map((t) => toTicketSummary(t, homeDeptIds, categoryByStatus)),
+        created: createdTickets.map((t) => toTicketSummary(t, homeDeptIds, categoryByStatus)),
       },
       byPriority,
       byProject: [...projMap.entries()].map(([id, v]) => ({ id, ...v })),

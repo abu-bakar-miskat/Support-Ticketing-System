@@ -1,3 +1,5 @@
+
+import type { StatusCategory } from "@/lib/status-category";
 import type { MarketplaceFeatureKey } from "@/lib/template-features";
 
 export type MarketplaceFeatureStatus = "enabled" | "pending" | "available";
@@ -28,7 +30,7 @@ export type MarketplaceTemplateFeature = {
 export type MarketplaceBoard = {
   useCase: string;
   group: string;
-  statuses: { label: string; color: string; isComplete: boolean }[];
+  statuses: { label: string; color: string; category?: StatusCategory; isComplete: boolean }[];
   lists: { name: string; statuses: string[] }[];
   featureDetails: { key: string; explanation: string; summary: string | null }[];
 };

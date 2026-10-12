@@ -4,7 +4,8 @@ import { checkAndNotifyEstimateOverrun } from "@/lib/time-estimate-notify"
 import { prisma } from "@/lib/db"
 import { broadcastTimerChange } from "@/lib/timer-broadcast"
 import { broadcastTicketEvent } from "@/lib/ticket-events"
-import { normalizeStatus } from "@/components/board/board-types"
+import type { StatusCategory } from "@/lib/status-category"
+import { getTicketStatusCategory } from "@/lib/status-category.server"
 
 function durationSecsBetween(start: Date, end: Date): number {
   return Math.max(0, Math.floor((end.getTime() - start.getTime()) / 1000))
@@ -18,9 +19,10 @@ function durationSecsBetween(start: Date, end: Date): number {
 export async function stopRunningTimersOnStatusChange(
   ticketId: string,
   newStatus: string,
+  category?: StatusCategory,
 ): Promise<void> {
   await stopMailboxFirstResponseOnActiveStatus(ticketId, newStatus).catch(() => undefined)
-  if (normalizeStatus(newStatus) === "In Progress") return
+  if ((category ?? await getTicketStatusCategory(ticketId, newStatus)) === "IN_PROGRESS") return
 
   await finalizeManualResolution(ticketId)
   await stopRunningTimers(ticketId)

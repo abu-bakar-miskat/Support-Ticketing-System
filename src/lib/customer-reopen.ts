@@ -1,14 +1,15 @@
+import { isCompleteStatus } from "@/lib/status-category";
 import { prisma } from "@/lib/db"
 import { applyReopenedLabel, REOPENED_LABEL } from "@/lib/ticket-column-moves"
 
-type SubDepartmentStatusRow = { label: string; isComplete: boolean; order: number }
+type SubDepartmentStatusRow = { label: string; category?: import("@/lib/status-category").StatusCategory; isComplete?: boolean; order: number }
 
 /**
  * Return the label of the first non-completion status from an already-ordered
  * (by `order` asc) list, or null when every status is a completion status.
  */
 export function resolveReopenStatus(statuses: SubDepartmentStatusRow[]): string | null {
-  return statuses.find((s) => !s.isComplete)?.label ?? null
+  return statuses.find((s) => !isCompleteStatus(s))?.label ?? null
 }
 
 /**
@@ -30,14 +31,14 @@ export async function maybeReopenTicket(
     prisma.subDepartmentStatus.findMany({
       where: { subDepartmentId },
       orderBy: { order: "asc" },
-      select: { label: true, isComplete: true, order: true },
+      select: { label: true, category: true, order: true },
     }),
   ])
 
   if (!ticket) return false
 
   const currentStatus = subDepartmentStatuses.find((s) => s.label === ticket.status)
-  if (!currentStatus?.isComplete) return false
+  if (!currentStatus || !isCompleteStatus(currentStatus)) return false
 
   // A reply labels the closed ticket for attention. Only the agent's later
   // In Progress transition reopens it and resets SLA/work allowances.

@@ -1,3 +1,4 @@
+import type { StatusCategory } from "@/lib/status-category";
 import {
   MARKETPLACE_FEATURE_COPY,
   MARKETPLACE_FEATURE_KEYS,
@@ -27,7 +28,7 @@ export type SavedFeature = {
   key: MarketplaceFeatureKey;
   explanation: string;
   useCase: string;
-  statuses: { label: string; color: string; order: number; isComplete: boolean }[];
+  statuses: { category?: StatusCategory; label: string; color: string; order: number; isComplete: boolean }[];
   lists: { name: string; statuses: string[] }[];
   tags: { name: string; color: string }[];
   ticketTemplates: { name: string; fields: string[] }[];

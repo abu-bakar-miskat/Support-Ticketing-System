@@ -1,3 +1,4 @@
+import { statusCategory } from "@/lib/status-category";
 import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/db";
@@ -367,7 +368,8 @@ function boardPayload(operation: OperationTemplate | null): MarketplaceBoard | n
     statuses: operation.statuses.map((status) => ({
       label: status.label,
       color: status.color,
-      isComplete: status.isComplete,
+      category: statusCategory(status),
+      isComplete: statusCategory(status) === "COMPLETE",
     })),
     lists: operation.lists,
     featureDetails: operation.featureKeys.filter(isMarketplaceFeatureKey).map((key) => ({
@@ -387,7 +389,8 @@ function savedFeatureBoard(feature: SavedFeature): MarketplaceBoard {
     statuses: feature.statuses.map((status) => ({
       label: status.label,
       color: status.color,
-      isComplete: status.isComplete,
+      category: statusCategory(status),
+      isComplete: statusCategory(status) === "COMPLETE",
     })),
     lists: feature.lists,
     featureDetails: [{

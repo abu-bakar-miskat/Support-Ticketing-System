@@ -106,3 +106,37 @@ describe("elapsedCountableMs — waiting-for-customer pauses", () => {
     expect(elapsedCountableMs(from, to, null, pauses)).toBe(1 * HOUR);
   });
 });
+
+describe("Stage 4 DST and pause composition", () => {
+  it.each([
+    ["2026-03-29T00:00:00Z", "2026-03-29T04:00:00Z", 2],
+    ["2026-10-24T23:00:00Z", "2026-10-25T04:00:00Z", 4],
+  ])("counts actual working instants across the UK clock change (%s)", (from, to, hours) => {
+    const calendar = utcCalendar({ timezone: "Europe/London", workingDays: [0], workStartTime: "00:30", workEndTime: "03:30" })
+    expect(elapsedWorkingMs(new Date(from), new Date(to), calendar)).toBe(hours * HOUR)
+  })
+  it("clips a working boundary inside the skipped spring hour", () => {
+    const calendar = utcCalendar({ timezone: "Europe/London", workingDays: [0], workStartTime: "01:30", workEndTime: "02:30" })
+    expect(elapsedWorkingMs(new Date("2026-03-29T00:00:00Z"), new Date("2026-03-29T04:00:00Z"), calendar)).toBe(HOUR / 2)
+  })
+  it("counts only qualifying parts of the repeated autumn hour", () => {
+    const calendar = utcCalendar({ timezone: "Europe/London", workingDays: [0], workStartTime: "01:30", workEndTime: "02:30" })
+    expect(elapsedWorkingMs(new Date("2026-10-25T00:00:00Z"), new Date("2026-10-25T04:00:00Z"), calendar)).toBe(1.5 * HOUR)
+  })
+  it("uses the correct offset for a New York opening after a spring transition", () => {
+    const calendar = utcCalendar({ timezone: "America/New_York", workingDays: [0], workStartTime: "03:00", workEndTime: "04:00" })
+    expect(elapsedWorkingMs(new Date("2026-03-08T07:00:00Z"), new Date("2026-03-08T08:00:00Z"), calendar)).toBe(HOUR)
+  })
+  it("uses configured ordinary opening hours across the UK autumn weekend", () => {
+    const calendar = utcCalendar({ timezone: "Europe/London", workStartTime: "08:30", workEndTime: "17:00" })
+    expect(elapsedWorkingMs(new Date("2026-10-23T15:30:00Z"), new Date("2026-10-26T09:00:00Z"), calendar)).toBe(HOUR)
+  })
+  it("subtracts overlapping and duplicate customer/closed pauses only once", () => {
+    const pauses = [
+      { from: new Date("2026-10-12T10:00:00Z"), to: new Date("2026-10-12T12:00:00Z") },
+      { from: new Date("2026-10-12T11:00:00Z"), to: new Date("2026-10-12T13:00:00Z") },
+      { from: new Date("2026-10-12T10:00:00Z"), to: new Date("2026-10-12T12:00:00Z") },
+    ]
+    expect(elapsedCountableMs(new Date("2026-10-12T09:00:00Z"), new Date("2026-10-12T14:00:00Z"), utcCalendar(), pauses)).toBe(2 * HOUR)
+  })
+})

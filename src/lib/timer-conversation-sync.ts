@@ -1,3 +1,4 @@
+import { loadPortalConversation, latestConversationDirection } from "@/lib/portal-conversation"
 import { checkAndNotifySla } from "@/lib/sla-engine"
 import { prisma } from "@/lib/db"
 import { startTimerOnStatusChange } from "@/lib/timer-autostart"
@@ -23,10 +24,12 @@ export async function syncWorkTimerWithConversation(
     where: { id: ticketId },
     select: {
       status: true,
+      closedAt: true,
+      deletedAt: true,
       assignee: { select: { id: true, name: true, avatarUrl: true } },
     },
   })
-  if (!ticket?.assignee) return
+  if (!ticket?.assignee || ticket.closedAt || ticket.deletedAt) return
 
   await startTimerOnStatusChange(ticketId, ticket.status, ticket.assignee)
 }
@@ -39,12 +42,15 @@ export async function syncWorkTimerWithConversation(
 export async function syncWorkTimerWithLatestConversation(
   ticketId: string,
 ): Promise<void> {
-  const latest = await prisma.ticketMessage.findFirst({
-    where: { ticketId, status: { not: "system" } },
-    orderBy: { createdAt: "desc" },
-    select: { direction: true },
-  })
-  if (!latest) return
-
-  await syncWorkTimerWithConversation(ticketId, latest.direction)
+  const [latest, portal] = await Promise.all([
+    prisma.ticketMessage.findFirst({
+      where: { ticketId, status: "trusted" },
+      orderBy: { createdAt: "desc" },
+      select: { direction: true, createdAt: true },
+    }),
+    loadPortalConversation(ticketId),
+  ])
+  const direction = latestConversationDirection(latest ? [latest] : [], portal)
+  if (!direction) return
+  await syncWorkTimerWithConversation(ticketId, direction)
 }

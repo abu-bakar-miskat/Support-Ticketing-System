@@ -497,7 +497,7 @@ const ACTIVITY_TEXT: Record<string, (meta: Record<string, unknown>) => string> =
     SUBTICKET_ADDED: (m) =>
       m.humanId ? `added sub-ticket ${m.humanId}` : "added a sub-ticket",
     LABELS_CHANGED: () => "updated labels",
-    TIMER_RESET: () => "manually reset their timer",
+    TIMER_RESET: (metadata) => metadata.reopenCycle ? "started a fresh SLA and work cycle" : "manually reset their timer",
     DATE_CHANGED: (m) => {
       const fmt = (d: unknown) => (typeof d === "string" && d ? d : null);
       const toStart = fmt(m.toStart);
@@ -1569,7 +1569,10 @@ export function TicketDetailPage({
         }
         case "TIMER_RESET": {
           const actorId = event.actorId;
-          if (actorId) {
+          if (payload.reopenCycle) {
+            setLiveTimeEntries([]);
+            router.refresh();
+          } else if (actorId) {
             setLiveTimeEntries((prev) =>
               prev.filter((e) => e.userId !== actorId),
             );
@@ -1606,6 +1609,7 @@ export function TicketDetailPage({
       queryClient,
       dbId,
       scheduleSoftReconcile,
+      router,
     ],
   );
 

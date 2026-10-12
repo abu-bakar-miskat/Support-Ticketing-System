@@ -8,7 +8,7 @@ Created: 2026-10-09
 - Existing implementation description: [sla.md](sla.md), written from code on 2026-10-08. Verify its claims against current code before implementation.
 - Repository instructions: [AGENTS.md](../AGENTS.md).
 - The initial review compared the two documents only; it did not audit the code.
-- Stage 1 is approved. Stage 2 is implemented and awaiting user testing; later stages remain unstarted.
+- Stage 1 is approved. Stage 2 is implemented; its latest duplicate-email and atomic arrival-notification fixes still await final user testing. The user explicitly authorized Stage 3 on 2026-10-12 without approving those latest Stage 2 fixes. The user approved Stage 3 and explicitly authorized Stage 4 on 2026-10-12. Stage 3 retains the existing no-issue and unmatched-department fallback behavior (those policy questions were not answered). Stage 4 is implemented, including the user-confirmed fresh reopen cycles and waiting labels; it awaits user testing/approval. Stage 5 is unstarted.
 
 ## Required working process
 
@@ -29,9 +29,9 @@ Saving this plan does not authorize starting implementation. Do not infer approv
 | Stage | Scope | Status | User approval to proceed |
 |---|---|---|---|
 | 1 | Manual tickets | Approved | User approved Stage 2 on 2026-10-09 |
-| 2 | Shared mailbox tickets | Awaiting user testing | Pending |
-| 3 | Support form and Portal tickets | Not started | Pending |
-| 4 | Working hours, waiting states, and lifecycle | Not started | Pending |
+| 2 | Shared mailbox tickets | Latest duplicate/arrival fixes awaiting final user testing | Stage 3 explicitly authorized on 2026-10-12; latest Stage 2 fixes remain unapproved |
+| 3 | Support form and Portal tickets | Approved by user; existing unresolved fallback/no-issue behavior retained | User approved Stage 4 on 2026-10-12 |
+| 4 | Working hours, waiting states, and lifecycle | Awaiting user testing and approval | Starting authorized on 2026-10-12; Stage 5 not authorized |
 | 5 | Reporting and cleanup | Not started | Pending |
 
 ## Stage 1 — Manual tickets
@@ -106,7 +106,7 @@ Use controlled notification verification so real managers are not emailed accide
 - Verify consistent calendar behavior across all applicable ticket types, while preserving manual tickets' actual-work tracking semantics.
 - Ensure SLA clocks exclude time outside configured working days and hours. The UK 08:30–17:00 schedule in the requirements is an example, not a hardcoded requirement.
 - Cover tickets created outside working hours and clocks crossing a working-period boundary.
-- Make Waiting for Customer pause resolution and customer replies change the status to Waiting for Assignee and resume resolution.
+- Make Waiting for Customer pause resolution and customer replies show the Waiting for Assignee label and resume resolution; keep the primary workflow status unchanged (confirmed 2026-10-12).
 - Cover customer-facing email, message, and comment paths; do not treat every outbound message as proof of a waiting status.
 - Prevent reassignment or calendar changes from rewriting previously counted elapsed time.
 - Confirm completion stops the appropriate timers.
@@ -292,7 +292,7 @@ Reported ticket: `cmv14eyme000104jyqkh6k7va` (“Testing the shared mail box tic
 - **71 focused tests passed across 5 files**, including legacy envelope lookup, missing-timer recovery, concurrent repair, completion protection, access gating, and rendered mailbox targets. Changed files pass lint and `git diff --check`; typecheck retains only the established departments-page `basePath` error.
 - Retest: fully refresh the reported ticket as the super admin or authorized tenant manager. Confirm the header SLA badge and sidebar **SLA overview → First response / Resolution**, targets **1h / 2h**. Time Tracking now displays the saved mailbox resolution target as its estimate (see the later user correction below). Refresh another open email-origin test ticket created by the earlier processor to verify recovery. Deploying this Stage 2 code to the actual webhook instance is still required for that instance to create mailbox snapshots immediately.
 
-Stage 2 remains **Awaiting user testing**; Stage 3 has not started.
+Stage 2 remains **Awaiting user testing** for its latest fixes. Stage 3 was subsequently explicitly authorized; see the 2026-10-12 results below.
 
 ## Stage 2 user correction — department-only mailbox SLA and status dropdown — 2026-10-09
 
@@ -337,7 +337,7 @@ Stage 2 remains **Awaiting user testing**.
 - All writes/delivery in tests were mocked. Database inspection was read-only; existing duplicate tickets and notification rows were retained, and no real alerts/emails were sent or backfilled.
 - Retest in controlled inboxes: send one new email while webhook and on-open reconciliation may both run. Confirm exactly one new ticket, one received-mail row, empty reply thread, unchanged mailbox SLA targets, assignee assignment alert, and one shared-mailbox arrival alert per eligible manager. Provider retry/reconciliation must not create another ticket or new-ticket alert. Ensure the instance receiving the real webhook also runs this updated code; older deployments lack the new manager-arrival notification path.
 
-Stage 2 remains **Awaiting user testing**; Stage 3 has not started.
+Stage 2 remains **Awaiting user testing** for its latest fixes. Stage 3 was subsequently explicitly authorized; see the 2026-10-12 results below.
 
 ## Stage 2 follow-up — shared database guard for stale processors — 2026-10-12
 
@@ -353,16 +353,148 @@ User retesting still produced WEB-27/28 and WEB-30/31. Read-only inspection agai
 - Real shared DB activity was limited to the additive migration and read-only verification. No live test email, ticket creation, notification sending, historical replay, or duplicate cleanup was performed.
 - Retest after refreshing the local browser: send **one new controlled email**. Confirm one ticket and one mail row. Eligible admins/managers with intake alerts enabled should see one new mailbox arrival in the notification panel/bell, and an open tab should show its toast within about 15 seconds. Old duplicates remain stored. Database guards/arrival persistence now apply immediately even to stale webhook processors; updated UI code is needed for the polling fallback.
 
-Stage 2 remains **Awaiting user testing**; Stage 3 has not started.
+Stage 2 remains **Awaiting user testing** for its latest fixes. Stage 3 was subsequently explicitly authorized; see the 2026-10-12 results below.
+
+## Stage 3 implementation results — 2026-10-12
+
+Status: **Issue-selected flow implemented and verified; awaiting policy clarification and user testing.** Stage 3 cannot be signed off until the decisions below are resolved. Stages 4–5 have not started. The user's explicit Stage 3 authorization does not imply final approval of Stage 2's latest fixes.
+
+### Changes
+
+- Both Support form (including verified-intake conversion) and Portal submissions continue through `createTicketFromPayload`. Selected issues retain their exact first-response/resolution targets and resolution estimate. The helper now awaits SLA initialization before running automation, and suppresses automation's `apply_sla` action when an explicit issue owns the targets. Other assignment/routing/rule actions continue.
+- New form timers have `source: "form"`. Their calendar, holiday set, warning percentage, and active statuses are saved in the existing `SlaTimer.mailboxConfig` JSON column (a historical column name). No schema changes or migrations were needed. First response starts at ticket creation. Following the user correction below, Support/Portal resolution starts only when a work-tracking session begins.
+- New form timers always count working hours and pause resolution for customer waits. Calendar precedence remains the initially assigned member's schedule/timezone/holidays, then sub-department/department calendar. Later reassignment/settings edits do not recalculate these snapshots.
+- Added configurable `firstResponseActiveStatuses` to department/sub-department SLA settings (default **In Progress**), separate from mailbox active statuses. The existing workflow hook now stops form first response on those statuses; reads/sweeps reconcile the earliest recorded qualifying transition. Public email/Portal staff reply hooks remain in use; internal notes and requester comments do not stop first response.
+- New form resolution clocks combine trusted public emails, Portal public comment direction, and explicit customer-wait status history. Waiting for Customer pauses even without an outbound message; trusted customer replies resume the clock. Quarantined/system messages cannot end these waits. Existing conversation-derived Waiting for Customer / Waiting for Assignee labels and work-timer hooks are preserved.
+- Reused atomic warning/breach claims and notification deduplication. A late public first response records a breach without escalating an already answered ticket. Unanswered first-response breaches retain escalation and overtime. Resolution breaches only after the target is exceeded. Completion checks outstanding breaches and stops both clocks, including unanswered first response.
+- Form SLA badges now refresh every 15 seconds while open, using the existing mailbox polling behavior so displayed calendar/wait boundaries are refreshed. The resolution detail display uses the same strict-exceed boundary as the server.
+- Preserved manual actual-work SLA, mailbox target hierarchy, receipt-based first response, agent-work resolution activation, mailbox estimates, duplicate-email protection, and atomic arrival persistence. Existing receipt-guard migration and mailbox code were inspected and left untouched.
+
+### Verification
+
+- Read `AGENTS.md`, all three SLA documents, and installed Next.js route-handler and client-component guides before editing.
+- Inspected the initial uncommitted Stage 2 changes. During inspection they were committed externally in `c1b06b9` and merged in `7fbf625`; the mailbox fixes remain present. No commit/reset/staging was performed by this task.
+- Baseline on the pre-edit workspace: **1513 passed, 50 failed, 2 skipped**. Final full suite: **1531 passed, the identical 50 failed, 2 skipped**. Compared failed test identities by file and full test name: **no new failures**. Existing failures include message/status API mock gaps and unrelated admin/auth/assignment tests.
+- Focused checks: **143 passed across 13 files**, covering SLA engine/intake, settings validation, customer conversation, calendar/timer helpers, detail display, mailbox creation/origin/arrival notifications, realtime notifications, and work-timer hooks.
+- Typecheck passed before and after edits. ESLint passed for all Stage 3 application/test changes; `git diff --check` passed.
+- All verification used mocked DB operations and notification/email delivery. Did not invoke the shared SLA sweep, create/update live tickets, send real notifications/emails, or reapply migrations `20261009160000_mailbox_sla_stage2` / `20261012083000_mailbox_receipt_guard`. Existing duplicates were not deleted. An existing `next dev` process was observed; the local crontab was empty. No server was started by this task.
+
+### Decisions pending (asked during implementation; do not infer an answer)
+
+1. **No issue:** Portal currently rejects a missing issue; the Support form accepts one and does not automatically start issue SLA. Choose one policy for both: require an issue; allow no issue with department/tenant fallback SLA; or allow no issue without automatic SLA. Existing automation can independently apply SLA on issue-less submissions. Both existing submission paths are unchanged until this is resolved.
+2. **Nonmatching department policies:** the existing fallback tries sub-department policies, then department-wide policies; tenant defaults are queried only if the department has no enabled department-wide policies. Confirm whether matching tenant defaults should also apply when department policies exist but none match. Explicit selected issues remain authoritative in either case. No fallback policy was silently changed.
+
+### Limitations retained for Stages 4–5
+
+- Reopen semantics are unchanged; no new reopen/reset policy was invented. Confirm first-response cycles and repeat resolution alerts in Stage 4 before editing them.
+- Historical form timers without `source: "form"` keep their existing runtime calendar/pause behavior; no shared-ticket backfill was performed. Active-status reconciliation also applies to those intake-backed timers. Decide historical migration behavior during lifecycle/reporting work.
+- New timers remain initialized best-effort after ticket conversion commits, following the existing form flow; failures do not prevent submission. This is now awaited, but is not an atomic ticket/timer transaction or a durable retry mechanism.
+- Explicit Waiting for Assignee/Customer are still conversation-derived labels in the existing UI; this stage does not replace workflow statuses with a new waiting-state policy.
+- Full resolution reporting (`resolutionDurationMins` / `resolvedWithinAllowed`) for form tickets remains the existing wall-clock measure pending Stage 5. SLA detail elapsed/overtime uses the saved working calendar and customer waits.
+- Warning/breach persistence on continuously running clocks retains the existing 15-minute sweep cadence. Do not invoke it against the shared DB to accelerate testing.
+
+### Concrete user testing steps
+
+Use an isolated test tenant/department and controlled requester/assignee/manager inboxes, with delivery captured. Do not modify real team tickets or trigger real manager/completion email delivery.
+
+1. In department SLA settings, set the calendar/timezone, an at-risk percentage (for example **50%**), and select Support/Portal active statuses from the dynamic dropdown (for example **In Progress** and **Investigating**, where configured). Save and reload. Confirm mailbox active-status settings are preserved independently.
+2. Configure two issues with different targets, for example **5/10 minutes** and **15/30 minutes**. Submit the first issue through the Support form (complete verification when required) and through the Portal API with a fresh `Idempotency-Key`. Confirm identical selected targets/estimate, first response starting at ticket creation, and resolution at zero/Not started until work tracking begins. Submit the second issue and confirm its own targets.
+3. Configure a competing `apply_sla` rule in the test department. Submit an explicit issue and confirm its targets remain unchanged while other rule actions still run. Select an inherited department/tenant issue where available and verify its own selected targets remain authoritative.
+4. Submit after working hours. Confirm both clocks remain at zero/paused until opening. For a during-hours ticket, enter a configured active status without replying: first response stops at that transition. Resolution starts only if work tracking actually starts; a status change alone does not activate it. Leave an internal note on another ticket: first response must continue.
+5. Send a customer-facing Support email reply or Portal staff public comment. Confirm first response stops and the customer-wait label/pause appears. Send a trusted customer email or Portal requester comment: confirm Waiting for Assignee and resumed resolution. Repeat the cycle; waiting time must not count. Explicitly enter Waiting for Customer without sending a message and verify the same pause.
+6. With a controlled test clock/delivery setup, verify warning, unanswered first-response breach/escalation, resolution breach, and continuing overtime. A late public reply must record its breach without escalating the answered ticket. At exactly the resolution allowance, there is no resolution breach; exceeding it breaches.
+7. Resolve only a controlled ticket with completion delivery captured. Confirm both SLA clocks freeze; refresh later and verify SLA detail elapsed/overtime stays fixed. Broad resolution reports may still disagree until Stage 5.
+8. After answering the pending policy questions, implement/verify the agreed no-issue behavior in both APIs and the agreed nonmatching-department fallback. Then test those cases explicitly before approving Stage 4.
+
+### Stage 3 user-testing correction — resolution activation, 2026-10-12
+
+The user tested Support ticket PHP-7 and reported resolution counting while Time Tracking was still at zero. Confirmed requirement: **Support and Portal resolution SLA starts when work tracking starts**, excluding initial queue time. First response still starts at creation.
+
+- New form snapshots store `resolutionActivatedAt: null`. The SLA view shows zero elapsed, the full resolution allowance, not running, and no resolution start date until the first persisted `TimeEntry` begins.
+- Both manual Start and automatic work-tracker starts already call the shared work-start hook; that hook now activates form resolution from the first actual session. Configured active statuses and replies alone cannot activate form resolution.
+- Reads/sweeps reconcile earlier Stage 3 snapshots using actual work entries, so an unworked ticket from the earlier build also shows pending resolution. Activation uses an atomic snapshot comparison and preserves the original work-start time across subsequent sessions. Completed unworked tickets have zero SLA resolution elapsed.
+- Mailbox status/work activation and all existing Stage 2 duplicate/arrival fixes remain unchanged. No schema changes, shared-ticket test edits, notifications, migration executions, or history deletion were performed.
+- Verification: **103 focused tests passed across 10 files**, including six new pending/activation/legacy-snapshot/completion cases, existing mailbox regressions, and work-tracker API/hooks. Full suite: **1537 passed, the same 50 pre-existing failures, 2 skipped**; no new failures. Typecheck, ESLint for changed code/tests, and `git diff --check` passed.
+- Retest PHP-7 after refresh, provided no work tracking has started: resolution should show **0 / target 8 minutes**, **Not started / Awaiting agent work**; first response continues normally. Start the work tracker: resolution starts at that time and excludes the earlier queue delay. Refresh again and confirm the original start remains. Repeat with a controlled Portal test ticket. In Progress can auto-start work for an eligible assignee; resolution then starts because that work session exists.
+- Existing historical breach records are not deleted or backfilled. Reopen decisions and the two earlier policy clarifications remain pending. Stage 4 has not started.
+
+### Stage 3 UI follow-up — dynamic active-status dropdown, 2026-10-12
+
+- Replaced the comma-separated Support/Portal status input with the existing multi-select dropdown component. Options load from the selected department's current sub-department workflows; completed statuses are excluded and duplicate labels are merged. Uncustomized workflows use the app's existing default statuses.
+- The SLA settings API returns available labels, restricts sub-department-scoped requests to that workflow, canonicalizes existing status spelling, and rejects unavailable/completed selections before saving. Existing removed selections stay visible as “no longer available” so users can remove them explicitly. Saved mailbox settings remain preserved.
+- Verification: **13 mocked API tests passed**, including custom/default options, scope filtering, duplicate labels, and save validation. Typecheck, focused ESLint, and `git diff --check` passed. Browser visual verification was unavailable because no browser surface is connected. No shared settings/tickets were changed for testing.
+- User test: refresh `/nur-tenants/departments/sla`, open the Support/Portal active-status dropdown, select one or more configured statuses, save, and reload to confirm persistence. Switch departments to verify options match that department's workflows. Stage 4 remains unstarted.
+
+## Stage 4 implementation results — 2026-10-12
+
+Status: **Awaiting user testing and approval.** Calendar, waiting, completion, and the user-confirmed reopen behavior are implemented and verified. The user explicitly approved Stage 3 and authorized Stage 4. Stage 5 remains unstarted.
+
+### Implemented changes
+
+- Replaced approximate DST conversion with business-window intersections against actual timezone-offset segments. Configured local working days/times remain authoritative; nonexistent spring times contribute no elapsed time and repeated autumn times count their real qualifying instants. Covered UK spring/autumn changes, boundaries inside skipped/repeated hours, and New York opening after a transition. Calendar windows/formatters have bounded caches.
+- Merge overlapping/duplicate pause intervals before subtracting elapsed time. This fixes repeated outbound waits subtracting the same time more than once and prepares correct composition of customer waits with lifecycle pauses.
+- Trusted public messages and Portal requester/staff comments consistently determine customer-wait direction. Quarantined inbound emails no longer change the derived Waiting for Assignee label or influence automatic work starts/reconciliation. This intentionally updates the old test that treated quarantined mail as a customer reply. System messages and internal notes remain excluded.
+- Work-timer reconciliation now compares the latest trusted email with the Portal public comment thread, covering missed Portal conversation updates as well as email updates.
+- Automatic work starts and customer-reply resume hooks reject completed/deleted tickets, even if their workflow label still resembles In Progress.
+- Extracted the existing guarded work-session completion logic into `stopTicketWorkAt`, preserving manual tracked-seconds compliance. Shared SLA completion now stops work at the exact recorded `closedAt` for all ticket sources, including tickets without an SLA. A lost concurrent stop claim does not broadcast a duplicate stop event.
+- Added missing SLA lifecycle synchronization to board PATCH and MCP status changes, only when `closedAt` changes. Cascade, GitHub, status/move/escalation, and customer-reopen already call the shared hook. Ordinary open-status changes now no-op in the close/reopen hook, avoiding unintended first-response resets.
+- Retained Stage 2/3 calendar/settings snapshots. New mailbox and Support/Portal tickets keep their original calendar across reassignment, department moves, and settings edits. Preserved source-specific activation: mailbox resolution begins on agent-work status/tracker start; Support/Portal resolution begins only at a persisted work-tracker session. Manual resolution continues to count actual tracked work, including tracked work outside calendar hours.
+
+### Confirmed decisions and reopen implementation
+
+The user confirmed both decisions on 2026-10-12:
+
+1. A customer reply leaves a closed ticket closed. The assignee changes it to **In Progress**, starting a fresh work/SLA cycle. The email path retains the Reopened attention label without changing status/closedAt. Portal replies also leave status unchanged.
+2. Waiting for Customer / Waiting for Assignee remain conversation-derived labels; public replies do not automatically change the primary workflow status.
+
+- Reopen resets first-response/resolution starts and all four notification guards, preserving targets/calendar. In Progress stops the fresh first-response clock immediately where configured as active. Form resolution waits for a real work entry; mailbox retains active-status/work activation. Historical customer waits do not carry into the new cycle.
+- A guarded transaction records a ticket-wide `TIMER_RESET` boundary (`reopenCycle: true`) alongside SLA resets and cleared completion/estimate-alert guards. Concurrent resets lose the claim; ordinary open-status transitions cannot reset progress. Manual tickets reset tracked-work compliance without acquiring a first-response SLA.
+- Current Time Tracking and manual compliance count work from the latest reopen boundary, while old work entries/breach rows remain available. The boundary query is independent of the activity feed's 50-row limit. Realtime reset clears every user's current-cycle total and refreshes details. Work autostart ignores previous-cycle messages/sessions. React Query activity projections reset all assignees' displayed totals; legacy non-manual estimate alerts also exclude previous-cycle work.
+- Warning/breach claims compare cycle start timestamps so an old sweep cannot stamp the new cycle's notification guards. Each fresh cycle may issue new threshold alerts; historical breach records remain unchanged.
+- No schema changes or migration executions were needed.
+
+### Verification
+
+- Read `AGENTS.md`, SLA requirements/implementation documents, installed Next.js route-handler and `after` guides, inspected the uncommitted approved Stage 3 work, lifecycle callers, and local cron state before editing. The crontab was empty; no server/sweep was started.
+- Stage 4 pre-edit baseline: **1544 passed, 50 failed, 2 skipped**. Final check of these implemented changes: **1560 passed, the identical 50 failed, 2 skipped**. Compared failures by file/full name: **no regressions**.
+- Focused verification: **189 passed across 14 files**, covering calendars/timers/engine, manual tracked work, conversation/work hooks, MCP completion, and retained mailbox creation/origin/atomic-arrival checks.
+- Typecheck passed. Focused ESLint reported no errors and one pre-existing unused-variable warning (`mockModuleFindFirst` in `src/lib/mcp/tools.test.ts`). `git diff --check` passed.
+- Tests mock DB writes, manager alerts, assignment/completion email delivery, broadcasts, and lifecycle side effects. No real tickets were created/modified for testing, no shared sweep or real notification/email delivery was invoked, no schema edits/migration applications occurred, and no existing duplicates or breach history were removed.
+
+### Final verification after confirmed lifecycle decisions
+
+- **218 focused tests passed across 18 files**, including reopen reset/atomic claim, source-specific activation, preserved calendars, manual cycle filtering, closed-ticket customer replies, and mailbox duplicate/atomic-arrival protection.
+- Full suite: **1569 passed, the same 50 pre-existing failures, 2 skipped**. Failed-test identities match the Stage 4 baseline; no new failures.
+- Typecheck passed. ESLint passed for reopen library/test changes. The ticket-detail UI file has **46 pre-existing lint errors and 14 warnings**, also present on unchanged HEAD; compared diagnostics against HEAD with unchanged-line mapping, no new diagnostics. The existing MCP test warning remains as previously documented. `git diff --check` passed.
+- Verification uses mocked DB writes/notification delivery. No live ticket/settings edits, shared sweep, real manager/completion emails, schema changes, migration reapplications, or historical deletions were performed.
+
+### Concrete user testing steps for implemented changes
+
+Use an isolated test tenant/department and controlled requester/assignee/manager inboxes with outbound email captured. Do not use real team tickets or manager/completion recipients.
+
+1. Create a Support/Portal ticket outside its saved calendar hours. First response stays paused until opening; resolution stays at zero until work tracking starts. Start work near closing: resolution counts only up to closing and resumes at the next working opening.
+2. Repeat for a mailbox ticket, preserving receipt-based first response and mailbox work-start activation. Configure calendar timezone/days/times rather than relying on the UK example. Verify holiday/weekend exclusion. DST boundaries are covered by injected-clock automated tests; do not change the live machine clock or invoke shared cron for simulation.
+3. Start work, send a customer-facing email/public Portal reply, and verify Waiting for Customer and paused resolution/work. Send another public agent reply while waiting, then a trusted customer reply: verify Waiting for Assignee and resumed SLA counting. Repeat the cycle; waiting time must be excluded once, not twice. Internal notes/system messages must not alter the wait; quarantined inbound mail must not resume it.
+4. With Portal tickets, refresh/reconcile after a requester/staff comment and confirm work state follows the latest public comment even without an email conversation.
+5. Reassign an already-started ticket to a member with a different schedule, then edit department business hours. Confirm previously counted time stays stable and the existing ticket keeps its saved calendar. Newly created tickets use the new settings. Original calendars are also retained on department moves.
+6. Resolve a controlled ticket with running work using the board path, configured status path, or controlled MCP call. Confirm SLA/work clocks freeze at completion and cannot restart while closed. Cascade/GitHub paths share the finalization hook. Manager/completion delivery must remain captured.
+7. Track work on a manual test ticket outside SLA calendar hours: actual tracked work still counts towards its estimate. A calendar change must not rewrite manual totals.
+8. Close a controlled Support/Portal or mailbox ticket after logging work. Send a trusted customer reply: it stays closed, and no work/SLA clock restarts. For email, verify the Reopened attention label. As its assignee, move it to **In Progress**: current Time Tracking starts from zero; the original SLA targets/calendar remain. First response resets and immediately stops if In Progress is configured active. Support/Portal resolution activates only when the work session starts; mailbox retains status/work activation. Refresh and confirm prior work does not reappear in the current total.
+9. Repeat close/reply/In Progress twice. Confirm each fresh cycle resets once; ordinary transitions between open statuses do not reset elapsed. Old work and breach history remain available. Under captured/mock delivery, breach each cycle and verify each threshold alerts once per cycle, never from a stale prior-cycle sweep.
+10. Repeat reopening for a manual ticket. Current actual tracked work begins at zero against the same estimate, with no first-response SLA. Previously logged work remains in time history. Verify current compliance/overtime uses only the new work.
+11. On an open ticket, send a public agent reply then a customer reply. Verify Waiting for Customer then Waiting for Assignee appear as labels and pause/resume resolution/work, while the main workflow status stays unchanged.
+
+### Remaining limitations
+
+- Stage 4 awaits user testing and approval; Stage 5 remains unstarted.
+- Primary workflow statuses remain unchanged by conversation events, as explicitly requested. Explicit existing Waiting for Customer workflow statuses still pause SLA through status history.
+- Legacy pre-snapshot form/automation timers continue using their prior runtime calendar behavior; no historical snapshot/backfill was inferred from current schedules. Accurate reconstruction requires original schedule history, which these older timers did not save. New Stage 2/3 snapshots remain stable.
+- Reporting reconciliation and sweep cadence remain Stage 5. Stage 2's latest duplicate/arrival fixes retain their pending final user-testing status.
 
 ## Handoff notes
 
-- Current stage: Stage 2, **Awaiting user testing**. Stage 1 is approved.
-- Completed work: mailbox-specific target hierarchy, atomic SLA creation, working-calendar snapshots, response/wait lifecycle, warnings/breaches/escalation, final totals, settings, and regression verification.
-- Schema/database changes: additive migrations `20261009160000_mailbox_sla_stage2` and `20261012083000_mailbox_receipt_guard` applied and recorded. Client regenerated for the earlier field changes; the new trigger migration adds no client fields.
-- Verification and limitations: see Stage 2 results above; existing full-suite/typecheck failures remain outside this stage.
-- Next action: wait for user testing and fix reported Stage 2 issues. Do not implement Stage 3 without explicit approval.
-
-Suggested new-session prompt:
-
-> Read AGENTS.md and docs/sla-implementation-plan.md. Stage 2 is awaiting my testing. Address any Stage 2 feedback; do not start Stage 3 until I explicitly approve.
+- Stage 1 is approved. Stage 2's latest duplicate-ticket and arrival-notification fixes still await final user testing.
+- Current work: Stage 3 is user-approved. Stage 4 calendar/wait/completion and confirmed fresh reopen cycles are implemented and verified; stop for user testing/approval. Earlier no-issue/unmatched-department policies were left unchanged, not silently resolved.
+- Schema/database changes from Stage 2: migrations `20261009160000_mailbox_sla_stage2` and `20261012083000_mailbox_receipt_guard` are already applied/recorded. Do not reapply them. Stage 3 introduces no schema changes.
+- Verification: implemented Stage 4 fixes pass focused checks; full-suite failures match the pre-edit Stage 4 baseline exactly; typecheck passes and lint has only the noted pre-existing warning.
+- Stage 4 is awaiting user testing/approval, authorized on 2026-10-12. Stage 5 remains unstarted and requires explicit approval after Stage 4 completion/testing.

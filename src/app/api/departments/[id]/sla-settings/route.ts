@@ -1,3 +1,5 @@
+import { DEFAULT_STATUSES } from "@/components/board/board-types"
+import { isMailboxActiveStatus } from "@/lib/mailbox-sla"
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
@@ -7,6 +9,7 @@ import type { Prisma } from "@/generated/prisma/client"
 type SlaConfig = {
   pauseOutsideHours: boolean
   pauseWhenWaitingForCustomer: boolean
+  firstResponseActiveStatuses: string[]
   atRiskPct: number
 }
 type BusinessHours = { timezone: string; workingDays: number[]; workStartTime: string; workEndTime: string }
@@ -14,6 +17,7 @@ type BusinessHours = { timezone: string; workingDays: number[]; workStartTime: s
 const DEFAULT_SLA_CONFIG: SlaConfig = {
   pauseOutsideHours: false,
   pauseWhenWaitingForCustomer: true,
+  firstResponseActiveStatuses: ["In Progress"],
   atRiskPct: 80,
 }
 const DEFAULT_BUSINESS_HOURS: BusinessHours = {
@@ -31,6 +35,7 @@ function readSlaConfig(value: unknown): SlaConfig {
       typeof stored.pauseWhenWaitingForCustomer === "boolean"
         ? stored.pauseWhenWaitingForCustomer
         : DEFAULT_SLA_CONFIG.pauseWhenWaitingForCustomer,
+    firstResponseActiveStatuses: Array.isArray(stored.firstResponseActiveStatuses) ? stored.firstResponseActiveStatuses as string[] : DEFAULT_SLA_CONFIG.firstResponseActiveStatuses,
     atRiskPct: typeof stored.atRiskPct === "number" ? stored.atRiskPct : DEFAULT_SLA_CONFIG.atRiskPct,
   }
 }
@@ -42,6 +47,26 @@ function readBusinessHours(value: unknown): BusinessHours {
     workingDays: Array.isArray(stored.workingDays) ? (stored.workingDays as number[]) : DEFAULT_BUSINESS_HOURS.workingDays,
     workStartTime: typeof stored.workStartTime === "string" ? stored.workStartTime : DEFAULT_BUSINESS_HOURS.workStartTime,
     workEndTime: typeof stored.workEndTime === "string" ? stored.workEndTime : DEFAULT_BUSINESS_HOURS.workEndTime,
+  }
+}
+
+const SETTINGS_SELECT = {
+  slaConfig: true, businessHours: true,
+  subDepartments: { select: { id: true, statuses: { select: { label: true, isComplete: true }, orderBy: { order: "asc" as const } } } },
+} as const
+
+function availableActiveStatuses(department: { subDepartments: { id: string; statuses: { label: string; isComplete: boolean }[] }[] }, subDepartmentId: string | null): string[] {
+  const subs = subDepartmentId ? department.subDepartments.filter((sub) => sub.id === subDepartmentId) : department.subDepartments
+  const workflows = subs.length ? subs.map((sub) => sub.statuses.length ? sub.statuses : DEFAULT_STATUSES) : [DEFAULT_STATUSES]
+  return [...new Set(workflows.flat().filter((status) => !status.isComplete).map((status) => status.label))]
+}
+
+function settingsBody(slaRaw: unknown, bhRaw: unknown, availableStatuses: string[]) {
+  const slaConfig = readSlaConfig(slaRaw)
+  return {
+    slaConfig: { ...slaConfig, firstResponseActiveStatuses: slaConfig.firstResponseActiveStatuses.map((status) => availableStatuses.find((label) => isMailboxActiveStatus(label, [status])) ?? status) },
+    businessHours: readBusinessHours(bhRaw),
+    availableStatuses,
   }
 }
 
@@ -85,7 +110,7 @@ export async function GET(
 
   const department = await prisma.department.findUnique({
     where: { id },
-    select: { slaConfig: true, businessHours: true },
+    select: SETTINGS_SELECT,
   })
   if (!department) return NextResponse.json({ error: "Department not found" }, { status: 404 })
 
@@ -102,10 +127,7 @@ export async function GET(
     if (sub?.businessHours != null) bhRaw = sub.businessHours
   }
 
-  return NextResponse.json({
-    slaConfig: readSlaConfig(slaRaw),
-    businessHours: readBusinessHours(bhRaw),
-  })
+  return NextResponse.json(settingsBody(slaRaw, bhRaw, availableActiveStatuses(department, scope.subDepartmentId)))
 }
 
 /** PATCH /api/departments/:id/sla-settings — update pause-outside-hours + business calendar. */
@@ -127,7 +149,7 @@ export async function PATCH(
 
   const department = await prisma.department.findUnique({
     where: { id },
-    select: { slaConfig: true, businessHours: true },
+    select: SETTINGS_SELECT,
   })
   if (!department) return NextResponse.json({ error: "Department not found" }, { status: 404 })
 
@@ -145,11 +167,29 @@ export async function PATCH(
     if (sub?.businessHours != null) baseBh = sub.businessHours
   }
 
+  const suppliedActiveStatuses = body.slaConfig?.firstResponseActiveStatuses
+  if (suppliedActiveStatuses !== undefined && (!Array.isArray(suppliedActiveStatuses) || suppliedActiveStatuses.length > 20 || suppliedActiveStatuses.some((status: unknown) => typeof status !== "string" || status.length > 100))) {
+    return NextResponse.json({ error: "Provide up to 20 first-response active status names." }, { status: 400 })
+  }
+
   const nextSlaConfig = readSlaConfig({ ...readSlaConfig(baseSla), ...body.slaConfig })
   const nextBusinessHours = readBusinessHours({ ...readBusinessHours(baseBh), ...body.businessHours })
 
   if (!Number.isFinite(nextSlaConfig.atRiskPct) || nextSlaConfig.atRiskPct <= 0 || nextSlaConfig.atRiskPct > 100) {
     return NextResponse.json({ error: "atRiskPct must be between 1 and 100" }, { status: 400 })
+  }
+
+  if (!nextSlaConfig.firstResponseActiveStatuses.length || nextSlaConfig.firstResponseActiveStatuses.some((status) => typeof status !== "string" || !status.trim())) {
+    return NextResponse.json({ error: "Provide at least one first-response active status." }, { status: 400 })
+  }
+
+  const availableStatuses = availableActiveStatuses(department, scope.subDepartmentId)
+  if (suppliedActiveStatuses !== undefined) {
+    const canonical = nextSlaConfig.firstResponseActiveStatuses.map((status) => availableStatuses.find((label) => isMailboxActiveStatus(label, [status.trim()])))
+    if (canonical.some((status) => !status)) {
+      return NextResponse.json({ error: "Select active statuses from this department's current workflows." }, { status: 400 })
+    }
+    nextSlaConfig.firstResponseActiveStatuses = [...new Set(canonical as string[])]
   }
 
   const timeFormat = /^(?:[01]\d|2[0-3]):[0-5]\d$/
@@ -178,8 +218,5 @@ export async function PATCH(
         select: { slaConfig: true, businessHours: true },
       })
 
-  return NextResponse.json({
-    slaConfig: readSlaConfig(updated.slaConfig),
-    businessHours: readBusinessHours(updated.businessHours),
-  })
+  return NextResponse.json(settingsBody(updated.slaConfig, updated.businessHours, availableStatuses))
 }

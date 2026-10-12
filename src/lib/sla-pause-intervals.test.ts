@@ -43,3 +43,12 @@ describe("waitingForCustomerPauseIntervals", () => {
     ]);
   });
 });
+
+
+it("a quarantined inbound message does not end the customer-wait pause", () => {
+  const until = new Date("2026-10-12T11:00:00Z")
+  expect(waitingForCustomerPauseIntervals([
+    { direction: "outbound", status: "trusted", createdAt: "2026-10-12T09:00:00Z" },
+    { direction: "inbound", status: "quarantined", createdAt: "2026-10-12T10:00:00Z" },
+  ], until)).toEqual([{ from: new Date("2026-10-12T09:00:00Z"), to: until }])
+})

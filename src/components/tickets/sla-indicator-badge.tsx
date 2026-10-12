@@ -69,7 +69,7 @@ export function useSlaIndicator(ticketId: string, refreshKey?: number | string) 
       return data
     },
     staleTime: 30_000,
-    refetchInterval: (query) => query.state.data?.manualResolution?.runningCount || (query.state.data?.indicator?.source === "mailbox" && !query.state.data.indicator.completed) ? 15_000 : false,
+    refetchInterval: (query) => query.state.data?.manualResolution?.runningCount || (["mailbox", "form"].includes(query.state.data?.indicator?.source ?? "") && !query.state.data?.indicator?.completed) ? 15_000 : false,
   })
   const indicator = data?.indicator ?? null
   const manualResolution = data?.manualResolution ?? null

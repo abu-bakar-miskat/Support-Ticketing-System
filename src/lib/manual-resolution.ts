@@ -1,3 +1,4 @@
+import { getWorkCycleStart } from "@/lib/work-cycle"
 import { prisma } from "@/lib/db"
 import { entrySeconds } from "@/lib/time-data"
 import { broadcastTimerChange } from "@/lib/timer-broadcast"
@@ -23,8 +24,9 @@ export async function getManualResolutionTicket(ticketId: string) {
 }
 
 export async function trackedWorkSeconds(ticketId: string, until: Date): Promise<number> {
+  const cycleStart = await getWorkCycleStart(ticketId)
   const entries = await prisma.timeEntry.findMany({
-    where: { ticketId },
+    where: { ticketId, ...(cycleStart ? { startedAt: { gte: cycleStart } } : {}) },
     select: { startedAt: true, endedAt: true, durationSecs: true },
   })
   return entries.reduce((sum, entry) => {
@@ -43,6 +45,24 @@ export async function finalizeManualResolution(ticketId: string): Promise<void> 
   const ticket = await getManualResolutionTicket(ticketId)
   if (!ticket?.closedAt) return
   const until = ticket.closedAt
+  await stopTicketWorkAt(ticketId, until)
+  // Late dynamic import avoids a module cycle with the breach checker.
+  const { checkAndNotifyEstimateOverrun } = await import("@/lib/time-estimate-notify")
+  await checkAndNotifyEstimateOverrun(ticketId, until, true)
+  const trackedSecs = await trackedWorkSeconds(ticketId, until)
+  await prisma.ticket.updateMany({
+    where: { id: ticketId, closedAt: until },
+    data: {
+      resolutionDurationMins: Math.round(trackedSecs / 60),
+      resolvedWithinAllowed: ticket.estimatedTime == null || ticket.estimatedTime <= 0
+        ? null : trackedSecs <= ticket.estimatedTime * 60,
+    },
+  })
+}
+
+
+/** Stop work at completion for every ticket source, including cascade/GitHub paths. */
+export async function stopTicketWorkAt(ticketId: string, until: Date): Promise<void> {
   const running = await prisma.timeEntry.findMany({
     where: { ticketId, endedAt: null },
     select: { id: true, profileId: true, startedAt: true, profile: { select: { name: true } } },
@@ -62,18 +82,6 @@ export async function finalizeManualResolution(ticketId: string): Promise<void> 
       }).catch(() => undefined),
     ])
   }
-  // Late dynamic import avoids a module cycle with the breach checker.
-  const { checkAndNotifyEstimateOverrun } = await import("@/lib/time-estimate-notify")
-  await checkAndNotifyEstimateOverrun(ticketId, until, true)
-  const trackedSecs = await trackedWorkSeconds(ticketId, until)
-  await prisma.ticket.updateMany({
-    where: { id: ticketId, closedAt: until },
-    data: {
-      resolutionDurationMins: Math.round(trackedSecs / 60),
-      resolvedWithinAllowed: ticket.estimatedTime == null || ticket.estimatedTime <= 0
-        ? null : trackedSecs <= ticket.estimatedTime * 60,
-    },
-  })
 }
 
 
@@ -99,8 +107,9 @@ export async function getManualResolutionView(
   if (!ticket?.estimatedTime || ticket.estimatedTime <= 0) return null
   const until = ticket.closedAt ?? now
   const trackedSecs = await trackedWorkSeconds(ticketId, until)
+  const cycleStart = await getWorkCycleStart(ticketId)
   const entries = await prisma.timeEntry.findMany({
-    where: { ticketId }, select: { startedAt: true, endedAt: true },
+    where: { ticketId, ...(cycleStart ? { startedAt: { gte: cycleStart } } : {}) }, select: { startedAt: true, endedAt: true },
     orderBy: { startedAt: "asc" },
   })
   const view: ManualResolutionView = {

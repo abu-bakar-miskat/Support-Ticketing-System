@@ -35,7 +35,7 @@ export type TicketEventPayloads = {
   LABELS_CHANGED:         { added: string[]; removed: string[] }
   MODULE_CHANGED:         { fromId: string | null; fromName: string | null; toId: string | null; toName: string | null }
   SUBTICKET_ADDED:        { humanId: string; title: string; subTicketId: string }
-  TIMER_RESET:            { clearedSecs: number; entryCount: number }
+  TIMER_RESET:            { clearedSecs: number; entryCount: number; reopenCycle?: boolean }
   QA_TIME_LOGGED:         { durationSecs: number; note?: string | null; entryId: string }
   /** Broadcast-only (no ActivityLog) — other ticket viewers see timers live */
   TIMER_STARTED:          { userId: string; userName: string; avatarUrl?: string | null; entryId: string; startedAt: string }

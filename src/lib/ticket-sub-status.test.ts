@@ -53,9 +53,9 @@ describe("deriveSubStatus — BD-07", () => {
     expect(deriveSubStatus([msg({ direction: "inbound", status: "system" })])).toBeNull();
   });
 
-  it("treats quarantined inbound as a customer message", () => {
+  it("ignores quarantined inbound when deriving the waiting state", () => {
     expect(deriveSubStatus([msg({ direction: "inbound", status: "quarantined" })])).toBe(
-      "WAITING_FOR_SUPPORT",
+      null,
     );
   });
 });

@@ -1,3 +1,4 @@
+import { getWorkCycleStart } from "@/lib/work-cycle"
 import { prisma } from "@/lib/db"
 import { createNotification } from "@/lib/notify"
 
@@ -30,8 +31,9 @@ export async function checkAndNotifyLegacyEstimateOverrun(ticketId: string): Pro
 
     // Sum completed laps only — a running entry has no durationSecs yet, and the
     // stop that triggered this call has already been finalized.
+    const cycleStart = await getWorkCycleStart(ticketId)
     const agg = await prisma.timeEntry.aggregate({
-      where: { ticketId, endedAt: { not: null } },
+      where: { ticketId, endedAt: { not: null }, ...(cycleStart ? { startedAt: { gte: cycleStart } } : {}) },
       _sum: { durationSecs: true },
     })
     const trackedSecs = agg._sum.durationSecs ?? 0

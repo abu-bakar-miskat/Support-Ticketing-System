@@ -106,7 +106,7 @@ export function SlaDetailsSection({
         <MetricCard
           icon={CheckCircle2}
           label="Resolution"
-          strictExceed={indicator.source === "mailbox"}
+          strictExceed={indicator.source === "mailbox" || indicator.source === "form"}
           metric={live(indicator.resolution)}
           startedAt={details.resolutionStartedAt}
           stoppedAt={details.resolutionStoppedAt}

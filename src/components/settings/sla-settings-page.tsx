@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 import { useTenantHref } from "@/hooks/use-tenant-href";
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { TimezoneSelect } from "@/components/settings/timezone-select";
@@ -52,6 +51,7 @@ function SkeletonRows({ count = 3, height = "h-9" }: { count?: number; height?: 
 type SlaConfig = {
   pauseOutsideHours: boolean;
   pauseWhenWaitingForCustomer: boolean;
+  firstResponseActiveStatuses: string[];
   atRiskPct: number;
 };
 type BusinessHours = { timezone: string; workingDays: number[]; workStartTime: string; workEndTime: string };
@@ -128,6 +128,7 @@ export function SlaSettingsPage({
   const [policies, setPolicies] = useState<SlaPolicy[] | null>(null);
   const [forms, setForms] = useState<FormOption[]>([]);
   const [slaConfig, setSlaConfig] = useState<SlaConfig | null>(null);
+  const [availableActiveStatuses, setAvailableActiveStatuses] = useState<string[]>([]);
   const [businessHours, setBusinessHours] = useState<BusinessHours | null>(null);
   // Snapshot of the last-saved settings, used to detect unsaved changes.
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
@@ -147,6 +148,7 @@ export function SlaSettingsPage({
         if (cancelled) return;
         setSlaConfig(settingsRes.slaConfig);
         setBusinessHours(settingsRes.businessHours);
+        setAvailableActiveStatuses(settingsRes.availableStatuses ?? []);
         setSavedSnapshot(
           JSON.stringify({ slaConfig: settingsRes.slaConfig, businessHours: settingsRes.businessHours }),
         );
@@ -246,14 +248,17 @@ export function SlaSettingsPage({
     setSaving(true);
     setError(null);
     try {
-      await jsonOrThrow(
+      const settingsRes = await jsonOrThrow(
         await fetch(`/api/departments/${departmentId}/sla-settings`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ slaConfig, businessHours }),
         }),
       );
-      setSavedSnapshot(JSON.stringify({ slaConfig, businessHours }));
+      setSlaConfig(settingsRes.slaConfig);
+      setBusinessHours(settingsRes.businessHours);
+      setAvailableActiveStatuses(settingsRes.availableStatuses ?? []);
+      setSavedSnapshot(JSON.stringify({ slaConfig: settingsRes.slaConfig, businessHours: settingsRes.businessHours }));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save SLA settings");
     } finally {
@@ -479,39 +484,32 @@ export function SlaSettingsPage({
                 Only admins can change working hours.
               </p>
             )}
-            <label className="flex w-fit cursor-pointer items-start gap-2.5 font-sans text-[12.5px] text-sts-foreground">
-              <Switch
-                className="mt-0.5"
-                checked={slaConfig.pauseOutsideHours}
-                onCheckedChange={(v) => setSlaConfig({ ...slaConfig, pauseOutsideHours: v })}
-              />
-              <span className="flex flex-col gap-0.5">
-                <span className="font-medium">Only count SLA time during working hours</span>
-                <span className="text-[11.5px] text-sts-muted">
-                  {slaConfig.pauseOutsideHours
-                    ? "On — timers pause overnight and on weekends. A ticket that arrives after hours doesn't start burning SLA until the next working period."
-                    : "Off — timers run 24/7 on real elapsed time. SLA keeps counting overnight, on weekends, and on holidays even when no one is working."}
-                </span>
-              </span>
-            </label>
-
-            <label className="flex w-fit cursor-pointer items-start gap-2.5 font-sans text-[12.5px] text-sts-foreground">
-              <Switch
-                className="mt-0.5"
-                checked={slaConfig.pauseWhenWaitingForCustomer}
-                onCheckedChange={(v) =>
-                  setSlaConfig({ ...slaConfig, pauseWhenWaitingForCustomer: v })
-                }
-              />
-              <span className="flex flex-col gap-0.5">
-                <span className="font-medium">Pause the resolution timer while waiting on the customer</span>
-                <span className="text-[11.5px] text-sts-muted">
-                  {slaConfig.pauseWhenWaitingForCustomer
-                    ? "On — after your team replies, the resolution timer stops until the customer responds. Time spent waiting on them isn't counted against you."
-                    : "Off — the resolution timer keeps running even while you're waiting for the customer to reply."}
-                </span>
-              </span>
-            </label>
+            <p className="font-sans text-[12px] text-sts-muted">
+              Support form, Portal, and shared mailbox SLA clocks count only configured working hours
+              and pause resolution while waiting for the customer. Calendar and warning settings are
+              saved on new tickets; existing tickets keep their saved settings.
+            </p>
+            <div className="flex flex-col gap-1 font-sans text-[12.5px] text-sts-foreground">
+              <span id={`form-active-statuses-${departmentId}`} className="font-medium">Support form and Portal first-response active statuses</span>
+              <span className="text-[11.5px] text-sts-muted">Select one or more workflow statuses. Entering one stops first response, as does a public reply.</span>
+              <Select
+                multiple
+                value={slaConfig.firstResponseActiveStatuses}
+                onValueChange={(statuses) => setSlaConfig({ ...slaConfig, firstResponseActiveStatuses: statuses })}
+                disabled={!canEditPolicies}
+              >
+                <SelectTrigger aria-labelledby={`form-active-statuses-${departmentId}`} className="w-full font-sans text-[12px]">
+                  <SelectValue>{slaConfig.firstResponseActiveStatuses.length ? slaConfig.firstResponseActiveStatuses.join(", ") : "Select active statuses"}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {[...new Set([...availableActiveStatuses, ...slaConfig.firstResponseActiveStatuses])].map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}{availableActiveStatuses.includes(status) ? "" : " (no longer available)"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             <div className="h-px bg-sts-card-border/70" />
 

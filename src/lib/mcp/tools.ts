@@ -1,3 +1,4 @@
+import { syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
 import { prisma } from "@/lib/db"
 import { createNotification } from "@/lib/notify"
 import { sendAssignmentEmail, sendResolutionEmail } from "@/lib/email"
@@ -602,6 +603,7 @@ export async function updateTicket(ctx: ApiKeyContext, input: UpdateTicketInput)
     broadcastTicketEvent(ticket.id, "STATUS_CHANGED", actorId, {
       from: ticket.status, to: statusChange.to,
     }).catch(() => undefined)
+    if (ticket.closedAt !== data.closedAt) await syncResolutionTimerOnClosedAtChange(ticket.id, data.closedAt as Date | null)
     await stopRunningTimersOnStatusChange(ticket.id, statusChange.to)
     if (statusChange.isComplete) {
       const humanId = `${prefix}-${number}`

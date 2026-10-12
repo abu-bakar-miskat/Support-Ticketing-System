@@ -15,7 +15,7 @@ vi.mock("@/lib/db", () => ({
     $transaction: vi.fn(),
   },
 }))
-vi.mock("@/lib/sla-engine", () => ({ startSlaTimers: vi.fn() }))
+vi.mock("@/lib/sla-engine", () => ({ startSlaTimers: vi.fn(), syncResolutionTimerOnClosedAtChange: vi.fn().mockResolvedValue(undefined) }))
 vi.mock("@/lib/notify", () => ({ createNotification: vi.fn().mockResolvedValue(undefined) }))
 vi.mock("@/lib/email", () => ({
   sendAssignmentEmail: vi.fn().mockResolvedValue(undefined),
@@ -35,7 +35,7 @@ vi.mock("@/lib/ticket-completion-notify", () => ({ notifyTicketCompletion: vi.fn
 vi.mock("@/lib/ticket-cascade", () => ({ cascadeCompleteToSubtickets: vi.fn().mockResolvedValue(undefined) }))
 vi.mock("@/lib/timer-autostop", () => ({ stopRunningTimersOnStatusChange: vi.fn().mockResolvedValue(undefined) }))
 
-import { startSlaTimers } from "@/lib/sla-engine"
+import { startSlaTimers, syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
 import { prisma } from "@/lib/db"
 import { createNotification } from "@/lib/notify"
 import { sendAssignmentEmail, sendResolutionEmail } from "@/lib/email"
@@ -361,6 +361,7 @@ describe("updateTicket", () => {
     expect(vi.mocked(broadcastTicketEvent)).toHaveBeenCalledWith("t-1", "STATUS_CHANGED", "user-1", {
       from: "In Progress", to: "Live",
     })
+    expect(vi.mocked(syncResolutionTimerOnClosedAtChange)).toHaveBeenCalledWith("t-1", expect.any(Date))
     expect(vi.mocked(stopRunningTimersOnStatusChange)).toHaveBeenCalledWith("t-1", "Live")
     expect(vi.mocked(notifyTicketCompletion)).toHaveBeenCalledWith(expect.objectContaining({
       ticketId: "t-1", humanId: "WEB-7", actorId: "user-1", actorName: "Dumitru",

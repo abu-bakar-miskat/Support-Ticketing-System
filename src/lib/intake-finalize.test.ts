@@ -25,6 +25,7 @@ vi.mock("@/lib/assignment-engine", () => ({ recordAssignmentFailure: vi.fn().moc
 
 import { prisma } from "@/lib/db"
 import { prepareConversion, runConversion } from "@/lib/intake-conversion"
+import { applyRulesToTicket } from "@/lib/rule-executor"
 import { startSlaTimers } from "@/lib/sla-engine"
 import { createTicketFromPayload } from "./intake-finalize"
 
@@ -115,6 +116,7 @@ describe("createTicketFromPayload — department-scoped routing", () => {
       expect.any(Date),
       "resolved",
       "issue-1",
+      { assigneeId: null },
     )
   })
 
@@ -150,5 +152,17 @@ describe("createTicketFromPayload — department-scoped routing", () => {
       /no sub-department/,
     )
     expect(mockPrepare).not.toHaveBeenCalled()
+  })
+})
+
+
+describe("Stage 3 issue-owned SLA", () => {
+  it.each([false, true])("uses the same issue targets for Support / Portal (Portal=%s)", async (portal) => {
+    mockFindPolicy.mockResolvedValue({ id: "issue-1", priority: "High", resolutionMins: 45, departmentId: "dept-1", subDepartmentId: "sub-1" } as never)
+    await createTicketFromPayload("form-1", { ...payload, issueId: "issue-1" }, portal ? { apiKeyId: "portal-key" } : {})
+    expect(mockRun.mock.calls[0][7]).toBe(45)
+    expect(mockStartSlaTimers).toHaveBeenCalledWith("t1", "ten-1", "dept-1", { priority: "High" }, expect.any(Date), "resolved", "issue-1", { assigneeId: null })
+    expect(applyRulesToTicket).toHaveBeenCalledWith(expect.objectContaining({ allowSla: false }), { priority: "High" })
+    expect(mockStartSlaTimers.mock.invocationCallOrder[0]).toBeLessThan(vi.mocked(applyRulesToTicket).mock.invocationCallOrder[0])
   })
 })

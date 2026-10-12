@@ -1,6 +1,8 @@
+vi.mock("@/lib/ticket-events", () => ({ broadcastTicketEvent: vi.fn().mockResolvedValue(undefined) }))
 vi.mock("@/lib/ticket-escalation", () => ({ escalateTicket: vi.fn().mockResolvedValue(undefined) }))
 vi.mock("@/lib/manual-resolution", () => ({
   finalizeManualResolution: vi.fn().mockResolvedValue(undefined),
+  stopTicketWorkAt: vi.fn().mockResolvedValue(undefined),
   manualTicketWhere: {},
 }))
 vi.mock("@/lib/time-estimate-notify", () => ({ checkAndNotifyEstimateOverrun: vi.fn().mockResolvedValue(undefined) }))
@@ -11,7 +13,7 @@ vi.mock("@/lib/db", () => ({
     department: { findUnique: vi.fn() },
     subDepartment: { findUnique: vi.fn() },
     slaPolicy: { findMany: vi.fn(), findFirst: vi.fn() },
-    ticket: { findMany: vi.fn().mockResolvedValue([]), updateMany: vi.fn() },
+    ticket: { findUnique: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]), updateMany: vi.fn() },
     slaTimer: { findMany: vi.fn().mockResolvedValue([]), create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     slaBreach: { create: vi.fn(), findMany: vi.fn() },
     ticketMessage: { findMany: vi.fn() },
@@ -22,14 +24,14 @@ vi.mock("@/lib/db", () => ({
     departmentManager: { findMany: vi.fn() },
     tenantMembership: { findMany: vi.fn().mockResolvedValue([]) },
     mailboxConnection: { findFirst: vi.fn().mockResolvedValue(null) },
-    activityLog: { findMany: vi.fn().mockResolvedValue([]) },
+    activityLog: { create: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
     profile: { findUnique: vi.fn() },
     $transaction: vi.fn(),
   },
 }))
 
 vi.mock("@/lib/portal-conversation", () => ({
-  loadPortalConversation: async () => [],
+  loadPortalConversation: vi.fn().mockResolvedValue([]),
 }))
 
 vi.mock("@/lib/notify", () => ({
@@ -91,6 +93,7 @@ describe("startSlaTimers — SLA-01/02/03", () => {
 
     expect(mockTimerCreate).toHaveBeenCalledWith({
       data: {
+        source: "form", mailboxConfig: expect.objectContaining({ activeStatuses: ["In Progress"] }),
         ticketId: "ticket-1",
         tenantId: "tenant-1",
         policyId: "p1",
@@ -136,6 +139,7 @@ describe("startSlaTimers — SLA-01/02/03", () => {
     expect(mockPolicyFindMany).not.toHaveBeenCalled()
     expect(mockTimerCreate).toHaveBeenCalledWith({
       data: {
+        source: "form", mailboxConfig: expect.objectContaining({ activeStatuses: ["In Progress"] }),
         ticketId: "ticket-1",
         tenantId: "tenant-1",
         policyId: "issue-1",
@@ -338,19 +342,52 @@ describe("syncResolutionTimerOnClosedAtChange — resolve + OQ-03 reopen", () =>
     expect(mockTimerUpdate).not.toHaveBeenCalled()
   })
 
-  it("resumes + starts a fresh first-response cycle on reopen (closedAt cleared)", async () => {
-    mockTimerFind.mockResolvedValue({
-      resolutionStartedAt: new Date("2026-08-10T00:00:00.000Z"),
-      resolutionStoppedAt: new Date("2026-08-12T00:00:00.000Z"),
-    } as never)
+  it("resets both allowances when an agent enters In Progress", async () => {
+    mockTimerFind.mockResolvedValue({ resolutionStartedAt: new Date("2026-08-10T00:00:00Z"), resolutionStoppedAt: new Date("2026-08-12T00:00:00Z") } as never)
+    vi.mocked(prisma.ticket.findUnique).mockResolvedValue({ status: "In Progress", closedAt: null, creatorId: "creator", assigneeId: "agent" } as never)
+    vi.mocked(prisma.ticket.updateMany).mockResolvedValue({ count: 1 })
     await syncResolutionTimerOnClosedAtChange("ticket-1", null)
-    expect(mockTimerUpdate).toHaveBeenCalledTimes(1)
-    const call = mockTimerUpdate.mock.calls[0][0] as { data: Record<string, unknown> }
-    expect(call.data.firstResponseStoppedAt).toBeNull()
-    expect(call.data.resolutionStoppedAt).toBeNull()
-    expect(call.data.resolutionStartedAt).toBeInstanceOf(Date)
-    // Shifted forward past 2026-08-10 (the original start) since it resumed.
-    expect((call.data.resolutionStartedAt as Date).getTime()).toBeGreaterThan(new Date("2026-08-10T00:00:00.000Z").getTime())
+    expect(mockTimerUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+      resolutionStartedAt: expect.any(Date), resolutionStoppedAt: null,
+      resolutionBreachNotifiedAt: null, resolutionAtRiskNotifiedAt: null,
+      firstResponseBreachNotifiedAt: null,
+    }) }))
+    expect(prisma.activityLog.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ metadata: expect.objectContaining({ reopenCycle: true }) }) }))
+  })
+  it("keeps completed SLA frozen before In Progress", async () => {
+    mockTimerFind.mockResolvedValue({ resolutionStoppedAt: new Date("2026-10-09T10:00:00Z") } as never)
+    vi.mocked(prisma.ticket.findUnique).mockResolvedValue({ status: "Not Started", closedAt: null } as never)
+    await syncResolutionTimerOnClosedAtChange("ticket-1", null)
+    expect(mockTimerUpdateMany).not.toHaveBeenCalled()
+  })
+  it("does not reset twice when a concurrent reopen already claimed the cycle", async () => {
+    mockTimerFind.mockResolvedValue({ resolutionStoppedAt: new Date("2026-10-09T10:00:00Z") } as never)
+    vi.mocked(prisma.ticket.findUnique).mockResolvedValue({ status: "In Progress", closedAt: null } as never)
+    mockTimerUpdateMany.mockResolvedValueOnce({ count: 0 })
+    await syncResolutionTimerOnClosedAtChange("ticket-1", null)
+    expect(prisma.activityLog.create).not.toHaveBeenCalled()
+  })
+
+  it("resets manual work/compliance guards without adding a first-response SLA", async () => {
+    mockTimerFind.mockResolvedValue(null as never)
+    vi.mocked(prisma.ticket.findUnique).mockResolvedValue({ status: "In Progress", closedAt: null, creatorId: "agent", resolutionDurationMins: 12 } as never)
+    vi.mocked(prisma.ticket.updateMany).mockResolvedValue({ count: 1 })
+    await syncResolutionTimerOnClosedAtChange("manual-1", null)
+    expect(prisma.ticket.updateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ estimateOverrunNotifiedAt: null, resolutionDurationMins: null }) }))
+    expect(mockTimerUpdateMany).not.toHaveBeenCalled()
+    expect(prisma.activityLog.create).toHaveBeenCalled()
+  })
+  it.each(["form", "mailbox"])("preserves %s calendar/targets and resets activation correctly", async (source) => {
+    const calendar = { timezone: "UTC", workingDays: [1,2,3,4,5], workStartTime: "09:00", workEndTime: "17:00", holidays: [] }
+    const mailboxConfig = { calendar, activeStatuses: ["In Progress"], atRiskPct: 80, targetSource: "department", resolutionActivatedAt: "2026-10-09T10:00:00Z" }
+    mockTimerFind.mockResolvedValue({ source, mailboxConfig, resolutionStoppedAt: new Date("2026-10-09T11:00:00Z") } as never)
+    vi.mocked(prisma.ticket.findUnique).mockResolvedValue({ status: "In Progress", closedAt: null, creatorId: "agent" } as never)
+    vi.mocked(prisma.ticket.updateMany).mockResolvedValue({ count: 1 })
+    await syncResolutionTimerOnClosedAtChange("ticket-1", null)
+    expect(mockTimerUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+      mailboxConfig: { ...mailboxConfig, resolutionActivatedAt: source === "form" ? null : expect.any(String) },
+      firstResponseStoppedAt: expect.any(Date),
+    }) }))
   })
 
   it("does nothing when the ticket has no SLA timer", async () => {
@@ -472,7 +509,7 @@ describe("checkAndNotifySla — SLA-05/06/07", () => {
     await checkAndNotifySla("ticket-1", now)
 
     expect(mockTimerUpdateMany).toHaveBeenCalledWith({
-      where: { ticketId: "ticket-1", firstResponseAtRiskNotifiedAt: null, firstResponseStoppedAt: null },
+      where: { ticketId: "ticket-1", firstResponseStartedAt: new Date("2026-08-17T09:00:00Z"), resolutionStartedAt: new Date("2026-08-17T09:00:00Z"), firstResponseAtRiskNotifiedAt: null, firstResponseStoppedAt: null },
       data: { firstResponseAtRiskNotifiedAt: now },
     })
     expect(mockBreachCreate).not.toHaveBeenCalled()
@@ -886,4 +923,164 @@ describe("Stage 2 mailbox lifecycle", () => {
     await checkAndNotifySla("mailbox-1", new Date("2026-10-12T12:00:00Z"))
     expect(mockCreateNotification).not.toHaveBeenCalled()
   })
+})
+
+describe("Stage 3 support form / Portal SLA", () => {
+  const start = new Date("2026-10-09T09:00:00Z")
+  const snapshot = {
+    calendar: { timezone: "UTC", workingDays: [1, 2, 3, 4, 5], workStartTime: "09:00", workEndTime: "17:00", holidays: [] },
+    resolutionActivatedAt: start.toISOString(), atRiskPct: 50, activeStatuses: ["In Progress", "Investigating"],
+  }
+  const formTimer = (overrides = {}) => ({
+    id: "form-timer", ticketId: "form-ticket", tenantId: "tenant-1", source: "form", mailboxConfig: snapshot,
+    policy: { name: "Selected issue" }, firstResponseTargetMins: 60, resolutionTargetMins: 120,
+    firstResponseStartedAt: start, resolutionStartedAt: start,
+    firstResponseStoppedAt: null, resolutionStoppedAt: null,
+    firstResponseAtRiskNotifiedAt: null, firstResponseBreachNotifiedAt: null,
+    resolutionAtRiskNotifiedAt: null, resolutionBreachNotifiedAt: null,
+    ticket: { id: "form-ticket", intake: { id: "intake-1" }, assigneeId: "agent-1", status: "To Do", subDepartmentId: "sub-1", subDepartment: { departmentId: "dept-1" }, closedAt: null },
+    ...overrides,
+  })
+  beforeEach(async () => {
+    vi.mocked(prisma.activityLog.findMany).mockResolvedValue([])
+    vi.mocked(prisma.slaBreach.findMany).mockResolvedValue([])
+    vi.mocked(prisma.departmentManager.findMany).mockResolvedValue([{ userId: "manager" }] as never)
+    vi.mocked(prisma.tenantMembership.findMany).mockResolvedValue([])
+    const { loadPortalConversation } = await import("@/lib/portal-conversation")
+    vi.mocked(loadPortalConversation).mockResolvedValue([])
+    mockTimerFind.mockResolvedValue(formTimer() as never)
+  })
+  it("enforces working hours even with the legacy pause switch disabled", async () => {
+    mockTimerFind.mockResolvedValue(formTimer({ firstResponseStartedAt: new Date("2026-10-09T17:30:00Z"), resolutionStartedAt: new Date("2026-10-09T17:30:00Z") }) as never)
+    const weekend = await getSlaIndicatorViewForTicket("form-ticket", new Date("2026-10-10T10:00:00Z"))
+    expect(weekend).toMatchObject({ source: "form", firstResponse: { elapsedMs: 0, running: false }, resolution: { elapsedMs: 0, running: false } })
+    const monday = await getSlaIndicatorViewForTicket("form-ticket", new Date("2026-10-12T09:10:00Z"))
+    expect(monday?.resolution).toMatchObject({ elapsedMs: 600000, running: true })
+    expect(mockScheduleFind).not.toHaveBeenCalled()
+  })
+  it("stops first response at the first configured active status before a sweep can escalate", async () => {
+    const at = new Date("2026-10-09T09:20:00Z")
+    vi.mocked(prisma.activityLog.findMany).mockResolvedValue([{ metadata: { from: "To Do", to: "Investigating" }, createdAt: at }] as never)
+    await checkAndNotifySla("form-ticket", new Date("2026-10-09T10:10:00Z"))
+    expect(mockTimerUpdateMany).toHaveBeenCalledWith({ where: { ticketId: "form-ticket", firstResponseStoppedAt: null }, data: { firstResponseStoppedAt: at } })
+    const { escalateTicket } = await import("@/lib/ticket-escalation")
+    expect(escalateTicket).not.toHaveBeenCalled()
+  })
+  it("handles a configured active status directly through the shared workflow hook", async () => {
+    await stopMailboxFirstResponseOnActiveStatus("form-ticket", "Investigating", new Date("2026-10-09T09:20:00Z"))
+    expect(mockTimerUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ data: { firstResponseStoppedAt: new Date("2026-10-09T09:20:00Z") } }))
+  })
+  it("pauses explicit Waiting for Customer and resumes on a trusted support email", async () => {
+    vi.mocked(prisma.activityLog.findMany).mockResolvedValue([{ metadata: { from: "In Progress", to: "Waiting for Customer" }, createdAt: new Date("2026-10-09T09:10:00Z") }] as never)
+    mockTicketMessages.mockResolvedValue([
+      { direction: "inbound", status: "quarantined", createdAt: new Date("2026-10-09T09:15:00Z") },
+      { direction: "inbound", status: "trusted", createdAt: new Date("2026-10-09T09:40:00Z") },
+    ] as never)
+    expect((await getSlaIndicatorViewForTicket("form-ticket", new Date("2026-10-09T10:00:00Z")))?.resolution).toMatchObject({ elapsedMs: 1800000, running: true })
+  })
+  it("uses Portal public comments for repeated customer-wait cycles", async () => {
+    const { loadPortalConversation } = await import("@/lib/portal-conversation")
+    vi.mocked(loadPortalConversation).mockResolvedValue([
+      { direction: "outbound", createdAt: new Date("2026-10-09T09:10:00Z") },
+      { direction: "inbound", createdAt: new Date("2026-10-09T09:30:00Z") },
+      { direction: "outbound", createdAt: new Date("2026-10-09T09:40:00Z") },
+    ])
+    expect((await getSlaIndicatorViewForTicket("form-ticket", new Date("2026-10-09T10:00:00Z")))?.resolution).toMatchObject({ elapsedMs: 1200000, running: false })
+  })
+  it("leaves resolution running after system messages", async () => {
+    mockTicketMessages.mockResolvedValue([{ direction: "outbound", status: "system", createdAt: new Date("2026-10-09T09:10:00Z") }] as never)
+    expect((await getSlaIndicatorViewForTicket("form-ticket", new Date("2026-10-09T10:00:00Z")))?.resolution).toMatchObject({ elapsedMs: 3600000, running: true })
+  })
+  it("records a late public reply breach without escalating the answered ticket", async () => {
+    mockTimerFind.mockResolvedValue(formTimer({ firstResponseStoppedAt: new Date("2026-10-09T10:01:00Z") }) as never)
+    await checkAndNotifySla("form-ticket", new Date("2026-10-09T10:01:00Z"))
+    expect(mockBreachCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ metric: "first_response" }) }))
+    const { escalateTicket } = await import("@/lib/ticket-escalation")
+    expect(escalateTicket).not.toHaveBeenCalled()
+  })
+  it("warns at the snapshot threshold, escalates unanswered breach, and continues overtime", async () => {
+    await checkAndNotifySla("form-ticket", new Date("2026-10-09T09:30:00Z"))
+    expect(mockCreateNotification).toHaveBeenCalledWith(expect.objectContaining({ recipientId: "manager", type: "sla_at_risk" }))
+    await checkAndNotifySla("form-ticket", new Date("2026-10-09T10:01:00Z"))
+    const { escalateTicket } = await import("@/lib/ticket-escalation")
+    expect(escalateTicket).toHaveBeenCalledTimes(1)
+    expect((await getSlaIndicatorViewForTicket("form-ticket", new Date("2026-10-09T10:02:00Z")))?.firstResponse).toMatchObject({ remainingMs: -120000, running: true })
+  })
+  it("breaches resolution only when the allowed time is exceeded", async () => {
+    mockTimerFind.mockResolvedValue(formTimer({ firstResponseStoppedAt: start }) as never)
+    expect((await getSlaIndicatorForTicket("form-ticket", new Date("2026-10-09T11:00:00Z")))?.resolution.status).toBe("AT_RISK")
+    expect((await getSlaIndicatorForTicket("form-ticket", new Date("2026-10-09T11:00:01Z")))?.resolution.status).toBe("BREACHED")
+  })
+  it("stops both clocks and records a resolution breach at completion even between sweeps", async () => {
+    const end = new Date("2026-10-09T11:01:00Z")
+    const timer = formTimer({ ticket: { ...formTimer().ticket, closedAt: end } })
+    mockTimerFind.mockResolvedValue(timer as never)
+    mockTimerUpdate.mockImplementation((async ({ data }: { data: object }) => { Object.assign(timer, data); return timer }) as never)
+    await syncResolutionTimerOnClosedAtChange("form-ticket", end)
+    expect(mockTimerUpdateMany).toHaveBeenCalledWith({ where: { ticketId: "form-ticket", firstResponseStoppedAt: null }, data: { firstResponseStoppedAt: end } })
+    expect(mockBreachCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ metric: "resolution" }) }))
+    expect(mockTimerUpdate).toHaveBeenCalledWith({ where: { ticketId: "form-ticket" }, data: { resolutionStoppedAt: end } })
+    const { escalateTicket } = await import("@/lib/ticket-escalation")
+    expect(escalateTicket).not.toHaveBeenCalled()
+  })
+  it.each([null, undefined])("keeps unworked forms pending, including earlier Stage 3 snapshots (%s)", async (resolutionActivatedAt) => {
+    mockTimerFind.mockResolvedValue(formTimer({ mailboxConfig: { ...snapshot, resolutionActivatedAt } }) as never)
+    const view = await getSlaIndicatorViewForTicket("form-ticket", new Date("2026-10-09T09:20:00Z"), { includeDetails: true })
+    expect(view?.firstResponse).toMatchObject({ elapsedMs: 1200000, running: true })
+    expect(view?.resolution).toMatchObject({ elapsedMs: 0, remainingMs: 7200000, running: false, status: "ON_TRACK" })
+    expect(view?.details?.resolutionStartedAt).toBeNull()
+    await checkAndNotifySla("form-ticket", new Date("2026-10-09T12:00:00Z"))
+    expect(mockBreachCreate.mock.calls.some(([args]) => args.data.metric === "resolution")).toBe(false)
+    expect(mockCreateNotification.mock.calls.some(([args]) => args.message?.includes("Resolution"))).toBe(false)
+  })
+  it("does not activate form resolution on a configured active status or public reply alone", async () => {
+    mockTimerFind.mockResolvedValue(formTimer({ firstResponseStoppedAt: new Date("2026-10-09T09:10:00Z"), mailboxConfig: { ...snapshot, resolutionActivatedAt: null } }) as never)
+    vi.mocked(prisma.activityLog.findMany).mockResolvedValue([{ metadata: { to: "Investigating" }, createdAt: new Date("2026-10-09T09:10:00Z") }] as never)
+    mockTicketMessages.mockResolvedValue([{ direction: "outbound", status: "trusted", createdAt: new Date("2026-10-09T09:10:00Z") }] as never)
+    expect((await getSlaIndicatorViewForTicket("form-ticket", new Date("2026-10-09T10:00:00Z")))?.resolution).toMatchObject({ elapsedMs: 0, running: false })
+  })
+  it("activates from the first work-tracker session and keeps the original start", async () => {
+    const timer = formTimer({ mailboxConfig: { ...snapshot, resolutionActivatedAt: null } })
+    mockTimerFind.mockResolvedValue(timer as never)
+    const began = new Date("2026-10-09T09:20:00Z")
+    vi.mocked(prisma.timeEntry.findFirst).mockResolvedValue({ startedAt: began } as never)
+    await startMailboxResolutionOnWork("form-ticket", began)
+    expect(timer.resolutionStartedAt).toEqual(began)
+    expect(mockTimerUpdateMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ source: "form" }), data: expect.objectContaining({ resolutionStartedAt: began }) }))
+    expect((await getSlaIndicatorViewForTicket("form-ticket", new Date("2026-10-09T09:30:00Z")))?.resolution).toMatchObject({ elapsedMs: 600000, running: true })
+    mockTimerUpdateMany.mockClear()
+    await startMailboxResolutionOnWork("form-ticket", new Date("2026-10-09T10:00:00Z"))
+    expect(mockTimerUpdateMany).not.toHaveBeenCalled()
+    expect(timer.resolutionStartedAt).toEqual(began)
+  })
+  it("reconciles an older Stage 3 snapshot from actual work without counting queue time", async () => {
+    mockTimerFind.mockResolvedValue(formTimer({ mailboxConfig: { ...snapshot, resolutionActivatedAt: undefined } }) as never)
+    vi.mocked(prisma.timeEntry.findFirst).mockResolvedValue({ startedAt: new Date("2026-10-09T09:20:00Z") } as never)
+    expect((await getSlaIndicatorViewForTicket("form-ticket", new Date("2026-10-09T09:30:00Z"), { includeDetails: true }))?.details?.resolutionStartedAt).toBe("2026-10-09T09:20:00.000Z")
+  })
+  it("closes an unworked form with zero resolution elapsed and no resolution breach", async () => {
+    const end = new Date("2026-10-09T12:00:00Z")
+    const timer = formTimer({ mailboxConfig: { ...snapshot, resolutionActivatedAt: null }, ticket: { ...formTimer().ticket, closedAt: end } })
+    mockTimerFind.mockResolvedValue(timer as never)
+    mockTimerUpdate.mockImplementation((async ({ data }: { data: object }) => { Object.assign(timer, data); return timer }) as never)
+    await syncResolutionTimerOnClosedAtChange("form-ticket", end)
+    expect(mockBreachCreate.mock.calls.some(([args]) => args.data.metric === "resolution")).toBe(false)
+    expect((await getSlaIndicatorViewForTicket("form-ticket", new Date("2026-10-12T10:00:00Z")))?.resolution).toMatchObject({ elapsedMs: 0, running: false })
+  })
+
+})
+
+
+it("an ordinary open-status change does not reset first response", async () => {
+  mockTimerFind.mockResolvedValue({ resolutionStoppedAt: null, firstResponseStoppedAt: null } as never)
+  await syncResolutionTimerOnClosedAtChange("open-1", null)
+  expect(mockTimerUpdate).not.toHaveBeenCalled()
+})
+
+it("completion finalizes work sessions for all ticket sources, even without an SLA", async () => {
+  mockTimerFind.mockResolvedValue(null)
+  const at = new Date("2026-10-12T10:00:00Z")
+  await syncResolutionTimerOnClosedAtChange("mailbox-no-sla", at)
+  const { stopTicketWorkAt } = await import("@/lib/manual-resolution")
+  expect(stopTicketWorkAt).toHaveBeenCalledWith("mailbox-no-sla", at)
 })

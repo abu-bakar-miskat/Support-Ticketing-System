@@ -171,7 +171,7 @@ export async function createTicketFromPayload(
     // department/tenant policy matching: that creates an invisible SLA timer
     // and can later auto-escalate a ticket that was submitted with no issue.
     if (resolvedSlaPolicyId) {
-      startSlaTimers(
+      await startSlaTimers(
         ticketId,
         subDepartment.tenantId,
         routedDepartmentId,
@@ -179,6 +179,7 @@ export async function createTicketFromPayload(
         ticket.createdAt,
         prep.intakeSubDepartmentId,
         resolvedSlaPolicyId,
+        { assigneeId: prep.assigneeId },
       ).catch(() => undefined)
     }
     // RE-01/02: run the department's automation rules against the submitted form
@@ -191,6 +192,8 @@ export async function createTicketFromPayload(
         subDepartmentId: prep.intakeSubDepartmentId,
         assigneeId: prep.assigneeId ?? null,
         formConfigId,
+        // An explicitly selected issue owns its targets; automation must not replace them.
+        allowSla: !resolvedSlaPolicyId,
       },
       { ...formValues, priority: resolvedPriority },
     )

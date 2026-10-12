@@ -72,6 +72,8 @@ Each issue can have its own:
 
 When a ticket is created with that issue, the SLA configured for that issue will automatically apply.
 
+Confirmed on 2026-10-12: First Response starts at ticket creation. Resolution remains at zero until work tracking starts, then counts from the first work-tracking session. A reply or active-status change alone does not start resolution; an active-status change that actually starts work tracking does.
+
 ## Portal Ticket
 
 A Portal Ticket works the same way as a Support Ticket.
@@ -149,3 +151,10 @@ This allows us to clearly track:
 - How long the ticket was waiting for the customer.
 - Whether the Resolution SLA was met or breached.
 - How much overtime was required after an SLA breach.
+
+## Confirmed lifecycle decisions — 2026-10-12
+
+- A customer reply to a closed ticket does not automatically reopen it or restart clocks. The assignee moves it to **In Progress** to start a fresh SLA and work-tracking cycle.
+- Reopen resets both SLA allowances and their warning/breach guards. Original targets and saved calendar remain unchanged. In Progress immediately satisfies first response when it is a configured active status. Support/Portal resolution still requires a persisted work session; mailbox resolution retains agent-active-status/work activation.
+- Current-cycle tracked work starts from zero, including manual estimated-time compliance. Previous work entries and breach history are retained, not deleted. Each new cycle may warn/breach once again.
+- **Waiting for Customer / Waiting for Assignee are labels only.** Public conversation direction controls the labels and pause/resume behavior; it does not automatically change the main workflow status.

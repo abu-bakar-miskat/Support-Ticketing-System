@@ -34,7 +34,7 @@ const ts = (v: Date | string | number): number => new Date(v).getTime();
 export function deriveSubStatus(messages: readonly ConversationMessage[]): SubStatus | null {
   let last: ConversationMessage | null = null;
   for (const m of messages) {
-    if (m.status === "system") continue;
+    if (m.status === "system" || m.status === "quarantined") continue;
     if (last === null || ts(m.createdAt) >= ts(last.createdAt)) last = m;
   }
   if (last === null) return null;

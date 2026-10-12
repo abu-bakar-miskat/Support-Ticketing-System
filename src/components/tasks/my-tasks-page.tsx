@@ -40,7 +40,7 @@ import { PriorityPill } from "@/components/board/priority-indicator";
 import { StatusPill } from "@/components/board/status-pill";
 import { NewTicketModal } from "@/components/tickets/new-ticket-modal";
 import { DrawerLink } from "@/components/tickets/drawer-link";
-import { FilterDropdown, FilterVisibilityMenu, SortDropdown, type SortKey } from "@/components/tasks/task-filter-dropdown";
+import { FilterDropdown, FilterVisibilityMenu, RefreshButton, SortDropdown, type SortKey } from "@/components/tasks/task-filter-dropdown";
 import { usePersistedHiddenFilters } from "@/hooks/use-persisted-hidden-filters";
 import { collectModules } from "@/components/board/board-filters";
 import { TagPill } from "@/components/board/tag-pill";
@@ -62,8 +62,9 @@ import { moveTicket, updateTicket } from "@/lib/api/tickets";
 import { InlineStatusPicker, InlineAssigneePicker } from "@/components/ui/inline-pickers";
 import { toast } from "sonner";
 import { toastError } from "@/lib/toast-error";
-import { useQueryClient } from "@tanstack/react-query";
+import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import { invalidateTaskCaches } from "@/hooks/queries/invalidate-task-caches";
+import { taskKeys } from "@/hooks/queries/keys";
 import { useLinkedLabelMovePrompt } from "@/hooks/use-linked-label-move-prompt";
 import { ProjectAvatar, ProjectDot } from "@/components/projects/project-avatar";
 import type { AssignedSubtask } from "@/lib/board-data";
@@ -859,6 +860,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
   const { data: fetchedMeta } = useTasksMeta(!taskMeta && !!createForStatus);
   const meta = taskMeta ?? fetchedMeta;
   const queryClient = useQueryClient();
+  const myTasksFetching = useIsFetching({ queryKey: taskKeys.my() });
   const boardTimerTicketDbId = useTimerStore((s) => s.ticketDbId);
   const boardTimerEntryId = useTimerStore((s) => s.entryId);
   const { stopTimer: stopTimerOnMove } = useTimerActions();
@@ -1192,6 +1194,10 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
           )}
         >
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] max-xl:-mx-4 max-xl:px-4 sm:max-xl:-mx-6 sm:max-xl:px-6 xl:overflow-visible xl:px-0 [&::-webkit-scrollbar]:hidden">
+            <RefreshButton
+              onRefresh={() => queryClient.refetchQueries({ queryKey: taskKeys.my() })}
+              refreshing={myTasksFetching > 0}
+            />
             <p className="shrink-0 font-sans text-[12px] text-sts-muted sm:text-[12.5px]">
               <span className="font-semibold text-sts-foreground">{filteredTasks.length}</span>
               {" of "}

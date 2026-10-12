@@ -56,3 +56,11 @@ describe("latestConversationDirection", () => {
     expect(latestConversationDirection(messages)).toBe("inbound")
   })
 })
+
+
+it("quarantined emails cannot change the customer-wait label", () => {
+  expect(latestConversationDirection([
+    { direction: "outbound", status: "trusted", createdAt: new Date("2026-10-12T09:00:00Z") },
+    { direction: "inbound", status: "quarantined", createdAt: new Date("2026-10-12T10:00:00Z") },
+  ])).toBe("outbound")
+})

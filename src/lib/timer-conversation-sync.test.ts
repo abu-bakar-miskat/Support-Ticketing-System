@@ -1,3 +1,4 @@
+vi.mock("@/lib/portal-conversation", async (importOriginal) => ({ ...await importOriginal<typeof import("@/lib/portal-conversation")>(), loadPortalConversation: vi.fn().mockResolvedValue([]) }))
 vi.mock("@/lib/sla-engine", () => ({ checkAndNotifySla: vi.fn().mockResolvedValue(undefined), stopMailboxFirstResponseOnActiveStatus: vi.fn().mockResolvedValue(undefined) }))
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
@@ -56,10 +57,26 @@ describe("syncWorkTimerWithConversation", () => {
   })
 
   it("reconciles timer state from the latest persisted message", async () => {
-    mockFindLatestMessage.mockResolvedValue({ direction: "outbound" } as never)
+    mockFindLatestMessage.mockResolvedValue({ direction: "outbound", createdAt: new Date("2026-10-12T09:00:00Z") } as never)
 
     await syncWorkTimerWithLatestConversation("ticket-1")
 
     expect(mockStop).toHaveBeenCalledWith("ticket-1")
   })
+})
+
+
+it("does not resume completed work even if its status label is still In Progress", async () => {
+  mockFindTicket.mockResolvedValue({ status: "In Progress", closedAt: new Date(), assignee: { id: "agent-1", name: "Agent" } } as never)
+  await syncWorkTimerWithConversation("ticket-1", "inbound")
+  expect(mockStart).not.toHaveBeenCalled()
+})
+
+it("reconciles the latest Portal public reply alongside email replies", async () => {
+  const { loadPortalConversation } = await import("@/lib/portal-conversation")
+  mockFindLatestMessage.mockResolvedValue({ direction: "inbound", createdAt: new Date("2026-10-12T09:00:00Z") } as never)
+  vi.mocked(loadPortalConversation).mockResolvedValueOnce([{ direction: "outbound", createdAt: new Date("2026-10-12T10:00:00Z") }])
+  await syncWorkTimerWithLatestConversation("ticket-1")
+  expect(mockStop).toHaveBeenCalledWith("ticket-1")
+  expect(mockFindLatestMessage).toHaveBeenCalledWith(expect.objectContaining({ where: { ticketId: "ticket-1", status: "trusted" } }))
 })

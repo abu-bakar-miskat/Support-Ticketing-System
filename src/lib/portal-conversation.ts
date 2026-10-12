@@ -69,7 +69,7 @@ export function latestConversationDirection(
 ): "inbound" | "outbound" | null {
   let latest: { direction: string; at: number } | null = null
   for (const m of [...messages, ...portal]) {
-    if (m.status === "system") continue
+    if (m.status === "system" || m.status === "quarantined") continue
     const at = new Date(m.createdAt).getTime()
     if (!latest || at >= latest.at) latest = { direction: m.direction, at }
   }

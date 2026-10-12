@@ -1,4 +1,5 @@
-import { startMailboxResolutionOnWork } from "@/lib/sla-engine"
+import { getWorkCycleStart } from "@/lib/work-cycle"
+import { syncResolutionTimerOnClosedAtChange, startMailboxResolutionOnWork } from "@/lib/sla-engine"
 import { checkAndNotifyEstimateOverrun } from "@/lib/time-estimate-notify"
 import { prisma } from "@/lib/db"
 import { broadcastTimerChange } from "@/lib/timer-broadcast"
@@ -22,13 +23,17 @@ export async function startTimerOnStatusChange(
 ): Promise<void> {
   if (normalizeStatus(newStatus) !== "In Progress") return
 
+  await syncResolutionTimerOnClosedAtChange(ticketId, null)
+
   const ticket = await prisma.ticket.findUnique({
     where: { id: ticketId },
     select: {
       assigneeId: true,
+      closedAt: true,
+      deletedAt: true,
       assignees: { select: { userId: true } },
       messages: {
-        where: { status: { not: "system" } },
+        where: { status: "trusted" },
         orderBy: { createdAt: "desc" },
         take: 1,
         select: { direction: true, createdAt: true },
@@ -37,7 +42,7 @@ export async function startTimerOnStatusChange(
       intake: portalIntakeSelect,
     },
   })
-  if (!ticket) return
+  if (!ticket || ticket.closedAt || ticket.deletedAt) return
 
   const isAssignee =
     ticket.assigneeId === actor.id ||
@@ -47,13 +52,14 @@ export async function startTimerOnStatusChange(
   // The derived conversation label is Waiting for customer when the latest
   // public message is outbound. Automatic status changes must not restart work
   // while the agent is waiting; the next inbound customer reply will resume it.
+  const cycleStart = await getWorkCycleStart(ticketId)
   const latest = [
     ...ticket.messages,
     ...portalCommentsAsConversation(ticket.comments, ticket.intake),
-  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+  ].filter((message) => !cycleStart || new Date(message.createdAt) >= cycleStart).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
   if (latest?.direction === "outbound") return
 
-  const latestInboundAt = latest ? new Date(latest.createdAt) : undefined
+  const latestInboundAt = latest ? new Date(latest.createdAt) : cycleStart ?? undefined
   const existingEntry = await prisma.timeEntry.findFirst({
     where: {
       ticketId,

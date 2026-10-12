@@ -1,3 +1,4 @@
+import { syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
 import { checkAndNotifyEstimateOverrun } from "@/lib/time-estimate-notify"
 import { NextRequest, NextResponse, after } from "next/server"
 import { requireAuth, assertTicketAccess, assertTicketEditAccess } from "@/lib/auth"
@@ -635,6 +636,7 @@ export async function PATCH(
   // auto-stop/-start the assignee's timer and cascade completion to sub-tickets.
   if (hasStatus && updated.status !== ticket.status) {
     after(() => runWithScope(uniqueTicketReadScope(profile, id), async () => {
+      if (ticket.closedAt !== updateData.closedAt) await syncResolutionTimerOnClosedAtChange(id, updateData.closedAt ?? null).catch(() => undefined)
       await stopRunningTimersOnStatusChange(id, updated.status).catch(() => undefined)
       await startTimerOnStatusChange(id, updated.status, {
         id: profile.id,

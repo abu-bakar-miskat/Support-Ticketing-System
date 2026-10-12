@@ -6,7 +6,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { X, Search, ChevronDown, Loader2, Users, ListTodo } from "lucide-react";
-import { FilterDropdown, FilterVisibilityMenu, SortDropdown, type SortKey } from "@/components/tasks/task-filter-dropdown";
+import { FilterDropdown, FilterVisibilityMenu, RefreshButton, SortDropdown, type SortKey } from "@/components/tasks/task-filter-dropdown";
 import { usePersistedHiddenFilters } from "@/hooks/use-persisted-hidden-filters";
 import { DateRangeDropdown, formatRangeLabel, type DateRange } from "@/components/ui/date-range-dropdown";
 import { cn } from "@/lib/utils";
@@ -430,6 +430,11 @@ export function AllTasksPage({
             hideTitleBar ? "mb-0" : "mb-3 sm:mb-4",
           )}
         >
+          <div className="flex shrink-0 items-center gap-2">
+          <RefreshButton
+            onRefresh={() => refetch()}
+            refreshing={isFetching && !isFetchingNextPage}
+          />
           {/* Stats */}
           <p className="shrink-0 font-sans text-[12px] text-sts-muted sm:text-[12.5px]">
             {isLoading ? (
@@ -450,12 +455,10 @@ export function AllTasksPage({
                     your projects only
                   </span>
                 )}
-                {isFetching && !isFetchingNextPage && (
-                  <Loader2 className="ml-2 inline size-3.5 animate-spin text-sts-subtle" />
-                )}
               </>
             )}
           </p>
+          </div>
 
           {/* Toolbar */}
           <div className="min-w-0 flex-1 overflow-x-auto pb-1 [scrollbar-width:none] max-xl:-mx-4 max-xl:px-4 sm:max-xl:-mx-6 sm:max-xl:px-6 xl:px-0 [&::-webkit-scrollbar]:hidden">

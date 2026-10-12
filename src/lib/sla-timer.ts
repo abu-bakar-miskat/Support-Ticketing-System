@@ -138,36 +138,21 @@ export type SlaReopenFields = {
   firstResponseBreachNotifiedAt: null;
   resolutionStartedAt: Date;
   resolutionStoppedAt: null;
+  resolutionAtRiskNotifiedAt: null;
+  resolutionBreachNotifiedAt: null;
 };
 
-/**
- * OQ-03: on reopen, the resolution timer resumes and a fresh first-response
- * timer starts. "Resume" must not count the time the ticket sat closed as
- * elapsed, but the timer only stores instants (no accumulated-pause
- * counter) — so resuming shifts `resolutionStartedAt` forward by exactly the
- * closed-wall-clock duration (`now - resolutionStoppedAt`). That keeps prior
- * progress intact and is exact for continuous (non-paused) timers; under a
- * working-hours calendar it's a reasonable approximation (business-day math
- * isn't perfectly translation-invariant across the shift), which is
- * acceptable for closed-to-reopen spans of typical support-ticket length.
- * First-response is a genuinely fresh cycle: new `startedAt`, cleared
- * `stoppedAt`, and its notification flags reset so at-risk/breach can fire
- * again. Pure field diff — the caller spreads this into the existing
- * `SlaTimer` row; no new row, no schema change.
- */
-export function planReopen(
-  timer: Pick<SlaTimerState, "resolutionStartedAt" | "resolutionStoppedAt">,
-  now: Date,
-): SlaReopenFields {
-  const pausedMs = timer.resolutionStoppedAt
-    ? Math.max(0, now.getTime() - timer.resolutionStoppedAt.getTime())
-    : 0;
+/** A confirmed agent reopen starts fresh allowances and notification guards.
+ * Historical work and breach rows remain immutable. */
+export function planReopen(now: Date): SlaReopenFields {
   return {
     firstResponseStartedAt: now,
     firstResponseStoppedAt: null,
     firstResponseAtRiskNotifiedAt: null,
     firstResponseBreachNotifiedAt: null,
-    resolutionStartedAt: new Date(timer.resolutionStartedAt.getTime() + pausedMs),
+    resolutionStartedAt: now,
     resolutionStoppedAt: null,
+    resolutionAtRiskNotifiedAt: null,
+    resolutionBreachNotifiedAt: null,
   };
 }

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 
 vi.mock("@/lib/db", () => {
   const db = {
+    activityLog: { findFirst: vi.fn().mockResolvedValue(null) },
     ticket: { findFirst: vi.fn(), updateMany: vi.fn() },
     timeEntry: { findMany: vi.fn(), updateMany: vi.fn() },
     slaBreach: { create: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
@@ -22,7 +23,7 @@ import { createNotification } from "@/lib/notify"
 import { broadcastTicketEvent } from "@/lib/ticket-events"
 import { checkAndNotifyLegacyEstimateOverrun } from "@/lib/legacy-time-estimate-notify"
 import { checkAndNotifyEstimateOverrun } from "./time-estimate-notify"
-import { getManualResolutionView, finalizeManualResolution, trackedWorkSeconds, manualTicketWhere } from "./manual-resolution"
+import { getManualResolutionView, finalizeManualResolution, stopTicketWorkAt, trackedWorkSeconds, manualTicketWhere } from "./manual-resolution"
 
 const now = new Date("2026-10-09T12:00:00Z")
 const ticket = {
@@ -167,4 +168,31 @@ it("omits privileged manual overview details for agents", async () => {
   expect(view).toMatchObject({ trackedSecs: 60, status: "ON_TRACK", runningCount: 1 })
   expect(view).not.toHaveProperty("details")
   expect(prisma.slaBreach.findMany).not.toHaveBeenCalled()
+})
+
+
+it("freezes non-manual work at completion and does not broadcast a lost stop race", async () => {
+  vi.mocked(prisma.timeEntry.findMany).mockResolvedValueOnce([
+    { id: "work-1", profileId: "agent-1", startedAt: new Date(now.getTime() - 65000), profile: { name: "Agent" } },
+  ] as never)
+  vi.mocked(prisma.timeEntry.updateMany).mockResolvedValueOnce({ count: 0 })
+  await stopTicketWorkAt("portal-1", now)
+  expect(prisma.timeEntry.updateMany).toHaveBeenCalledWith({ where: { id: "work-1", endedAt: null }, data: { endedAt: now, durationSecs: 65 } })
+  expect(broadcastTicketEvent).not.toHaveBeenCalled()
+})
+
+it("preserves manual tracked work outside configured SLA working hours", async () => {
+  const end = new Date("2026-10-10T23:00:00Z")
+  vi.mocked(prisma.timeEntry.findMany).mockResolvedValueOnce([{ startedAt: new Date("2026-10-10T22:00:00Z"), endedAt: end, durationSecs: 3600 }] as never)
+  expect(await trackedWorkSeconds("manual-1", end)).toBe(3600)
+})
+
+describe("reopened work cycles", () => {
+  it("counts only current-cycle work without deleting historical entries", async () => {
+    vi.mocked(prisma.activityLog.findFirst).mockResolvedValueOnce({ createdAt: now } as never)
+    await trackedWorkSeconds(ticket.id, new Date(now.getTime() + 60_000))
+    expect(prisma.timeEntry.findMany).toHaveBeenLastCalledWith(expect.objectContaining({
+      where: { ticketId: ticket.id, startedAt: { gte: now } },
+    }))
+  })
 })

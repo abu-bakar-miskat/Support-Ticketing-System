@@ -1,3 +1,4 @@
+import { getWorkCycleStart } from "@/lib/work-cycle";
 import { isMailboxReceipt } from "@/lib/mailbox-ticket-origin";
 import "server-only";
 import { personalEstimatesWithCreationFallback } from "@/lib/ticket-estimates";
@@ -442,7 +443,8 @@ export async function getTicketDetailPayload(
     ? await getMailboxTicketCustomer(ticket.id)
     : null;
   const activityLogs = ticket.activityLogs;
-  const ticketTimeEntries = ticket.timeEntries;
+  const cycleStart = await getWorkCycleStart(ticket.id);
+  const ticketTimeEntries = ticket.timeEntries.filter((entry) => !cycleStart || entry.startedAt >= cycleStart);
   // Statuses already load on the board via /api/sub-departments/:id/statuses.
   const subDepartmentStatuses: Awaited<
     ReturnType<typeof getCachedSubDepartmentStatuses>

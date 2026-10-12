@@ -122,7 +122,7 @@ describe("resolutionUpdateOnStatusChange", () => {
     expect(out).toEqual({})
   })
 
-  it("computes duration + within verdict on completion using the SLA target", () => {
+  it("defers SLA completion to the authoritative lifecycle calculation", () => {
     const started = new Date("2026-09-14T09:00:00.000Z")
     const closed = new Date("2026-09-14T10:30:00.000Z") // 90 min
     const out = resolutionUpdateOnStatusChange({
@@ -134,8 +134,7 @@ describe("resolutionUpdateOnStatusChange", () => {
       estimatedTime: 30,
       now,
     })
-    expect(out.resolutionDurationMins).toBe(90)
-    expect(out.resolvedWithinAllowed).toBe(true) // 90 <= 120 (SLA wins over estimate)
+    expect(out).toEqual({})
   })
 
   it("flags exceeded on completion, falling back to estimate when no SLA", () => {

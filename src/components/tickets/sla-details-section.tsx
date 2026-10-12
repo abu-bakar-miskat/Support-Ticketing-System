@@ -4,7 +4,6 @@ import { AlertTriangle, CheckCircle2, Info, MessageSquareReply, PauseCircle, Tim
 import { cn } from "@/lib/utils"
 import { formatDateTime } from "@/lib/format"
 import {
-  formatDuration,
   formatWorkDuration,
   useSlaIndicator,
   type SlaIndicator,
@@ -61,13 +60,15 @@ export function SlaDetailsSection({
           running: manual.runningCount > 0,
         }} startedAt={manual.details.firstWorkedAt} stoppedAt={manual.details.resolvedAt}
           metLabel="Resolved" pendingLabel="Work tracking" frozen={false}
-          breaches={manual.details.breaches} strictExceed formatTime={formatWorkDuration} />
+          breaches={manual.details.breaches.filter((b) => !manual.details!.cycleStartedAt || b.breachedAt >= manual.details!.cycleStartedAt)} strictExceed formatTime={formatWorkDuration} />
+        <BreachHistory breaches={manual.details.breaches} />
       </div>
     )
   }
   if (!indicator?.details) return null
   const details = indicator.details
   const closed = details.resolutionStoppedAt !== null
+  const currentBreaches = details.breaches.filter((b) => b.breachedAt >= details.firstResponseStartedAt)
 
   return (
     <div className="flex flex-col gap-1.5">
@@ -98,14 +99,13 @@ export function SlaDetailsSection({
           startedAt={details.firstResponseStartedAt}
           stoppedAt={details.firstResponseStoppedAt}
           metLabel="Responded"
-          // A ticket closed without any public agent reply never stops this clock.
           pendingLabel={closed ? "Closed without a reply" : "Awaiting reply"}
           frozen={closed}
-          breaches={details.breaches.filter((b) => b.metric === "first_response")}
+          breaches={currentBreaches.filter((b) => b.metric === "first_response")}
         />
         <MetricCard
           icon={CheckCircle2}
-          label="Resolution"
+          label="Resolution (active)"
           strictExceed={indicator.source === "mailbox" || indicator.source === "form"}
           metric={live(indicator.resolution)}
           startedAt={details.resolutionStartedAt}
@@ -113,11 +113,28 @@ export function SlaDetailsSection({
           metLabel="Resolved"
           pendingLabel={details.resolutionStartedAt ? "Open" : "Awaiting agent work"}
           frozen={false}
-          breaches={details.breaches.filter((b) => b.metric === "resolution")}
+          breaches={currentBreaches.filter((b) => b.metric === "resolution")}
         />
       </div>
+      {details.report ? <dl className="flex flex-col gap-1 font-sans text-[11px] text-sts-subtle">
+        <div className="flex justify-between gap-2"><dt>Customer waiting (elapsed)</dt><dd>{formatWorkDuration(details.report.customerWaitingMs)}</dd></div>
+        <div className="flex justify-between gap-2"><dt>Waiting excluded from resolution</dt><dd>{formatWorkDuration(details.report.resolutionWaitingMs)}</dd></div>
+      </dl> : null}
+      <BreachHistory breaches={details.breaches} />
     </div>
   )
+}
+
+function BreachHistory({ breaches }: { breaches: Details["breaches"] }) {
+  if (!breaches.length) return null
+  return <details className="font-sans text-[11px] text-sts-subtle">
+    <summary className="cursor-pointer">Breach history · all cycles ({breaches.length})</summary>
+    <ol className="mt-2 flex flex-col gap-1">
+      {breaches.map((breach, index) => <li key={index}>
+        {breach.metric === "resolution" ? "Resolution" : "First response"} · allowed {formatWorkDuration(breach.targetMins * 60_000)} · {formatDateTime(new Date(breach.breachedAt))}
+      </li>)}
+    </ol>
+  </details>
 }
 
 function MetricCard({
@@ -131,7 +148,7 @@ function MetricCard({
   frozen,
   breaches,
   strictExceed = false,
-  formatTime = formatDuration,
+  formatTime = formatWorkDuration,
 }: {
   icon: React.ComponentType<{ className?: string }>
   label: string

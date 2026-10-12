@@ -5,10 +5,10 @@ Created: 2026-10-09
 ## Resume context
 
 - Requirements: [sla-requirements.md](sla-requirements.md). Treat this as the source of intended behavior.
-- Existing implementation description: [sla.md](sla.md), written from code on 2026-10-08. Verify its claims against current code before implementation.
+- Final implementation description: [sla.md](sla.md), updated from code for Stage 5 on 2026-10-12.
 - Repository instructions: [AGENTS.md](../AGENTS.md).
 - The initial review compared the two documents only; it did not audit the code.
-- Stage 1 is approved. Stage 2 is implemented; its latest duplicate-email and atomic arrival-notification fixes still await final user testing. The user explicitly authorized Stage 3 on 2026-10-12 without approving those latest Stage 2 fixes. The user approved Stage 3 and explicitly authorized Stage 4 on 2026-10-12. Stage 3 retains the existing no-issue and unmatched-department fallback behavior (those policy questions were not answered). Stage 4 is implemented, including the user-confirmed fresh reopen cycles and waiting labels; it awaits user testing/approval. Stage 5 is unstarted.
+- Stage 1 is approved. Stage 2 is implemented; its latest duplicate-email and atomic arrival-notification fixes still await final user testing. The user explicitly authorized Stage 3 on 2026-10-12 without approving those latest Stage 2 fixes. The user approved Stage 3 and explicitly authorized Stage 4 on 2026-10-12. Stage 3 retains the existing no-issue and unmatched-department fallback behavior (those policy questions were not answered). Stage 4 is approved by the user. Stage 5 was explicitly authorized on 2026-10-12 and is implemented, awaiting user testing/approval.
 
 ## Required working process
 
@@ -31,8 +31,8 @@ Saving this plan does not authorize starting implementation. Do not infer approv
 | 1 | Manual tickets | Approved | User approved Stage 2 on 2026-10-09 |
 | 2 | Shared mailbox tickets | Latest duplicate/arrival fixes awaiting final user testing | Stage 3 explicitly authorized on 2026-10-12; latest Stage 2 fixes remain unapproved |
 | 3 | Support form and Portal tickets | Approved by user; existing unresolved fallback/no-issue behavior retained | User approved Stage 4 on 2026-10-12 |
-| 4 | Working hours, waiting states, and lifecycle | Awaiting user testing and approval | Starting authorized on 2026-10-12; Stage 5 not authorized |
-| 5 | Reporting and cleanup | Not started | Pending |
+| 4 | Working hours, waiting states, and lifecycle | Approved by user | User explicitly authorized Stage 5 on 2026-10-12 |
+| 5 | Reporting and cleanup | Awaiting user testing and approval | Starting explicitly authorized on 2026-10-12; approval pending |
 
 ## Stage 1 — Manual tickets
 
@@ -153,13 +153,15 @@ Use controlled notification verification so real managers are not emailed accide
 
 ## Decisions still requiring clarification when relevant
 
-- Which configured active statuses qualify as first response?
+- Configured saved active statuses qualify as first response (confirmed); no pending decision.
 - Whether sub-department managers should receive alerts in addition to department managers.
-- Calendar ownership and behavior when tickets move departments.
-- Reopen cycles and repeat breach notifications.
+- Saved calendars survive reassignment/department moves (confirmed); no pending decision.
+- Fresh reopen cycles and repeat per-cycle alerts are confirmed; see Stage 4.
 - Whether priority changes should affect existing targets; this is not requested by the requirements.
 
 Manual estimated-time breaches, mailbox SLA, and working-hours pausing are already required. Do not reopen these as optional product questions.
+
+The following earlier checkpoint notes retain the status/limitations at each checkpoint; the Progress table and Handoff notes reflect current approvals.
 
 ## Stage 1 implementation results — 2026-10-09
 
@@ -427,7 +429,7 @@ The user tested Support ticket PHP-7 and reported resolution counting while Time
 
 ## Stage 4 implementation results — 2026-10-12
 
-Status: **Awaiting user testing and approval.** Calendar, waiting, completion, and the user-confirmed reopen behavior are implemented and verified. The user explicitly approved Stage 3 and authorized Stage 4. Stage 5 remains unstarted.
+Status: **Approved by user.** Calendar, waiting, completion, and confirmed reopen behavior are implemented and verified. The user approved Stage 4 and explicitly authorized Stage 5 on 2026-10-12. Verification below records the Stage 4 checkpoint.
 
 ### Implemented changes
 
@@ -486,15 +488,60 @@ Use an isolated test tenant/department and controlled requester/assignee/manager
 
 ### Remaining limitations
 
-- Stage 4 awaits user testing and approval; Stage 5 remains unstarted.
+- Stage 4 is now user-approved; Stage 5 results and pending user testing are recorded below.
 - Primary workflow statuses remain unchanged by conversation events, as explicitly requested. Explicit existing Waiting for Customer workflow statuses still pause SLA through status history.
 - Legacy pre-snapshot form/automation timers continue using their prior runtime calendar behavior; no historical snapshot/backfill was inferred from current schedules. Accurate reconstruction requires original schedule history, which these older timers did not save. New Stage 2/3 snapshots remain stable.
-- Reporting reconciliation and sweep cadence remain Stage 5. Stage 2's latest duplicate/arrival fixes retain their pending final user-testing status.
+- Reporting reconciliation and sweep cadence were addressed in Stage 5 below. Stage 2's latest duplicate/arrival fixes retain their pending final user-testing status.
 
 ## Handoff notes
 
-- Stage 1 is approved. Stage 2's latest duplicate-ticket and arrival-notification fixes still await final user testing.
-- Current work: Stage 3 is user-approved. Stage 4 calendar/wait/completion and confirmed fresh reopen cycles are implemented and verified; stop for user testing/approval. Earlier no-issue/unmatched-department policies were left unchanged, not silently resolved.
-- Schema/database changes from Stage 2: migrations `20261009160000_mailbox_sla_stage2` and `20261012083000_mailbox_receipt_guard` are already applied/recorded. Do not reapply them. Stage 3 introduces no schema changes.
-- Verification: implemented Stage 4 fixes pass focused checks; full-suite failures match the pre-edit Stage 4 baseline exactly; typecheck passes and lint has only the noted pre-existing warning.
-- Stage 4 is awaiting user testing/approval, authorized on 2026-10-12. Stage 5 remains unstarted and requires explicit approval after Stage 4 completion/testing.
+- Stages 1, 3 and 4 are user-approved. Stage 2's latest duplicate-email and atomic arrival-notification fixes still await final user testing; that status is unchanged.
+- Stage 5 was explicitly authorized on 2026-10-12. Implementation is complete and awaiting user testing/approval; stop here.
+- Existing no-issue and unmatched-department fallback policies remain unchanged.
+- Migrations `20261009160000_mailbox_sla_stage2` and `20261012083000_mailbox_receipt_guard` are already applied/recorded. Do not reapply them. Stages 3–5 need no schema changes.
+- Earlier Stage 3/4 work was in HEAD (`20b8122`) at the Stage 5 baseline; the worktree was clean. No reset, staging, commit or discard was performed.
+
+## Stage 5 implementation results — 2026-10-12
+
+Status: **Awaiting user testing and approval.** User explicitly approved Stage 4 and authorized this stage. Stage 2's pending fixes remain unapproved.
+
+### Changes
+
+- All eligible SLA completions now persist the engine's calendar/pause-aware resolution result, including Support/Portal. Formal SLA status updates defer completion arithmetic to that shared hook instead of writing a wall-clock verdict. Repeat completion hooks can refresh a missed projection; compliance is evaluated before rounding stored minutes.
+- Resolution-time mean/median reports and exports use authoritative SLA elapsed or current-cycle manual tracked seconds, retaining fractional minutes. Added read-only in-memory reconciliation, with six-ticket batches: report reads never persist repairs, send notifications, or claim guards. Non-SLA non-manual tickets retain their existing turnaround fallback.
+- Privileged SLA detail API includes exact allowed/actual/overtime/compliance for both applicable metrics, wall-clock customer waiting across the current cycle and working waiting excluded after resolution activation. Manual details expose current-cycle completion compliance/boundary without introducing a first-response clock. The UI shows seconds, customer waiting and excluded working wait, and separates current-cycle breach timelines from complete historical breach records with original targets/detection dates.
+- Manual breach claims compare the saved In Progress cycle boundary as well as estimate/closure/guard, so a previous-cycle checker cannot claim the fresh guard. Existing SLA transaction/cycle guards and append-only breach rows remain intact.
+- Verified `*/15 * * * *` deployment cadence without running the shared sweep; corrected the stale five-minute comment. Documented warning skipping/latency, backlog and best-effort delivery limits. Cadence itself is unchanged.
+- Cleanup removed only an unreachable commented `SlaRule` seed example. Reference checks found settings/API compatibility writes to policy assignment fields, so those fields and assignment functionality remain. Policy conditions/sub-department precedence remain. No destructive model/table cleanup or migration was needed.
+- Rewrote [sla.md](sla.md) around the implemented source-specific behavior, reporting definitions, lifecycle/history, detection and limitations.
+
+### Verification
+
+- Read repository instructions, all three SLA documents, installed Next.js route-handler/client-component guides, and inspected lifecycle/reporting/notification code before edits; also checked the installed `after` guide for the deferred move-route limitation. Initial `git status`/diff were clean. Existing `next dev` was observed and the local crontab was empty; neither server nor sweep was started.
+- Pre-edit full baseline: **1569 passed, 50 failed, 2 skipped**. Final full suite: **1580 passed, the identical 50 failed, 2 skipped**. Compared failed identities by file/full test name: **no new or removed failures**. Full suite is not green because of those pre-existing failures.
+- Expanded focused verification: **233 passed across 19 files**, covering completed SLA/manual reporting, customer-wait clipping/merging, strict second-level overtime/compliance, read-only exports, cycle/history display, stale manual claims, concurrent warnings/breaches and preserved Stage 2 duplicate/atomic-arrival regressions, calendars, work and lifecycle hooks.
+- Typecheck passed before and after. ESLint passed for all Stage 5 application/test files. The untouched ticket-detail page's baseline remains **46 existing lint errors and 14 warnings**. `git diff --check` passed.
+- All writes/notifications in verification were mocked. No shared sweep, live-ticket changes, real manager/completion emails, database experiments, schema edits/migrations, duplicate deletion or history backfill were used. No files were reset, discarded, staged or committed.
+
+### Limitations
+
+- No live browser, shared-ticket or real-delivery verification was performed; user testing remains necessary. Stage 2's duplicate/arrival fixes retain their separate pending status.
+- Old timers lacking saved calendars cannot reconstruct original schedules. Historical stored completion projections were not mass-backfilled; aggregate reports recalculate from available records.
+- Reporting describes the latest resolved cycle, not an archive of every past completion summary. Historical work and breach records remain preserved, with breach timestamps representing detection rather than exact crossing.
+- Non-SLA non-manual aggregate samples remain legacy turnaround time. Aggregate report UI rounds minute labels; exported samples retain precision. Additional per-ticket reads can increase export time.
+- Existing move-route lifecycle work runs after the response; completion projections may briefly await that hook. Per-ticket SLA views/reports provide the authoritative calculation rather than treating a provisional status-response projection as final.
+- Fifteen-minute detection can miss early-warning windows for short allowances; backlogs extend latency. Notification delivery remains best-effort without a durable retry queue. No cadence/product policy change was assumed.
+
+### Concrete user testing steps
+
+Use isolated test tickets and captured notification/completion delivery. Do not invoke the team's shared sweep.
+
+1. Complete manual, mailbox, Support and Portal test tickets; compare allowed/actual/first-response/active resolution/wait/overtime/compliance with the timeline. Manual work outside hours must count; mailbox/form outside-hours queue/work time must not.
+2. Include repeated outbound waits, customer replies, and a weekend. Compare customer waiting elapsed with working waiting excluded; neither may double count. Refresh completed tickets later: metrics must stay frozen.
+3. Verify exactly-at-target and one-second-over completion. Mailbox/form/manual resolution is compliant at equality and breached after excess; rounded stored minutes must not change that verdict.
+4. Review resolution-time statistics and exports over the completion period. Compare averages/medians against exact active/tracked durations, including manual reopen totals; existing assignment and conditional policy routing should remain functional.
+5. Reopen through the assignee's In Progress transition. Verify fresh current metrics/work/guards with original targets/calendar and prior breaches still in all-cycle history at original targets/dates. Customer replies alone leave the ticket closed. Complete again: reports use only the latest cycle.
+6. In a mocked or isolated scheduler/delivery environment, verify repeated/concurrent threshold checks produce one notification per threshold/recipient/cycle, while a fresh reopened cycle can alert again. For unattended checks, observe the normal deployed cadence; do not manually run the shared sweep. Short targets may skip warning as documented.
+7. Retest duplicate receipt and atomic arrival notifications separately for Stage 2 before approving those fixes. Full testing detail is in [sla.md](sla.md).
+
+Stop for user testing/approval; no further stage is authorized by automated verification.

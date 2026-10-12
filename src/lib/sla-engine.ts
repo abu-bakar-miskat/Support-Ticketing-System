@@ -1,3 +1,4 @@
+import { metricReport, customerWaitingMs } from "@/lib/sla-reporting";
 import { normalizeStatus } from "@/components/board/board-types";
 import { broadcastTicketEvent } from "@/lib/ticket-events";
 import { readFormSlaSnapshot, FORM_SLA_SOURCE } from "@/lib/form-sla";
@@ -333,7 +334,7 @@ export async function startMailboxSlaTimer(
 async function reconcileFirstResponseActiveStatus(timer: {
   ticketId: string; source: string | null; firstResponseStartedAt: Date; firstResponseStoppedAt: Date | null; mailboxConfig?: unknown;
   ticket: { intake?: { id: string } | null; subDepartmentId: string; subDepartment: { departmentId: string } };
-}, until: Date) {
+}, until: Date, persist = true) {
   if ((timer.source !== MAILBOX_SLA_SOURCE && !timer.ticket.intake) || timer.firstResponseStoppedAt) return;
   const snapshot = timer.source === MAILBOX_SLA_SOURCE ? readMailboxSnapshot(timer.mailboxConfig) : readFormSlaSnapshot(timer.mailboxConfig);
   const settings = snapshot ? null : (await resolveSlaSettings(timer.ticket.subDepartment.departmentId, timer.ticket.subDepartmentId)).slaConfig;
@@ -344,7 +345,7 @@ async function reconcileFirstResponseActiveStatus(timer: {
   });
   const acted = events.find((event) => { const status = statusDestination(event.metadata); return status && isMailboxActiveStatus(status, active); });
   if (acted) {
-    await stopFirstResponseOnPublicAgentMessage(timer.ticketId, acted.createdAt);
+    if (persist) await stopFirstResponseOnPublicAgentMessage(timer.ticketId, acted.createdAt);
     timer.firstResponseStoppedAt = acted.createdAt;
   }
 }
@@ -355,7 +356,7 @@ async function reconcileMailboxResolutionStart(timer: {
   ticketId: string; source: string | null; mailboxConfig?: unknown;
   firstResponseStartedAt: Date; resolutionStartedAt: Date; resolutionStoppedAt: Date | null;
   ticket: { assigneeId: string | null; closedAt?: Date | null; subDepartmentId: string; subDepartment: { departmentId: string } };
-}, until: Date, finalizing = false) {
+}, until: Date, finalizing = false, persist = true) {
   if (timer.source !== MAILBOX_SLA_SOURCE) return;
   let snapshot = readMailboxSnapshot(timer.mailboxConfig);
   if (snapshot?.resolutionActivatedAt || (timer.ticket.closedAt && !finalizing)) return;
@@ -381,10 +382,10 @@ async function reconcileMailboxResolutionStart(timer: {
   const began = [active, work?.startedAt].filter((value): value is Date => !!value).sort((a, b) => a.getTime() - b.getTime())[0];
   if (!began && snapshot.resolutionActivatedAt === null) return;
   const updatedSnapshot = { ...snapshot, resolutionActivatedAt: began?.toISOString() ?? null };
-  const claimed = await prisma.slaTimer.updateMany({
+  const claimed = persist ? await prisma.slaTimer.updateMany({
     where: { ticketId: timer.ticketId, source: MAILBOX_SLA_SOURCE, resolutionStartedAt: timer.resolutionStartedAt, mailboxConfig: { equals: timer.mailboxConfig == null ? Prisma.DbNull : timer.mailboxConfig as Prisma.InputJsonValue } },
     data: { mailboxConfig: updatedSnapshot as unknown as Prisma.InputJsonValue, ...(began ? { resolutionStartedAt: began } : {}) },
-  });
+  }) : { count: 1 };
   if (claimed.count) {
     timer.mailboxConfig = updatedSnapshot;
     if (began) timer.resolutionStartedAt = began;
@@ -402,7 +403,7 @@ async function reconcileMailboxResolutionStart(timer: {
 async function reconcileFormResolutionStart(timer: {
   ticketId: string; source: string | null; mailboxConfig?: unknown;
   firstResponseStartedAt: Date; resolutionStartedAt: Date;
-}, until: Date) {
+}, until: Date, persist = true) {
   if (timer.source !== FORM_SLA_SOURCE) return;
   const snapshot = readFormSlaSnapshot(timer.mailboxConfig);
   if (!snapshot || snapshot.resolutionActivatedAt) return;
@@ -412,10 +413,10 @@ async function reconcileFormResolutionStart(timer: {
   });
   if (!work) return;
   const updatedSnapshot = { ...snapshot, resolutionActivatedAt: work.startedAt.toISOString() };
-  const claimed = await prisma.slaTimer.updateMany({
+  const claimed = persist ? await prisma.slaTimer.updateMany({
     where: { ticketId: timer.ticketId, source: FORM_SLA_SOURCE, resolutionStartedAt: timer.resolutionStartedAt, mailboxConfig: { equals: timer.mailboxConfig as Prisma.InputJsonValue } },
     data: { resolutionStartedAt: work.startedAt, mailboxConfig: updatedSnapshot as unknown as Prisma.InputJsonValue },
-  });
+  }) : { count: 1 };
   if (claimed.count) {
     timer.mailboxConfig = updatedSnapshot;
     timer.resolutionStartedAt = work.startedAt;
@@ -538,21 +539,22 @@ export async function syncResolutionTimerOnClosedAtChange(ticketId: string, clos
     if (!timer && closedAt !== null) return;
 
     if (closedAt !== null && timer) {
-      if (timer.resolutionStoppedAt !== null) return; // already stopped
-      if (timer.source === MAILBOX_SLA_SOURCE || timer.source === FORM_SLA_SOURCE) {
-        await checkAndNotifySla(ticketId, closedAt, { finalizing: true });
-        await prisma.slaTimer.updateMany({
-          where: { ticketId, firstResponseStoppedAt: null }, data: { firstResponseStoppedAt: closedAt },
-        });
+      if (timer.resolutionStoppedAt === null) {
+        if (timer.source === MAILBOX_SLA_SOURCE || timer.source === FORM_SLA_SOURCE) {
+          await checkAndNotifySla(ticketId, closedAt, { finalizing: true });
+          await prisma.slaTimer.updateMany({
+            where: { ticketId, firstResponseStoppedAt: null }, data: { firstResponseStoppedAt: closedAt },
+          });
+        }
+        await prisma.slaTimer.update({ where: { ticketId }, data: { resolutionStoppedAt: closedAt } });
       }
-      await prisma.slaTimer.update({ where: { ticketId }, data: { resolutionStoppedAt: closedAt } });
-      if (timer.source === MAILBOX_SLA_SOURCE) {
-        const final = await getSlaIndicatorForTicket(ticketId, closedAt);
-        if (final) await prisma.ticket.updateMany({
-          where: { id: ticketId, closedAt },
-          data: { resolutionDurationMins: Math.round(final.resolution.elapsedMs / 60_000), resolvedWithinAllowed: final.resolution.elapsedMs <= final.resolution.targetMs },
-        });
-      }
+      // All eligible SLA sources share exactly the same final calculation as
+      // their indicator. Repeat completion hooks can repair a missed projection.
+      const final = await getSlaIndicatorForTicket(ticketId, closedAt);
+      if (final) await prisma.ticket.updateMany({
+        where: { id: ticketId, closedAt },
+        data: { resolutionDurationMins: Math.round(final.resolution.elapsedMs / 60_000), resolvedWithinAllowed: final.resolution.status !== "BREACHED" },
+      });
       return;
     }
 
@@ -646,16 +648,16 @@ function isSlaEligible(timer: {
 }
 
 /** Read-only SLA indicator for a ticket (SLA-06), for the API/UI. Null when no SLA applies. */
-export async function getSlaIndicatorForTicket(ticketId: string, now: Date = new Date()): Promise<SlaIndicator | null> {
+export async function getSlaIndicatorForTicket(ticketId: string, now: Date = new Date(), opts: { readOnly?: boolean } = {}): Promise<SlaIndicator | null> {
   const timer = await prisma.slaTimer.findUnique({
     where: { ticketId },
     include: { ticket: { select: SLA_TICKET_SELECT } },
   });
   if (!timer || !isSlaEligible(timer)) return null;
 
-  await reconcileFirstResponseActiveStatus(timer, now);
-  await reconcileMailboxResolutionStart(timer, now);
-  await reconcileFormResolutionStart(timer, timer.resolutionStoppedAt ?? now);
+  await reconcileFirstResponseActiveStatus(timer, timer.resolutionStoppedAt ?? now, !opts.readOnly);
+  await reconcileMailboxResolutionStart(timer, timer.resolutionStoppedAt ?? now, !!opts.readOnly, !opts.readOnly);
+  await reconcileFormResolutionStart(timer, timer.resolutionStoppedAt ?? now, !opts.readOnly);
   const rangeFrom = timer.firstResponseStartedAt < timer.resolutionStartedAt ? timer.firstResponseStartedAt : timer.resolutionStartedAt;
   const { calendar, slaConfig } = await runtimeForTimer(timer, rangeFrom, now);
   const resolutionUntil = timer.resolutionStoppedAt ?? now;
@@ -737,6 +739,13 @@ export async function getSlaIndicatorViewForTicket(
     select: { metric: true, targetMins: true, breachedAt: true },
   });
   view.details = {
+    report: {
+      cycleStartedAt: timer.firstResponseStartedAt.toISOString(),
+      firstResponse: metricReport(atNow.firstResponse, timer.firstResponseStoppedAt !== null),
+      resolution: metricReport(atNow.resolution, timer.resolutionStoppedAt !== null),
+      customerWaitingMs: customerWaitingMs(timer.firstResponseStartedAt, timer.resolutionStoppedAt ?? now, resolutionPauses),
+      resolutionWaitingMs: isResolutionPending(timer) ? 0 : customerWaitingMs(timer.resolutionStartedAt, timer.resolutionStoppedAt ?? now, resolutionPauses, calendar),
+    },
     policyName: timer.policy?.name ?? (timer.source === MAILBOX_SLA_SOURCE ? "Shared mailbox SLA" : null),
     firstResponseStartedAt: timer.firstResponseStartedAt.toISOString(),
     firstResponseStoppedAt: timer.firstResponseStoppedAt?.toISOString() ?? null,
@@ -926,7 +935,7 @@ async function notifyRecipients(
  */
 // The sweep runs under system scope (cross-tenant), so it can face every live
 // timer on the shared DB. Processing them one-at-a-time against a remote DB
-// overruns the 5-min cron cadence (and Vercel's function timeout), so bound the
+// overruns the 15-minute cron cadence (and Vercel's function timeout), so bound the
 // work: a small concurrency pool plus a wall-clock budget. checkAndNotifySla is
 // idempotent (acts only while a *NotifiedAt column is null), so any timer a run
 // doesn't reach is simply picked up by the next run.

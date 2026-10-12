@@ -10,7 +10,7 @@ beforeEach(() => vi.clearAllMocks())
 it("renders the reported manual estimate, tracked time and overtime with no first response", () => {
   vi.mocked(useSlaIndicator).mockReturnValue({ indicator: null, live: (metric) => metric, manual: {
     estimatedMins: 5, trackedSecs: 496, overtimeSecs: 196, status: "BREACHED", runningCount: 0,
-    asOf: "2026-10-09T13:26:29Z", details: { firstWorkedAt: "2026-10-09T13:18:03Z", resolvedAt: "2026-10-09T13:26:29Z", breaches: [] },
+    asOf: "2026-10-09T13:26:29Z", details: { cycleStartedAt: null, compliant: false, firstWorkedAt: "2026-10-09T13:18:03Z", resolvedAt: "2026-10-09T13:26:29Z", breaches: [] },
   } })
   const html = renderToStaticMarkup(<SlaDetailsSection ticketId="manual-1" />)
   expect(html).toContain("SLA overview")
@@ -54,4 +54,24 @@ it("shows a pending resolution clock without an initial started timestamp", () =
   expect(html).toContain("Not started")
   expect(html).toContain("2h left")
   expect(html.match(/>Started</g)).toHaveLength(1)
+})
+
+it("shows customer waiting and keeps prior-cycle breaches in a separate history", () => {
+  const start = "2026-10-12T09:00:00Z"
+  const stop = "2026-10-12T09:01:00Z"
+  const metric = { status: "ON_TRACK" as const, elapsedMs: 60_000, targetMs: 300_000, remainingMs: 240_000, running: false }
+  const report = { allowedMs: 300_000, actualMs: 60_000, overtimeMs: 0, compliant: true }
+  vi.mocked(useSlaIndicator).mockReturnValue({ manual: null, live: (value) => value, indicator: {
+    source: "form", completed: true, firstResponse: metric, resolution: metric, overall: "ON_TRACK", asOf: stop,
+    details: { policyName: "Issue", firstResponseStartedAt: start, firstResponseStoppedAt: stop, resolutionStartedAt: start, resolutionStoppedAt: stop,
+      report: { cycleStartedAt: start, firstResponse: report, resolution: report, customerWaitingMs: 3600_000, resolutionWaitingMs: 60_000 },
+      breaches: [{ metric: "resolution", targetMins: 2, breachedAt: "2026-10-09T10:00:00Z" }] },
+  } })
+  const html = renderToStaticMarkup(<SlaDetailsSection ticketId="form" />)
+  expect(html).toContain("Customer waiting (elapsed)")
+  expect(html).toContain("Waiting excluded from resolution")
+  expect(html).toContain("Breach history · all cycles (1)")
+  expect(html).toContain("allowed 2m")
+  expect(html).toContain("Met")
+  expect(html).not.toContain(">Breached<")
 })

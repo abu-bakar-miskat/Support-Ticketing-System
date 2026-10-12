@@ -196,3 +196,14 @@ describe("reopened work cycles", () => {
     }))
   })
 })
+
+it("rejects a manual breach claim after another cycle has started", async () => {
+  const oldStart = new Date("2026-10-08T09:00:00Z")
+  vi.mocked(prisma.ticket.findFirst).mockResolvedValue({ ...ticket, inProgressStartedAt: oldStart } as never)
+  vi.mocked(prisma.timeEntry.findMany).mockResolvedValue([running(61)] as never)
+  vi.mocked(prisma.ticket.updateMany).mockImplementation((async ({ where }: { where: { inProgressStartedAt?: Date } }) => ({ count: where.inProgressStartedAt?.getTime() === now.getTime() ? 1 : 0 })) as never)
+  await checkAndNotifyEstimateOverrun(ticket.id, now)
+  expect(prisma.ticket.updateMany).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ inProgressStartedAt: oldStart }) }))
+  expect(prisma.slaBreach.create).not.toHaveBeenCalled()
+  expect(createNotification).not.toHaveBeenCalled()
+})

@@ -1084,3 +1084,75 @@ it("completion finalizes work sessions for all ticket sources, even without an S
   const { stopTicketWorkAt } = await import("@/lib/manual-resolution")
   expect(stopTicketWorkAt).toHaveBeenCalledWith("mailbox-no-sla", at)
 })
+
+describe("Stage 5 final reporting and cycle history", () => {
+  const start = new Date("2026-10-09T16:00:00Z")
+  const end = new Date("2026-10-12T10:00:01Z")
+  const timerFor = (source: string) => ({
+    id: "report-timer", ticketId: "report-ticket", tenantId: "tenant-1", source,
+    firstResponseTargetMins: 60, resolutionTargetMins: 90,
+    firstResponseStartedAt: start, firstResponseStoppedAt: start,
+    resolutionStartedAt: start, resolutionStoppedAt: null,
+    firstResponseAtRiskNotifiedAt: null, firstResponseBreachNotifiedAt: null,
+    resolutionAtRiskNotifiedAt: null, resolutionBreachNotifiedAt: null,
+    mailboxConfig: { calendar: { timezone: "UTC", workingDays: [1, 2, 3, 4, 5], workStartTime: "09:00", workEndTime: "17:00", holidays: [] }, resolutionActivatedAt: start.toISOString(), atRiskPct: 80, activeStatuses: ["In Progress"], targetSource: "mailbox" },
+    ticket: { id: "report-ticket", intake: source === "form" ? { id: "intake" } : null, assigneeId: null, status: "Done", subDepartmentId: "sub", subDepartment: { departmentId: "dept" }, closedAt: end },
+  })
+  beforeEach(async () => {
+    vi.mocked(prisma.departmentManager.findMany).mockResolvedValue([{ userId: "manager" }] as never)
+    vi.mocked(prisma.tenantMembership.findMany).mockResolvedValue([])
+    const { loadPortalConversation } = await import("@/lib/portal-conversation")
+    vi.mocked(loadPortalConversation).mockResolvedValue([])
+    vi.mocked(prisma.activityLog.findMany).mockResolvedValue([])
+    vi.mocked(prisma.slaBreach.findMany).mockResolvedValue([])
+    mockTicketMessages.mockResolvedValue([
+      { direction: "outbound", status: "trusted", createdAt: new Date("2026-10-09T16:30:00Z") },
+      { direction: "inbound", status: "trusted", createdAt: new Date("2026-10-12T09:00:00Z") },
+    ] as never)
+  })
+  it.each(["mailbox", "form"])("persists %s business elapsed, waits and second-level compliance", async (source) => {
+    const timer = timerFor(source)
+    mockTimerFind.mockResolvedValue(timer as never)
+    mockTimerUpdate.mockImplementation((async ({ data }: { data: object }) => { Object.assign(timer, data); return timer }) as never)
+    await syncResolutionTimerOnClosedAtChange("report-ticket", end)
+    expect(prisma.ticket.updateMany).toHaveBeenCalledWith({ where: { id: "report-ticket", closedAt: end }, data: { resolutionDurationMins: 90, resolvedWithinAllowed: false } })
+    const view = await getSlaIndicatorViewForTicket("report-ticket", new Date("2026-10-13T12:00:00Z"), { includeDetails: true })
+    expect(view?.details?.report).toMatchObject({ resolution: { actualMs: 5_401_000, allowedMs: 5_400_000, overtimeMs: 1000, compliant: false }, customerWaitingMs: 232_200_000, resolutionWaitingMs: 1_800_000 })
+    expect(view?.resolution.running).toBe(false)
+  })
+  it("keeps every prior breach with its original target without changing the new cycle verdict", async () => {
+    const timer = timerFor("form")
+    timer.resolutionStoppedAt = end as never
+    mockTimerFind.mockResolvedValue(timer as never)
+    vi.mocked(prisma.slaBreach.findMany).mockResolvedValue([{ metric: "resolution", targetMins: 5, breachedAt: new Date("2026-10-08T10:00:00Z") }] as never)
+    const view = await getSlaIndicatorViewForTicket("report-ticket", end, { includeDetails: true })
+    expect(view?.details?.breaches).toEqual([{ metric: "resolution", targetMins: 5, breachedAt: "2026-10-08T10:00:00.000Z" }])
+    expect(view?.details?.report?.cycleStartedAt).toBe(start.toISOString())
+    expect(mockBreachCreate).not.toHaveBeenCalled()
+  })
+  it("reconciles persisted work for read-only exports without any database mutation", async () => {
+    const timer = timerFor("form")
+    timer.mailboxConfig.resolutionActivatedAt = null as never
+    mockTimerFind.mockResolvedValue(timer as never)
+    vi.mocked(prisma.timeEntry.findFirst).mockResolvedValue({ startedAt: new Date("2026-10-12T09:00:00Z") } as never)
+    const result = await getSlaIndicatorForTicket("report-ticket", end, { readOnly: true })
+    expect(result?.resolution.elapsedMs).toBe(3_601_000)
+    expect(mockTimerUpdateMany).not.toHaveBeenCalled()
+    expect(mockTimerUpdate).not.toHaveBeenCalled()
+    expect(prisma.ticket.updateMany).not.toHaveBeenCalled()
+    expect(mockCreateNotification).not.toHaveBeenCalled()
+  })
+  it("claims competing warning checks once without running the sweep", async () => {
+    const timer = timerFor("form")
+    timer.ticket.closedAt = null as never
+    mockTimerFind.mockResolvedValue(timer as never)
+    mockTicketMessages.mockResolvedValue([])
+    let claimed = false
+    mockTimerUpdateMany.mockImplementation((async () => { if (claimed) return { count: 0 }; claimed = true; return { count: 1 } }) as never)
+    await Promise.all([checkAndNotifySla("report-ticket", new Date("2026-10-12T09:15:00Z")), checkAndNotifySla("report-ticket", new Date("2026-10-12T09:15:00Z"))])
+    const warnings = mockCreateNotification.mock.calls.filter(([args]) => args.type === "sla_at_risk")
+    expect(warnings.length).toBeGreaterThan(0)
+    expect(new Set(warnings.map(([args]) => args.recipientId)).size).toBe(warnings.length)
+    expect(mockBreachCreate).not.toHaveBeenCalled()
+  })
+})

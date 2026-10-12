@@ -89,6 +89,13 @@ export type SlaIndicatorView = {
 };
 
 export type SlaIndicatorDetails = {
+  report?: {
+    cycleStartedAt: string;
+    firstResponse: import("./sla-reporting").SlaMetricReport;
+    resolution: import("./sla-reporting").SlaMetricReport;
+    customerWaitingMs: number;
+    resolutionWaitingMs: number;
+  };
   policyName: string | null;
   firstResponseStartedAt: string;
   /** When the first public agent reply landed (null = still waiting). */

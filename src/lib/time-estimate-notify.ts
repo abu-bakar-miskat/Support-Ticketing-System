@@ -28,6 +28,8 @@ export async function checkAndNotifyEstimateOverrun(
         where: {
           id: ticketId, estimateOverrunNotifiedAt: null,
           estimatedTime: ticket.estimatedTime, closedAt: ticket.closedAt,
+          // A checker from a previous cycle cannot claim the reopened guard.
+          inProgressStartedAt: ticket.inProgressStartedAt,
         },
         data: { estimateOverrunNotifiedAt: now },
       })

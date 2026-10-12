@@ -1,14 +1,7 @@
 /**
- * Ticket resolution time tracking — pure helpers (no DB/IO).
- *
- * The ticket-level resolution timer starts the moment a ticket first enters
- * "In Progress" (`inProgressStartedAt`) and stops when it reaches a completion
- * status (`closedAt`). These helpers turn those two timestamps into the total
- * resolution time and decide whether it beat the ticket's *allowed* resolution
- * time.
- *
- * Kept pure (like sla-timer.ts) so the arithmetic is unit-testable without a
- * database; the DB wiring lives in the status route.
+ * Status-update helpers. SLA final outcomes belong to sla-engine.ts and manual
+ * tracked-work outcomes to manual-resolution.ts. The wall-clock fallback here
+ * remains for tickets without a formal SLA; it is not an SLA calculation.
  */
 
 /**
@@ -58,7 +51,7 @@ export function computeResolutionOutcome(params: {
   const resolutionDurationMins = Math.max(0, Math.round(elapsedMs / 60_000))
 
   const resolvedWithinAllowed =
-    allowedMins === null ? null : resolutionDurationMins <= allowedMins
+    allowedMins === null ? null : Math.max(0, elapsedMs) <= allowedMins * 60_000
 
   return { resolutionDurationMins, resolvedWithinAllowed }
 }
@@ -81,7 +74,8 @@ export type ResolutionUpdate = {
  *    start time and clear any prior result so a fresh measurement begins.
  *  - Reaching a completion status: compute the total resolution time from the
  *    saved start → the saved completion time (`newClosedAt`) and whether it beat
- *    the allowed resolution time (SLA target, else ticket estimate).
+ *    the estimate for tickets without a formal SLA. SLA targets defer to the
+ *    shared lifecycle hook, which uses calendar/pause-aware elapsed time.
  */
 export function resolutionUpdateOnStatusChange(params: {
   toStatus: string
@@ -113,6 +107,9 @@ export function resolutionUpdateOnStatusChange(params: {
   }
 
   if (isCompletion && newClosedAt) {
+    // SLA completion is calculated by the shared lifecycle hook using its saved
+    // calendar and customer waits. Do not overwrite it with wall-clock time.
+    if (typeof slaResolutionTargetMins === "number") return {}
     const allowedMins = resolveAllowedResolutionMins(slaResolutionTargetMins, estimatedTime)
     const { resolutionDurationMins, resolvedWithinAllowed } = computeResolutionOutcome({
       inProgressStartedAt: currentInProgressStartedAt,

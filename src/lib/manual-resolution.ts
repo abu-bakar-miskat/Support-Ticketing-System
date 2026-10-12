@@ -16,7 +16,7 @@ export async function getManualResolutionTicket(ticketId: string) {
   return prisma.ticket.findFirst({
     where: { id: ticketId, deletedAt: null, isDraft: false, ...manualTicketWhere },
     select: {
-      id: true, tenantId: true, estimatedTime: true, closedAt: true,
+      id: true, tenantId: true, estimatedTime: true, closedAt: true, inProgressStartedAt: true,
       estimateOverrunNotifiedAt: true, assigneeId: true,
       subDepartment: { select: { departmentId: true } },
     },
@@ -93,6 +93,8 @@ export type ManualResolutionView = {
   runningCount: number
   asOf: string
   details?: {
+    cycleStartedAt: string | null
+    compliant: boolean | null
     firstWorkedAt: string | null
     resolvedAt: string | null
     breaches: { metric: "resolution"; targetMins: number; breachedAt: string }[]
@@ -125,6 +127,8 @@ export async function getManualResolutionView(
       select: { targetMins: true, breachedAt: true },
     })
     view.details = {
+      cycleStartedAt: cycleStart?.toISOString() ?? null,
+      compliant: ticket.closedAt ? trackedSecs <= ticket.estimatedTime * 60 : null,
       firstWorkedAt: entries[0]?.startedAt.toISOString() ?? null,
       resolvedAt: ticket.closedAt?.toISOString() ?? null,
       breaches: breaches.map((breach) => ({

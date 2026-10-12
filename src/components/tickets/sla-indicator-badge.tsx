@@ -24,6 +24,7 @@ export type SlaIndicator = {
   asOf: string
   /** Only sent to tenant admins and the department's admins/managers. */
   details?: {
+    report?: import("@/lib/sla-timer").SlaIndicatorDetails["report"]
     policyName: string | null
     firstResponseStartedAt: string
     firstResponseStoppedAt: string | null

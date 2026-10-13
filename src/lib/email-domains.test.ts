@@ -36,6 +36,30 @@ describe("workspace domain assignments", () => {
     } });
   });
 
+  it("assigns a verified domain to all departments without a schema change", async () => {
+    vi.mocked(findVerifiedManagedDomain).mockResolvedValue({ id: "resend-existing", name: "mail.example.com", status: "verified" } as never);
+    expect(await addTenantDomain("tenant", "mail.example.com", { allDepartments: true }))
+      .toMatchObject({ scopeLabel: "All departments and sub-departments" });
+    expect(prisma.emailDomain.create).toHaveBeenCalledWith({ data: {
+      tenantId: "tenant", name: "mail.example.com", resendId: "resend-existing",
+      departmentId: null, subDepartmentId: null,
+    } });
+    expect(prisma.department.findFirst).not.toHaveBeenCalled();
+  });
+
+  it("rejects conflicting all-department and individual team scopes", async () => {
+    expect(await addTenantDomain("tenant", "mail.example.com", { allDepartments: true, departmentId: "dept" }))
+      .toHaveProperty("error");
+    expect(prisma.emailDomain.create).not.toHaveBeenCalled();
+    expect(findVerifiedManagedDomain).not.toHaveBeenCalled();
+  });
+
+  it("still blocks unverified domains assigned to all departments", async () => {
+    vi.mocked(findVerifiedManagedDomain).mockResolvedValue({ error: "Not verified" });
+    expect(await addTenantDomain("tenant", "mail.example.com", { allDepartments: true })).toHaveProperty("error");
+    expect(prisma.emailDomain.create).not.toHaveBeenCalled();
+  });
+
   it("rejects domains owned by another workspace", async () => {
     vi.mocked(prisma.emailDomain.findUnique).mockResolvedValue({ tenantId: "other" } as never);
     expect(await addTenantDomain("tenant", "mail.example.com", { departmentId: "dept" }))

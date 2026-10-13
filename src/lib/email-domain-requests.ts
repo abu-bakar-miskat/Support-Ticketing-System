@@ -203,11 +203,12 @@ export async function listScopeDomainRequests(
     ? {
         tenantId,
         OR: [
+          { departmentId: null, subDepartmentId: null },
           { subDepartmentId: scope.subDepartmentId },
           { subDepartmentId: null, departmentId: scope.departmentId },
         ],
       }
-    : { tenantId, departmentId: scope.departmentId };
+    : { tenantId, OR: [{ departmentId: scope.departmentId }, { departmentId: null, subDepartmentId: null }] };
 
   const [rows, domainRows] = await Promise.all([
     runAsSystem(() =>

@@ -6,7 +6,7 @@ import { CircleHelp, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 /** Bump the suffix when the guide changes enough that everyone should see it again. */
-const SEEN_KEY = "pen.mailboxes-guide.seen.v2";
+const SEEN_KEY = "pen.mailboxes-guide.seen.v3";
 const SEEN_CHANGED = "pen-mailboxes-guide-seen";
 
 function subscribe(onChange: () => void) {
@@ -33,7 +33,7 @@ const STEPS: { title: string; body: React.ReactNode }[] = [
   },
   {
     title: "Add a verified domain",
-    body: <>Under <b>Add a verified domain</b>, enter the domain and choose its department or sub-department. We check Resend and only add it if it is already verified.</>,
+    body: <>Under <b>Add a verified domain</b>, enter the domain and click <b>Check</b>. Once Resend confirms verification, choose a specific team or <b>All departments and sub-departments</b>, then click <b>Add domain</b>.</>,
   },
   {
     title: "Connect a mailbox to a sub-department",
@@ -51,7 +51,7 @@ const STEPS: { title: string; body: React.ReactNode }[] = [
 const NOTES: React.ReactNode[] = [
   <>
     Mailboxes always belong to a sub-department. A domain registered for a whole department can be used by every
-    sub-department in it.
+    sub-department in it. Choose <b>All departments and sub-departments</b> to share a domain across the workspace. Each mailbox needs its own unique address.
   </>,
   <>
     Managers can request domains already verified in Resend. They ask for one with <b>Request a sending domain</b> on their

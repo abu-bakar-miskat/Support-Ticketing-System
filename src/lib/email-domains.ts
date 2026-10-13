@@ -36,6 +36,7 @@ export type TenantDomain = ManagedDomain & { scopeLabel: string | null };
  * of the two ids is chosen by the admin; when a sub-department is chosen its
  * parent department is recorded alongside it. */
 export type DomainScopeInput = {
+  allDepartments?: boolean;
   departmentId?: string | null;
   subDepartmentId?: string | null;
 };
@@ -71,9 +72,14 @@ export async function listTenantDepartmentScopes(tenantId: string): Promise<Depa
 async function resolveScope(
   tenantId: string,
   scope: DomainScopeInput,
-): Promise<{ departmentId: string; subDepartmentId: string | null; label: string } | { error: string }> {
+): Promise<{ departmentId: string | null; subDepartmentId: string | null; label: string } | { error: string }> {
   const subId = scope.subDepartmentId?.trim() || null;
   const deptId = scope.departmentId?.trim() || null;
+
+  if (scope.allDepartments) {
+    if (deptId || subId) return { error: "Choose either all departments or a specific team." };
+    return { departmentId: null, subDepartmentId: null, label: "All departments and sub-departments" };
+  }
 
   if (subId) {
     const sub = await runAsSystem(() =>
@@ -217,7 +223,7 @@ export async function listTenantDomains(tenantId: string): Promise<TenantDomain[
   return rows.map((r) => {
     const deptName = r.departmentId ? labels.depts.get(r.departmentId) ?? null : null;
     const subName = r.subDepartmentId ? labels.subs.get(r.subDepartmentId) ?? null : null;
-    const scopeLabel = subName ? `${deptName ?? "—"} › ${subName}` : deptName;
+    const scopeLabel = subName ? `${deptName ?? "—"} › ${subName}` : deptName ?? "All departments and sub-departments";
     const managed = selectBestManagedDomain(allDomains, r.name);
     return {
       id: r.resendId,
@@ -328,7 +334,7 @@ async function labelForRow(row: { departmentId: string | null; subDepartmentId: 
   );
   const deptName = row.departmentId ? labels.depts.get(row.departmentId) ?? null : null;
   const subName = row.subDepartmentId ? labels.subs.get(row.subDepartmentId) ?? null : null;
-  return subName ? `${deptName ?? "—"} › ${subName}` : deptName;
+  return subName ? `${deptName ?? "—"} › ${subName}` : deptName ?? "All departments and sub-departments";
 }
 
 /** One domain with its DNS records, only if the tenant owns it (else null). */

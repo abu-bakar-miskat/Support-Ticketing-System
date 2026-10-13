@@ -5,7 +5,6 @@ import { useMemo, useRef, useState } from "react";
 import {
   Plus,
   Loader2,
-  RefreshCw,
   Trash2,
   CheckCircle2,
   Clock,
@@ -62,6 +61,7 @@ export type ManagerInUseDomain = {
   registered: boolean;
 };
 
+const ALL_DEPTS = "__all_departments__";
 const WHOLE_DEPT = "__whole__";
 
 // ── Status presentation ──────────────────────────────────────────────────────
@@ -163,6 +163,10 @@ export function EmailDomainsManager({
   const requiresScope = Array.isArray(departments);
   const [domains, setDomains] = useState<ManagerDomain[]>(initialDomains);
   const [newName, setNewName] = useState("");
+  const [checkedDomain, setCheckedDomain] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [checkError, setCheckError] = useState<string | null>(null);
+  const checkRequest = useRef(0);
   const [deptId, setDeptId] = useState("");
   const [subId, setSubId] = useState("");
   const [adding, setAdding] = useState(false);
@@ -174,12 +178,14 @@ export function EmailDomainsManager({
 
   const selectedDept = requiresScope ? departments!.find((d) => d.id === deptId) ?? null : null;
   const showSub = Boolean(selectedDept && selectedDept.subDepartments.length > 0);
+  const allDepartments = deptId === ALL_DEPTS;
   const scopeChosen = !requiresScope || Boolean(deptId && (!showSub || subId));
   const domainValid = DOMAIN_RE.test(newName.trim().toLowerCase());
   // Only complain once the user has left the field, not on every keystroke.
   const [nameTouched, setNameTouched] = useState(false);
   const showDomainError = nameTouched && newName.trim() !== "" && !domainValid;
-  const canAdd = domainValid && scopeChosen;
+  const domainChecked = domainValid && checkedDomain === newName.trim().toLowerCase();
+  const canAdd = domainChecked && scopeChosen;
 
   const mergedRows = useMemo<MergedRow[]>(() => {
     const byName = new Map<string, MergedRow>();
@@ -241,15 +247,50 @@ export function EmailDomainsManager({
     });
   }
 
+  function changeDomain(value: string) {
+    checkRequest.current += 1;
+    setNewName(value);
+    setCheckedDomain(null);
+    setCheckError(null);
+    setChecking(false);
+    setDeptId("");
+    setSubId("");
+  }
+
+  async function checkDomain() {
+    if (!domainValid || checking) return;
+    const name = newName.trim().toLowerCase();
+    const requestId = ++checkRequest.current;
+    setChecking(true);
+    setCheckedDomain(null);
+    setCheckError(null);
+    setError(null);
+    setStatus(null);
+    try {
+      const res = await fetch(`/api/admin/email-identity/domain-status?domain=${encodeURIComponent(name)}`);
+      const body = await res.json().catch(() => ({}));
+      if (requestId !== checkRequest.current) return;
+      if (!res.ok || body.status !== "verified" || body.domain !== name) {
+        setCheckError(body.error ?? `The ${name} domain is not verified in Resend. Verify it in Resend before adding it here.`);
+        return;
+      }
+      setCheckedDomain(name);
+    } catch {
+      if (requestId === checkRequest.current) setCheckError("Unable to check Resend. Please try again.");
+    } finally {
+      if (requestId === checkRequest.current) setChecking(false);
+    }
+  }
+
   function focusAddForm(prefill?: string) {
-    if (prefill !== undefined) setNewName(prefill);
+    if (prefill !== undefined) changeDomain(prefill);
     addCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     setTimeout(() => nameInputRef.current?.focus(), 250);
   }
 
   async function addDomain() {
     const name = newName.trim().toLowerCase();
-    if (!name) return;
+    if (!canAdd || adding) return;
     if (requiresScope && !scopeChosen) {
       setError("Choose the department (and sub-department) that will use this domain.");
       return;
@@ -260,7 +301,8 @@ export function EmailDomainsManager({
     try {
       const scopeBody = requiresScope
         ? {
-            departmentId: deptId,
+            allDepartments,
+            departmentId: allDepartments ? null : deptId,
             subDepartmentId: showSub && subId !== WHOLE_DEPT ? subId : null,
           }
         : {};
@@ -275,7 +317,7 @@ export function EmailDomainsManager({
         return;
       }
       upsertDomain(body.domain);
-      setNewName("");
+      changeDomain("");
       setNameTouched(false);
       setDeptId("");
       setSubId("");
@@ -285,16 +327,6 @@ export function EmailDomainsManager({
     } finally {
       setAdding(false);
     }
-  }
-
-  async function refreshDomains() {
-    setError(null);
-    try {
-      const res = await fetch(apiBase);
-      const body = await res.json();
-      if (!res.ok) { setError(body.error ?? "Unable to check Resend status"); return; }
-      setDomains(body.domains);
-    } catch { setError("Unable to check Resend status. Please try again."); }
   }
 
   async function performRemove() {
@@ -334,32 +366,48 @@ export function EmailDomainsManager({
         <div className="flex flex-col gap-[3px]">
           <h3 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Add a verified domain</h3>
           <p className="font-sans text-[12px] text-sts-muted">
-            Add a domain already verified in Resend (e.g. <span className="font-mono">mail.example.com</span>) and choose the
-            team that will use it. Domains that are not verified in Resend cannot be added.
+            Enter a domain (e.g. <span className="font-mono">mail.example.com</span>) and check its Resend status.
+            Once verified, choose the department and sub-department that will use it.
           </p>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <div className="flex flex-col gap-[5px]">
+          <div className="flex flex-col gap-[5px] sm:col-span-2">
             <label className="font-sans text-[12px] font-medium text-sts-muted">
               Domain <span className="text-red-500">*</span>
             </label>
+            <div className="flex items-center gap-2">
             <Input
               ref={nameInputRef}
+              disabled={adding}
               required
               aria-required
               aria-invalid={showDomainError || undefined}
               aria-describedby={showDomainError ? "register-domain-error" : undefined}
               value={newName}
-              onChange={(e) => setNewName(e.target.value)}
+              onChange={(e) => changeDomain(e.target.value)}
               onBlur={() => setNameTouched(true)}
-              onKeyDown={(e) => e.key === "Enter" && canAdd && !adding && addDomain()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  if (!domainChecked) void checkDomain();
+                }
+              }}
               className="h-9 w-full"
               placeholder="mail.example.com"
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
             />
+            <Button variant="outline" disabled={!domainValid || checking || adding} onClick={checkDomain}>
+              {checking ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}
+              {checking ? "Checking…" : "Check"}
+            </Button>
+            </div>
+            <div aria-live="polite">
+              {checkError && <p className="font-sans text-[12px] text-destructive">{checkError}</p>}
+              {domainChecked && <p className="font-sans text-[12px] text-sts-green">Verified in Resend. Choose the team that will use this domain.</p>}
+            </div>
             {showDomainError && (
               <p id="register-domain-error" className="font-sans text-[11.5px] text-destructive">
                 Enter a valid domain, e.g. mail.example.com
@@ -367,7 +415,7 @@ export function EmailDomainsManager({
             )}
           </div>
 
-          {requiresScope && (
+          {domainChecked && requiresScope && (
             <div className="flex flex-col gap-[5px]">
               <label className="font-sans text-[12px] font-medium text-sts-muted">
                 Department <span className="text-red-500">*</span>
@@ -387,10 +435,13 @@ export function EmailDomainsManager({
                   >
                     <SelectTrigger className={cn("h-9 w-full", !domainValid && "pointer-events-none")}>
                       <span className={cn("truncate font-sans text-[12.5px]", !selectedDept && "text-sts-subtle")}>
-                        {selectedDept?.name ?? "Select a department"}
+                        {allDepartments ? "All departments and sub-departments" : selectedDept?.name ?? "Select a department"}
                       </span>
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value={ALL_DEPTS} className="font-sans text-[12.5px]">
+                        All departments and sub-departments
+                      </SelectItem>
                       {departments!.map((d) => (
                         <SelectItem key={d.id} value={d.id} className="font-sans text-[12.5px]">
                           {d.name}
@@ -403,7 +454,7 @@ export function EmailDomainsManager({
             </div>
           )}
 
-          {requiresScope && showSub && (
+          {domainChecked && requiresScope && showSub && (
             <div className="flex flex-col gap-[5px]">
               <label className="font-sans text-[12px] font-medium text-sts-muted">
                 Sub-department <span className="text-red-500">*</span>
@@ -431,17 +482,21 @@ export function EmailDomainsManager({
           )}
         </div>
 
-        <div className="flex justify-end">
+        {domainChecked && allDepartments && (
+          <p className="font-sans text-[12px] text-sts-muted">
+            Every department and sub-department in this workspace can use this domain. Each mailbox must use a unique address, such as support@{checkedDomain} or sales@{checkedDomain}.
+          </p>
+        )}
+
+        {domainChecked && <div className="flex justify-end">
           <Button disabled={adding || !canAdd} onClick={addDomain}>
             {adding ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
             Add domain
           </Button>
-        </div>
+        </div>}
       </div>
 
       }
-
-      <Button variant="outline" onClick={refreshDomains}><RefreshCw className="size-4" />Refresh Resend status</Button>
 
       {/* Domain list */}
       <div className="flex flex-col gap-3">

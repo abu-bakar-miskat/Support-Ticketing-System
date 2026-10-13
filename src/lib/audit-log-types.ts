@@ -58,4 +58,5 @@ export type AuditFeedResponse = {
   nextCursor: string | null;
 };
 
-export type AuditFilterOption = { id: string; name: string };
+/** `tenantId` is set on platform department options so the list can follow the tenant filter. */
+export type AuditFilterOption = { id: string; name: string; tenantId?: string };

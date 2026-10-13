@@ -24,8 +24,9 @@ export default async function PlatformActivityPage() {
         select: { id: true, name: true },
       }),
       prisma.department.findMany({
+        where: { tenant: { deletedAt: null } },
         orderBy: { name: "asc" },
-        select: { id: true, name: true },
+        select: { id: true, name: true, tenantId: true },
       }),
       prisma.activityLog.findMany({ distinct: ["actorId"], select: { actorId: true } }),
       prisma.auditEvent.findMany({ distinct: ["actorId"], select: { actorId: true } }),
@@ -45,7 +46,7 @@ export default async function PlatformActivityPage() {
     <AuditLog
       scope="platform"
       tenants={tenants.map((t) => ({ id: t.id, name: t.name }))}
-      departments={departments.map((d) => ({ id: d.id, name: d.name }))}
+      departments={departments.map((d) => ({ id: d.id, name: d.name, tenantId: d.tenantId }))}
       actors={actorProfiles.map((p) => ({ id: p.id, name: p.name ?? p.email }))}
     />
   )

@@ -16,7 +16,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   mocks.auth.mockResolvedValue({ profile: { id: "super", isSuperAdmin: true }, error: null })
   mocks.tenants.mockImplementation(async ({ where }) => [
-    { id: "a", name: "Alpha", type: "company", status: "active", _count: { departments: 1, subDepartments: 1 } },
+    { id: "a", name: "Alpha", type: "company", status: "active", branding: { logoUrl: "https://example.com/alpha-logo.png" }, _count: { departments: 1, subDepartments: 1 } },
     { id: "b", name: "Beta", type: "agency", status: "active", _count: { departments: 0, subDepartments: 0 } },
   ].filter((tenant) => !where.id || tenant.id === where.id))
   mocks.volumes.mockResolvedValue([{ tenantId: "a", _count: { _all: 3 } }])
@@ -48,8 +48,8 @@ it("loads tenant cards with counts only and does not fetch detailed reports", as
   const data = await response.json()
   expect(response.status).toBe(200)
   expect(data).toEqual({ mode: "tenants", tenants: [
-    { id: "a", name: "Alpha", type: "company", status: "active", ticketCount: 3, departmentCount: 1, subDepartmentCount: 1 },
-    { id: "b", name: "Beta", type: "agency", status: "active", ticketCount: 0, departmentCount: 0, subDepartmentCount: 0 },
+    { id: "a", name: "Alpha", type: "company", status: "active", logoUrl: "https://example.com/alpha-logo.png", ticketCount: 3, departmentCount: 1, subDepartmentCount: 1 },
+    { id: "b", name: "Beta", type: "agency", status: "active", logoUrl: null, ticketCount: 0, departmentCount: 0, subDepartmentCount: 0 },
   ] })
   expect(mocks.volumes).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ tenantId: { in: ["a", "b"] }, deletedAt: null, isDraft: false, createdAt: { gte: expect.any(Date), lt: expect.any(Date) } }) }))
   expect(mocks.departments).not.toHaveBeenCalled()

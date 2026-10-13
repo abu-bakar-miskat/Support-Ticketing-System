@@ -55,6 +55,16 @@ function OrganizationTable({ title, description, rows, level, onSelect }: {
   </section>
 }
 
+function TenantCardLogo({ name, logoUrl }: { name: string; logoUrl?: string | null }) {
+  const [failed, setFailed] = useState(false)
+  if (!logoUrl || failed) return <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-sts-surface text-sts-blue"><Building2 size={20} aria-hidden="true" /></span>
+  return <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-sts-card-border bg-white p-1">
+    {/* Tenant logos use arbitrary uploaded URLs; keep them uncropped. */}
+    {/* eslint-disable-next-line @next/next/no-img-element */}
+    <img src={logoUrl} alt={`${name} logo`} width={40} height={40} loading="lazy" className="size-full object-contain" onError={() => setFailed(true)} />
+  </span>
+}
+
 function TenantCards({ tenants, onSelect }: { tenants: PlatformTenantCard[]; onSelect: (tenant: PlatformTenantCard) => void }) {
   const [search, setSearch] = useState("")
   const filtered = tenants.filter((tenant) => tenant.name.toLowerCase().includes(search.toLowerCase()))
@@ -62,7 +72,7 @@ function TenantCards({ tenants, onSelect }: { tenants: PlatformTenantCard[]; onS
     <div className="mb-5 flex flex-wrap items-center justify-between gap-3"><div><h2 className={styles.title}>Tenants</h2><p className={styles.subtitle}>{tenants.length} tenants · Choose a tenant to view its department and subdepartment reports.</p></div><label className={styles.search}><Search size={14} /><input aria-label="Search tenants" placeholder="Search tenants" value={search} onChange={(event) => setSearch(event.target.value)} /></label></div>
     <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {filtered.map((tenant) => <button key={tenant.id} type="button" onClick={() => onSelect(tenant)} aria-label={`View reports for ${tenant.name}`} className={`${styles.surface} group p-6 text-left transition-colors hover:border-sts-blue/50 hover:bg-sts-blue-tint/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sts-blue`}>
-        <div className="flex items-start gap-3"><span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-sts-surface text-sts-blue"><Building2 size={20} /></span><div className="min-w-0 flex-1"><h3 className="break-words text-base font-semibold tracking-tight">{tenant.name}</h3><p className="mt-1 text-xs capitalize text-sts-muted">{tenant.type} · {tenant.status}</p></div><ArrowUpRight size={16} className="shrink-0 text-sts-muted transition-colors group-hover:text-sts-blue" /></div>
+        <div className="flex items-start gap-3"><TenantCardLogo key={tenant.logoUrl} name={tenant.name} logoUrl={tenant.logoUrl} /><div className="min-w-0 flex-1"><h3 className="break-words text-base font-semibold tracking-tight">{tenant.name}</h3><p className="mt-1 text-xs capitalize text-sts-muted">{tenant.type} · {tenant.status}</p></div><ArrowUpRight size={16} className="shrink-0 text-sts-muted transition-colors group-hover:text-sts-blue" /></div>
         <p className="mt-6 text-3xl font-semibold tabular-nums tracking-tight">{tenant.ticketCount}</p><p className="mt-1 text-xs text-sts-muted">Tickets created in the selected period</p>
         <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 border-t border-sts-card-border pt-4 text-xs text-sts-muted"><span><b className="mr-1 font-semibold tabular-nums text-sts-foreground">{tenant.departmentCount}</b>departments</span><span><b className="mr-1 font-semibold tabular-nums text-sts-foreground">{tenant.subDepartmentCount}</b>subdepartments</span></div>
         <p className="mt-5 text-xs font-medium text-sts-blue">View reports →</p>

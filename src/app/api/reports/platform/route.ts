@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db"
 import { runAsSystem } from "@/lib/request-scope"
 import { resolveReportRange } from "@/lib/report-period"
 import { getSlaIndicatorViewForTicket } from "@/lib/sla-engine"
+import { resolveTenantBranding } from "@/lib/tenant-branding"
 import { statusCategory } from "@/lib/status-category"
 import { summarizeOrganizationPerformance, type OrganizationTicketSample } from "@/lib/reporting/organization-performance"
 import type { PlatformReportsResponse, PlatformTenantCardsResponse } from "@/lib/api/platform-reports"
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
     if (tenantId === "all") {
       const tenants = await prisma.tenant.findMany({
         where: { deletedAt: null }, orderBy: { name: "asc" },
-        select: { id: true, name: true, type: true, status: true, _count: { select: { departments: true, subDepartments: true } } },
+        select: { id: true, name: true, type: true, status: true, branding: true, _count: { select: { departments: true, subDepartments: true } } },
       })
       const volumes = await prisma.ticket.groupBy({
         by: ["tenantId"],
@@ -40,7 +41,7 @@ export async function GET(request: Request) {
       })
       const counts = new Map(volumes.map((row) => [row.tenantId, row._count._all]))
       const response: PlatformTenantCardsResponse = { mode: "tenants", tenants: tenants.map((tenant) => ({
-        id: tenant.id, name: tenant.name, type: tenant.type, status: tenant.status,
+        id: tenant.id, name: tenant.name, type: tenant.type, status: tenant.status, logoUrl: resolveTenantBranding(tenant.branding).logoUrl,
         ticketCount: counts.get(tenant.id) ?? 0, departmentCount: tenant._count.departments, subDepartmentCount: tenant._count.subDepartments,
       })) }
       return NextResponse.json(response)

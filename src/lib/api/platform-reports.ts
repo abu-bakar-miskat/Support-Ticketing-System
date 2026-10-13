@@ -30,6 +30,7 @@ export type PlatformReportsResponse = {
 }
 
 export type PlatformTenantCard = {
+  logoUrl?: string | null
   id: string
   name: string
   type: string

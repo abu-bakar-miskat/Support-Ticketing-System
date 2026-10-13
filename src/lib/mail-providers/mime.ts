@@ -3,9 +3,9 @@ import { simpleParser, type AddressObject } from "mailparser";
 import type { NormalizedInboundEmail } from "./types";
 
 /**
- * Every pull provider (M365 `$value`, Gmail `format=raw`, IMAP `source`) hands
- * back the full RFC 5322 message, so one parser normalizes all three into the
- * shape the inbound pipeline already understands.
+ * Microsoft Graph's `$value` hands back the full RFC 5322 message, so one
+ * parser normalizes it into the shape the inbound pipeline already
+ * understands (and any future pull provider can reuse it).
  */
 export async function parseRawMime(raw: Buffer, providerMessageId: string): Promise<NormalizedInboundEmail> {
   const parsed = await simpleParser(raw, { skipTextToHtml: true, skipImageLinks: true });

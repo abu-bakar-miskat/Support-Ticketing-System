@@ -6,7 +6,7 @@ import { pullContextFor, recordMailboxConnectionFailure } from "@/lib/mailbox-co
 import { processNormalizedInboundEmail } from "@/lib/process-inbound-email";
 
 /**
- * EM-05 pull ingestion: polls OAUTH_M365 / OAUTH_GOOGLE / IMAP mailboxes and
+ * EM-05 pull ingestion: polls OAUTH_M365 mailboxes and
  * feeds each new message through the same provider-agnostic pipeline the
  * Resend webhook uses (threading, dedupe, suppression, ticket creation).
  *

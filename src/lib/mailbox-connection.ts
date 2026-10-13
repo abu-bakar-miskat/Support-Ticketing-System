@@ -252,7 +252,7 @@ export async function getMailboxRouteById(id: string): Promise<(MailboxRoute & {
 
 // ─── Pull-provider credentials ──────────────────────────────────────────────
 
-/** Encrypts OAuth/IMAP credentials into an opaque `credentialsRef` blob. */
+/** Encrypts OAuth credentials into an opaque `credentialsRef` blob. */
 export function encryptPullCredentials(credentials: PullCredentials): string {
   return encryptMailboxCredentials(JSON.stringify(credentials));
 }
@@ -277,7 +277,7 @@ export function pullContextFor(connection: { id: string; credentialsRef: string 
 
 /**
  * Replaces a pull connection's credentials after the admin re-authorizes it
- * (OAuth reconnect / new IMAP password) and clears its failure state so sync
+ * (OAuth reconnect) and clears its failure state so sync
  * resumes on the next run.
  */
 export async function replacePullCredentials(

@@ -43,7 +43,6 @@ import {
   isPullProvider,
   reconnectMailbox,
   useMailboxOAuthResult,
-  type ImapSettings,
   type MailboxProvider,
 } from "@/components/mailbox/mailbox-provider-connect";
 import {
@@ -148,7 +147,7 @@ export function SubDepartmentMailboxManager({
   const [showConnect, setShowConnect] = useState(false);
   const [provider, setProvider] = useState<MailboxProvider>("RESEND");
   // "domain": opened from an approved domain (forwarding address offered too);
-  // "inbox": the header button — Microsoft 365 / Google / IMAP only.
+  // "inbox": the header button — Microsoft 365 only.
   const [connectMode, setConnectMode] = useState<"domain" | "inbox">("domain");
   const [address, setAddress] = useState("");
   const addressRef = useRef<HTMLInputElement>(null);
@@ -187,18 +186,9 @@ export function SubDepartmentMailboxManager({
 
   useEffect(loadConnections, [subDepartmentId]);
 
-  // Back from a Microsoft / Google sign-in: toast the outcome and refresh.
+  // Back from a Microsoft sign-in: toast the outcome and refresh.
   useMailboxOAuthResult(loadConnections);
 
-  async function connectImap(value: string, settings: ImapSettings) {
-    const created = await createSubDepartmentMailboxConnection(subDepartmentId, {
-      address: value,
-      authType: "IMAP",
-      plaintextCredentials: JSON.stringify(settings),
-    });
-    setConnections((prev) => [...(prev ?? []), created]);
-    setShowConnect(false);
-  }
 
   // Load the member roster the first time the admin opens the picker for the
   // "Manual user" method — kept lazy so the mailbox view stays cheap otherwise.
@@ -474,12 +464,9 @@ export function SubDepartmentMailboxManager({
           />
           {provider !== "RESEND" ? (
             <ExternalMailboxConnectForm
-              key={provider}
-              provider={provider}
               teamId={subDepartmentId}
               scopeType="SUB_DEPARTMENT"
               existingAddresses={list.map((c) => c.address)}
-              onCreateImap={connectImap}
               onCancel={() => { setShowConnect(false); setFormError(null); }}
             />
           ) : (
@@ -857,7 +844,7 @@ export function SubDepartmentMailboxManager({
         <ul className="mt-2 flex flex-col gap-1.5 font-sans text-[12px] text-sts-muted">
           <li>• Mail delivered to a connected address opens a new ticket for {subDepartmentName}.</li>
           <li>• Tickets are keyed <span className="font-mono text-sts-foreground">{prefix}-###</span>, and replies thread onto the same ticket.</li>
-          <li>• Microsoft 365, Google and IMAP inboxes are checked for new mail every couple of minutes; mail is only read, never moved or deleted.</li>
+          <li>• Microsoft 365 inboxes are checked for new mail every couple of minutes; mail is only read, never moved or deleted.</li>
           <li>• We check each connection automatically; use <span className="text-sts-foreground">Test connection</span> to verify one right now.</li>
         </ul>
       </div>

@@ -18,7 +18,7 @@ async function assertScope(caller: { role: string }, departmentId: string): Prom
 // Manual "test connection" from the mailbox UI. Runs the same provider health
 // check as the scheduled sweep but suppresses the failure alert email so an
 // admin poking the button can't spam the department manager. For pull
-// mailboxes (M365 / Google / IMAP) a healthy check also syncs right away, so
+// mailboxes (Microsoft 365) a healthy check also syncs right away, so
 // the admin doesn't wait for the next cron run to see new mail arrive.
 export async function POST(
   _req: NextRequest,

@@ -49,7 +49,6 @@ import {
   isPullProvider,
   reconnectMailbox,
   useMailboxOAuthResult,
-  type ImapSettings,
   type MailboxProvider,
 } from "@/components/mailbox/mailbox-provider-connect";
 import {
@@ -187,7 +186,7 @@ export function DepartmentMailboxesPage({
   const [teamId, setTeamId] = useState(subDepartments[0]?.id ?? "");
   const [provider, setProvider] = useState<MailboxProvider>("RESEND");
   // "domain": opened from an approved domain (forwarding address offered too);
-  // "inbox": the header button — Microsoft 365 / Google / IMAP only.
+  // "inbox": the header button — Microsoft 365 only.
   const [connectMode, setConnectMode] = useState<"domain" | "inbox">("domain");
 
   /** Opens the connect form prefilled with `@<domain>`, cursor at the start so
@@ -237,7 +236,7 @@ export function DepartmentMailboxesPage({
 
   useEffect(loadConnections, [departmentId]);
 
-  // Back from a Microsoft / Google sign-in: toast the outcome and refresh.
+  // Back from a Microsoft sign-in: toast the outcome and refresh.
   useMailboxOAuthResult(loadConnections);
 
   const list = connections ?? [];
@@ -317,16 +316,6 @@ export function DepartmentMailboxesPage({
     }
   }
 
-  async function connectImap(value: string, settings: ImapSettings) {
-    const created = await createDepartmentMailboxConnection(departmentId, {
-      teamId,
-      address: value,
-      authType: "IMAP",
-      plaintextCredentials: JSON.stringify(settings),
-    });
-    setConnections((prev) => [...(prev ?? []), created]);
-    setShowConnect(false);
-  }
 
   function startEditAssignment(c: MailboxConnection) {
     setEditingAssignmentId(c.id);
@@ -504,12 +493,9 @@ export function DepartmentMailboxesPage({
               />
               {provider !== "RESEND" ? (
                 <ExternalMailboxConnectForm
-                  key={provider}
-                  provider={provider}
                   teamId={teamId}
                   scopeType="DEPARTMENT"
                   existingAddresses={list.map((c) => c.address)}
-                  onCreateImap={connectImap}
                   onCancel={closeConnect}
                   teamPicker={
                     <div>
@@ -973,7 +959,7 @@ export function DepartmentMailboxesPage({
         </p>
         <ul className="mt-2 flex flex-col gap-1.5 font-sans text-[12px] text-sts-muted">
           <li>• Mail delivered to a connected address opens a new ticket for the sub department it files into.</li>
-          <li>• Microsoft 365, Google and IMAP inboxes are checked for new mail every couple of minutes; mail is only read, never moved or deleted.</li>
+          <li>• Microsoft 365 inboxes are checked for new mail every couple of minutes; mail is only read, never moved or deleted.</li>
           <li>• Replies thread onto the same ticket automatically.</li>
           <li>• We check each connection automatically; use <span className="text-sts-foreground">Test connection</span> to verify one right now.</li>
         </ul>

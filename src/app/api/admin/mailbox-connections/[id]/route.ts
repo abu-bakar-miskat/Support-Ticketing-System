@@ -2,9 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAdminOrManager } from "@/lib/auth"
 import { canAdminDeptSettings } from "@/lib/dept-scope"
-import { updateMailboxConnection, deleteMailboxConnection, replacePullCredentials } from "@/lib/mailbox-connection"
+import { updateMailboxConnection, deleteMailboxConnection } from "@/lib/mailbox-connection"
 import { checkDomainVerification } from "@/lib/resend-domains"
-import { prepareImapConnection } from "@/lib/mailbox-imap"
 import { AssignmentMethod } from "@/generated/prisma/enums"
 import type { AuthProfile } from "@/lib/auth"
 
@@ -47,23 +46,15 @@ export async function PATCH(
     return NextResponse.json({ error: "isActive must be a boolean" }, { status: 400 })
   }
 
-  const isOAuth = existing.authType === "OAUTH_M365" || existing.authType === "OAUTH_GOOGLE"
-  if (isOAuth && (address !== undefined || plaintextCredentials !== undefined)) {
+  // An M365 connection's address and token come from the Microsoft sign-in.
+  if (existing.authType === "OAUTH_M365" && (address !== undefined || plaintextCredentials !== undefined)) {
     return NextResponse.json(
       { error: "This mailbox is tied to the account that signed in. Use Reconnect to change it." },
       { status: 400 },
     )
   }
 
-  // IMAP: new settings are validated and test-signed-in before they replace
-  // the stored ones (and clear any failure state).
-  if (existing.authType === "IMAP" && plaintextCredentials !== undefined) {
-    const imap = await prepareImapConnection(plaintextCredentials)
-    if (!imap.ok) return NextResponse.json({ error: imap.error }, { status: 400 })
-    await replacePullCredentials(id, imap.credentials, caller!.id)
-  }
-
-  if (address !== undefined && existing.authType === "RESEND") {
+  if (address !== undefined) {
     const verification = await checkDomainVerification(address)
     if (verification.status !== "verified" || !verification.receivingEnabled) {
       return NextResponse.json(
@@ -123,8 +114,7 @@ export async function PATCH(
     id,
     {
       address,
-      // Pull credentials were replaced above; only RESEND stores them as-is.
-      plaintextCredentials: existing.authType === "RESEND" ? plaintextCredentials : undefined,
+      plaintextCredentials,
       ...(methodProvided ? { assignmentMethod: assignmentMethod as AssignmentMethod | null, manualAssigneeIds: manualIds } : {}),
       ...(isActive !== undefined ? { isActive: isActive as boolean } : {}),
     },

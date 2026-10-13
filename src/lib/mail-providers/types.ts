@@ -7,7 +7,7 @@
  * Two kinds of provider sit behind it:
  * - push: RESEND delivers mail by webhook; we fetch the body by its opaque ref
  *   ({@link MailProvider}, lib/mail-providers/resend-provider.ts).
- * - pull: OAUTH_M365 / OAUTH_GOOGLE / IMAP are polled by the mailbox-sync cron
+ * - pull: OAUTH_M365 is polled by the mailbox-sync cron
  *   from a per-connection cursor ({@link PullMailProvider}, lib/mailbox-sync.ts).
  */
 import type { MailboxAuthType } from "@/generated/prisma/enums";
@@ -52,7 +52,7 @@ export interface MailProvider {
 
 // ─── Pull providers ─────────────────────────────────────────────────────────
 
-/** Decrypted `credentialsRef` for an OAuth (M365 / Google) connection. */
+/** Decrypted `credentialsRef` for an OAuth (Microsoft 365) connection. */
 export type OAuthMailboxCredentials = {
   kind: "oauth";
   refreshToken: string;
@@ -66,17 +66,7 @@ export type OAuthMailboxCredentials = {
   mailbox?: string;
 };
 
-/** Decrypted `credentialsRef` for an IMAP connection. */
-export type ImapMailboxCredentials = {
-  kind: "imap";
-  host: string;
-  port: number;
-  secure: boolean;
-  username: string;
-  password: string;
-};
-
-export type PullCredentials = OAuthMailboxCredentials | ImapMailboxCredentials;
+export type PullCredentials = OAuthMailboxCredentials;
 
 export type PullContext<C extends PullCredentials = PullCredentials> = {
   credentials: C;
@@ -89,8 +79,7 @@ export type PulledMessage = { email: NormalizedInboundEmail; cursorAfter: unknow
 
 export type PullBatch = {
   messages: PulledMessage[];
-  /** Cursor to persist when `messages` is empty but the provider moved on
-   *  anyway (e.g. an IMAP UIDVALIDITY reset). */
+  /** Cursor to persist when `messages` is empty but the provider moved on anyway. */
   cursor?: unknown;
 };
 

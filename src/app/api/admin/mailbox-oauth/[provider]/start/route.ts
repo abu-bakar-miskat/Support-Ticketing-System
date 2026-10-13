@@ -18,7 +18,7 @@ type Params = { params: Promise<{ provider: string }> }
 
 /**
  * GET /api/admin/mailbox-oauth/[provider]/start — begins connecting (or, with
- * `connectionId`, re-authorizing) a Microsoft 365 / Google mailbox. Browser
+ * `connectionId`, re-authorizing) a Microsoft 365 mailbox. Browser
  * navigation, not fetch: it redirects to the provider's consent screen.
  *
  * Query: `teamId` (sub-department new tickets file into), `scopeType`
@@ -30,7 +30,7 @@ type Params = { params: Promise<{ provider: string }> }
  */
 export async function GET(request: NextRequest, { params }: Params) {
   const { provider: rawProvider } = await params
-  if (rawProvider !== "microsoft" && rawProvider !== "google") {
+  if (rawProvider !== "microsoft") {
     return NextResponse.json({ error: "Unknown provider" }, { status: 404 })
   }
   const provider: OAuthProviderKey = rawProvider
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest, { params }: Params) {
   if (error) return error
 
   if (!isOAuthProviderConfigured(provider)) {
-    return fail(`${provider === "microsoft" ? "Microsoft 365" : "Google"} sign-in isn't set up on this server yet. Ask your platform administrator to configure it.`)
+    return fail("Microsoft 365 sign-in isn't set up on this server yet. Ask your platform administrator to configure it.")
   }
 
   const connectionId = search.get("connectionId") || undefined
@@ -94,9 +94,7 @@ export async function GET(request: NextRequest, { params }: Params) {
   })
 
   const redirectUri = oauthRedirectUri(request.nextUrl.origin, provider)
-  // Google can only read the signed-in account's own mailbox, so hint it.
-  const loginHint = provider === "google" ? mailbox : undefined
-  const response = NextResponse.redirect(buildAuthorizeUrl(provider, redirectUri, state, loginHint))
+  const response = NextResponse.redirect(buildAuthorizeUrl(provider, redirectUri, state))
   response.cookies.set(MAILBOX_OAUTH_NONCE_COOKIE, nonce, {
     httpOnly: true,
     secure: request.nextUrl.protocol === "https:",

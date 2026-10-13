@@ -6,13 +6,13 @@ vi.mock("@/lib/db", () => ({
     mailboxConnection: { updateMany: vi.fn(), update: vi.fn(), findUniqueOrThrow: vi.fn(), findMany: vi.fn() },
   },
 }))
-const provider = { authType: "IMAP", initialCursor: vi.fn(), fetchNewMessages: vi.fn(), checkHealth: vi.fn() }
+const provider = { authType: "OAUTH_M365", initialCursor: vi.fn(), fetchNewMessages: vi.fn(), checkHealth: vi.fn() }
 vi.mock("@/lib/mail-providers", async () => {
   const types = await vi.importActual<typeof import("@/lib/mail-providers/types")>("@/lib/mail-providers/types")
   return {
     getPullMailProvider: vi.fn(() => provider),
     MailProviderError: types.MailProviderError,
-    PULL_AUTH_TYPES: ["OAUTH_M365", "OAUTH_GOOGLE", "IMAP"],
+    PULL_AUTH_TYPES: ["OAUTH_M365"],
   }
 })
 vi.mock("@/lib/mailbox-connection", () => ({
@@ -33,7 +33,7 @@ const mockFind = vi.mocked(prisma.mailboxConnection.findUniqueOrThrow)
 const mockProcess = vi.mocked(processNormalizedInboundEmail)
 
 const connection = (syncCursor: unknown) => ({
-  id: "mc-1", address: "support@acme.com", authType: "IMAP", credentialsRef: "enc",
+  id: "mc-1", address: "support@acme.com", authType: "OAUTH_M365", credentialsRef: "enc",
   syncCursor, status: "ACTIVE", failureCount: 0, departmentId: "dept-1",
 })
 const email = (id: string, messageId: string | null = `<${id}@x>`) => ({
@@ -58,10 +58,10 @@ describe("syncMailboxConnection", () => {
 
   it("stores an initial cursor on first sync without importing history", async () => {
     mockFind.mockResolvedValue(connection(null) as never)
-    provider.initialCursor.mockResolvedValue({ uidValidity: "1", lastUid: 40 })
+    provider.initialCursor.mockResolvedValue({ since: "2026-10-13T12:00:00.000Z", ids: [] })
     expect(await syncMailboxConnection("mc-1")).toEqual({ processed: 0 })
     expect(provider.fetchNewMessages).not.toHaveBeenCalled()
-    expect(savedCursors()).toEqual([{ v: { uidValidity: "1", lastUid: 40 } }])
+    expect(savedCursors()).toEqual([{ v: { since: "2026-10-13T12:00:00.000Z", ids: [] } }])
   })
 
   it("routes each message to its connection and advances the cursor per message", async () => {
@@ -75,7 +75,7 @@ describe("syncMailboxConnection", () => {
       messageId: "<m1@x>", mailboxConnectionId: "mc-1", recipients: ["support@acme.com"],
     }))
     // No Message-ID header → provider-scoped fallback id.
-    expect(mockProcess).toHaveBeenNthCalledWith(2, expect.objectContaining({ messageId: "imap.mc-1.m2" }))
+    expect(mockProcess).toHaveBeenNthCalledWith(2, expect.objectContaining({ messageId: "oauth_m365.mc-1.m2" }))
     expect(savedCursors()).toEqual([{ v: "c1" }, { v: "c2" }])
     // Lease is always released.
     expect(mockUpdate).toHaveBeenLastCalledWith({ where: { id: "mc-1" }, data: { syncLockedUntil: null } })

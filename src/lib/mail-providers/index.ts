@@ -3,12 +3,11 @@ import type { MailboxAuthType } from "@/generated/prisma/enums";
 import type { MailProvider, PullMailProvider } from "./types";
 import { resendProvider } from "./resend-provider";
 import { m365Provider } from "./m365-provider";
-import { googleProvider } from "./google-provider";
-import { imapProvider } from "./imap-provider";
 
 /**
- * Provider registry (D-10/EM-05). RESEND is push (webhook); OAUTH_M365,
- * OAUTH_GOOGLE and IMAP are pull providers polled by lib/mailbox-sync.ts.
+ * Provider registry (D-10/EM-05). RESEND is push (webhook); OAUTH_M365 is a
+ * pull provider polled by lib/mailbox-sync.ts. OAUTH_GOOGLE / IMAP are enum
+ * values with no implementation.
  */
 export function getMailProvider(authType: MailboxAuthType): MailProvider | null {
   if (authType === "RESEND") return resendProvider;
@@ -16,19 +15,11 @@ export function getMailProvider(authType: MailboxAuthType): MailProvider | null 
 }
 
 export function getPullMailProvider(authType: MailboxAuthType): PullMailProvider | null {
-  switch (authType) {
-    case "OAUTH_M365":
-      return m365Provider as PullMailProvider;
-    case "OAUTH_GOOGLE":
-      return googleProvider as PullMailProvider;
-    case "IMAP":
-      return imapProvider as PullMailProvider;
-    default:
-      return null;
-  }
+  if (authType === "OAUTH_M365") return m365Provider;
+  return null;
 }
 
-export const PULL_AUTH_TYPES = ["OAUTH_M365", "OAUTH_GOOGLE", "IMAP"] as const satisfies readonly MailboxAuthType[];
+export const PULL_AUTH_TYPES = ["OAUTH_M365"] as const satisfies readonly MailboxAuthType[];
 
 export type {
   MailProvider,
@@ -39,6 +30,5 @@ export type {
   HealthCheckResult,
   PullCredentials,
   OAuthMailboxCredentials,
-  ImapMailboxCredentials,
 } from "./types";
 export { MailProviderError } from "./types";

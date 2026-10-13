@@ -214,7 +214,7 @@ export async function processInboundEmail(
  * Provider-agnostic core: match a normalized email to a ticket (reply token →
  * threading headers → subject reference), or open a new ticket through the
  * mailbox it arrived at. Resend resolves that mailbox from the webhook's
- * recipients; pull providers (M365 / Google / IMAP) already know it and pass
+ * recipients; pull providers (Microsoft 365) already know it and pass
  * `mailboxConnectionId`, so mail reaching the inbox via an alias, group or
  * Bcc still routes correctly.
  *

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { sweepMailboxSync } from "@/lib/mailbox-sync"
 import { withSystemScope } from "@/lib/request-scope"
 
-// EM-05: polls OAuth (Microsoft 365 / Google) and IMAP mailboxes for new mail
+// EM-05: polls Microsoft 365 mailboxes for new mail
 // and opens tickets from it — see lib/mailbox-sync.ts. Resend mailboxes are
 // webhook-driven and not touched here.
 export const maxDuration = 300

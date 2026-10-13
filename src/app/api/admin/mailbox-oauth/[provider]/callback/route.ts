@@ -76,12 +76,8 @@ export async function GET(request: NextRequest, { params }: Params) {
       oauthRedirectUri(request.nextUrl.origin, state.provider),
     )
 
-    // Microsoft can read a shared mailbox on the signed-in user's behalf;
-    // Gmail's API only ever reads the signed-in account's own mailbox.
-    const target = state.provider === "microsoft" ? (state.mailbox ?? credentials.account) : credentials.account
-    if (state.provider === "google" && state.mailbox && state.mailbox !== credentials.account) {
-      return finish({ error: `You signed in as ${credentials.account}, but this mailbox is ${state.mailbox}. Sign in with that Google account instead.` })
-    }
+    // Microsoft can read a shared mailbox on the signed-in user's behalf.
+    const target = state.mailbox ?? credentials.account
     const granted: OAuthMailboxCredentials = { ...credentials, ...(target !== credentials.account ? { mailbox: target } : {}) }
 
     // Prove the grant can read the target inbox before saving anything —

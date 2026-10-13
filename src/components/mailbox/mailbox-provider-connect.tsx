@@ -8,6 +8,8 @@ import { mailboxOAuthStartUrl, type MailboxConnection } from "@/lib/api/admin";
 
 export type MailboxProvider = MailboxConnection["authType"];
 
+// OAUTH_GOOGLE / IMAP exist in the schema enum but aren't offered; they keep a
+// label only so any row carrying them still renders.
 export const MAILBOX_PROVIDER_META: Record<MailboxProvider, { label: string; short: string; description: string }> = {
   RESEND: {
     label: "Forwarding address",
@@ -19,25 +21,17 @@ export const MAILBOX_PROVIDER_META: Record<MailboxProvider, { label: string; sho
     short: "Microsoft 365",
     description: "Sign in with Microsoft to read an Outlook / Exchange Online inbox or shared mailbox.",
   },
-  OAUTH_GOOGLE: {
-    label: "Google",
-    short: "Google",
-    description: "Sign in with Google to read a Gmail or Google Workspace inbox.",
-  },
-  IMAP: {
-    label: "IMAP",
-    short: "IMAP",
-    description: "Connect any mailbox that supports IMAP with its server settings.",
-  },
+  OAUTH_GOOGLE: { label: "Google", short: "Google", description: "" },
+  IMAP: { label: "IMAP", short: "IMAP", description: "" },
 };
 
-const PROVIDER_ORDER: MailboxProvider[] = ["RESEND", "OAUTH_M365", "OAUTH_GOOGLE", "IMAP"];
+const PROVIDER_ORDER: MailboxProvider[] = ["RESEND", "OAUTH_M365"];
 /** Forwarding (Resend) addresses are only connected from an approved domain
  *  request; the general "Connect inbox" entry point offers these. */
-export const INBOX_PROVIDERS: MailboxProvider[] = ["OAUTH_M365", "OAUTH_GOOGLE", "IMAP"];
+export const INBOX_PROVIDERS: MailboxProvider[] = ["OAUTH_M365"];
 
-export const isOAuthProvider = (p: MailboxProvider) => p === "OAUTH_M365" || p === "OAUTH_GOOGLE";
-export const isPullProvider = (p: MailboxProvider) => p !== "RESEND";
+export const isOAuthProvider = (p: MailboxProvider) => p === "OAUTH_M365";
+export const isPullProvider = (p: MailboxProvider) => p === "OAUTH_M365";
 
 const inputClass =
   "h-9 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-blue/50";
@@ -47,7 +41,7 @@ function isValidEmail(value: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
-/** Segmented picker for how a mailbox is connected. */
+/** Segmented picker for how a mailbox is connected. Hidden when there's only one choice. */
 export function MailboxProviderPicker({
   value,
   onChange,
@@ -57,14 +51,11 @@ export function MailboxProviderPicker({
   onChange: (provider: MailboxProvider) => void;
   providers?: MailboxProvider[];
 }) {
+  if (providers.length < 2) return null;
   return (
     <div className="flex flex-col gap-1.5">
       <span className={labelClass}>Connect with</span>
-      <div
-        role="radiogroup"
-        aria-label="Connect with"
-        className={cn("grid grid-cols-2 gap-1.5", providers.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-4")}
-      >
+      <div role="radiogroup" aria-label="Connect with" className="grid grid-cols-2 gap-1.5">
         {providers.map((p) => (
           <button
             key={p}
@@ -88,53 +79,39 @@ export function MailboxProviderPicker({
   );
 }
 
-/** IMAP settings as posted (JSON-encoded) in `plaintextCredentials`. */
-export type ImapSettings = { host: string; port: number; secure: boolean; username: string; password: string };
-
 /**
- * Connect form for Microsoft 365, Google and IMAP. OAuth providers navigate
- * to the sign-in flow; IMAP calls `onCreateImap`, which the page wires to its
- * department or sub-department create endpoint.
+ * Connect form for a Microsoft 365 inbox: collects an optional shared-mailbox
+ * address, then navigates to the Microsoft sign-in flow.
  */
 export function ExternalMailboxConnectForm({
-  provider,
   teamId,
   scopeType,
   existingAddresses,
-  onCreateImap,
   onCancel,
   teamPicker,
 }: {
-  provider: Exclude<MailboxProvider, "RESEND">;
   /** Sub-department new tickets file into (empty until chosen). */
   teamId: string;
   scopeType: "DEPARTMENT" | "SUB_DEPARTMENT";
   existingAddresses: string[];
-  onCreateImap: (address: string, settings: ImapSettings) => Promise<void>;
   onCancel: () => void;
   /** Optional "Files into" control rendered above the action buttons. */
   teamPicker?: React.ReactNode;
 }) {
   const [address, setAddress] = useState("");
-  const [host, setHost] = useState("");
-  const [port, setPort] = useState("993");
-  const [secure, setSecure] = useState(true);
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const alreadyConnected = (value: string) =>
-    existingAddresses.some((a) => a.toLowerCase() === value.trim().toLowerCase());
 
   function startOAuth() {
     const mailbox = address.trim();
     if (mailbox && !isValidEmail(mailbox)) return setError("Enter a valid mailbox address, or leave it blank.");
-    if (mailbox && alreadyConnected(mailbox)) return setError("That address is already connected.");
+    if (mailbox && existingAddresses.some((a) => a.toLowerCase() === mailbox.toLowerCase())) {
+      return setError("That address is already connected.");
+    }
     if (!teamId) return setError("Choose which sub-department this mailbox files into.");
     setBusy(true);
     window.location.assign(
-      mailboxOAuthStartUrl(provider === "OAUTH_M365" ? "microsoft" : "google", {
+      mailboxOAuthStartUrl("microsoft", {
         teamId,
         scopeType,
         mailbox: mailbox || undefined,
@@ -143,142 +120,25 @@ export function ExternalMailboxConnectForm({
     );
   }
 
-  async function connectImap() {
-    const value = address.trim();
-    if (!isValidEmail(value)) return setError("Enter the mailbox's email address.");
-    if (alreadyConnected(value)) return setError("That address is already connected.");
-    if (!teamId) return setError("Choose which sub-department this mailbox files into.");
-    if (!host.trim()) return setError("Enter the IMAP server.");
-    const portNumber = Number(port);
-    if (!Number.isInteger(portNumber) || portNumber < 1 || portNumber > 65535) return setError("Enter a valid port.");
-    if (!password) return setError("Enter the mailbox password or app password.");
-    setBusy(true);
-    setError(null);
-    try {
-      await onCreateImap(value, {
-        host: host.trim(),
-        port: portNumber,
-        secure,
-        username: username.trim() || value,
-        password,
-      });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Couldn't connect that mailbox.");
-      setBusy(false);
-    }
-  }
-
   return (
     <div className="flex flex-col gap-4">
-      {provider === "OAUTH_M365" && (
-        <div>
-          <label className={labelClass}>Shared mailbox address (optional)</label>
-          <input
-            type="text"
-            inputMode="email"
-            value={address}
-            onChange={(e) => { setAddress(e.target.value); setError(null); }}
-            placeholder="support@yourcompany.com"
-            className={inputClass}
-          />
-          <p className="mt-1.5 font-sans text-[11px] text-sts-subtle">
-            Leave blank to connect the inbox of the account you sign in with. For a shared mailbox, sign in with an
-            account that has Full Access to it.
-          </p>
-        </div>
-      )}
-
-      {provider === "OAUTH_GOOGLE" && (
-        <div>
-          <label className={labelClass}>Gmail address (optional)</label>
-          <input
-            type="text"
-            inputMode="email"
-            value={address}
-            onChange={(e) => { setAddress(e.target.value); setError(null); }}
-            placeholder="support@yourcompany.com"
-            className={inputClass}
-          />
-          <p className="mt-1.5 font-sans text-[11px] text-sts-subtle">
-            You&rsquo;ll sign in as this account. Its inbox is read-only to us — nothing is sent, moved or deleted.
-          </p>
-        </div>
-      )}
-
-      {provider === "IMAP" && (
-        <>
-          <div>
-            <label className={labelClass}>Mailbox address</label>
-            <input
-              type="text"
-              inputMode="email"
-              value={address}
-              onChange={(e) => { setAddress(e.target.value); setError(null); }}
-              placeholder="support@yourcompany.com"
-              className={inputClass}
-            />
-          </div>
-          <div className="grid grid-cols-[1fr_88px] gap-2">
-            <div>
-              <label className={labelClass}>IMAP server</label>
-              <input
-                type="text"
-                value={host}
-                onChange={(e) => { setHost(e.target.value); setError(null); }}
-                placeholder="imap.yourcompany.com"
-                autoComplete="off"
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Port</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                value={port}
-                onChange={(e) => { setPort(e.target.value); setError(null); }}
-                className={inputClass}
-              />
-            </div>
-          </div>
-          <label className="flex items-center gap-2 font-sans text-[12px] text-sts-muted">
-            <input
-              type="checkbox"
-              checked={secure}
-              onChange={(e) => { setSecure(e.target.checked); if (e.target.checked && port === "143") setPort("993"); }}
-              className="size-3.5 accent-sts-blue"
-            />
-            Use SSL/TLS
-          </label>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <div>
-              <label className={labelClass}>Username</label>
-              <input
-                type="text"
-                value={username}
-                onChange={(e) => { setUsername(e.target.value); setError(null); }}
-                placeholder="Defaults to the address"
-                autoComplete="off"
-                className={inputClass}
-              />
-            </div>
-            <div>
-              <label className={labelClass}>Password / app password</label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => { setPassword(e.target.value); setError(null); }}
-                autoComplete="new-password"
-                className={inputClass}
-              />
-            </div>
-          </div>
-          <p className="font-sans text-[11px] text-sts-subtle">
-            We sign in to check these settings before saving. The password is stored encrypted and the inbox is opened
-            read-only.
-          </p>
-        </>
-      )}
+      <p className="font-sans text-[12px] text-sts-muted">{MAILBOX_PROVIDER_META.OAUTH_M365.description}</p>
+      <div>
+        <label className={labelClass}>Shared mailbox address (optional)</label>
+        <input
+          type="text"
+          inputMode="email"
+          value={address}
+          onChange={(e) => { setAddress(e.target.value); setError(null); }}
+          onKeyDown={(e) => { if (e.key === "Enter") startOAuth(); }}
+          placeholder="support@yourcompany.com"
+          className={inputClass}
+        />
+        <p className="mt-1.5 font-sans text-[11px] text-sts-subtle">
+          Leave blank to connect the inbox of the account you sign in with. For a shared mailbox, sign in with an
+          account that has Full Access to it. The inbox is read-only to us — nothing is sent, moved or deleted.
+        </p>
+      </div>
 
       {teamPicker}
 
@@ -294,26 +154,23 @@ export function ExternalMailboxConnectForm({
         </button>
         <button
           type="button"
-          onClick={provider === "IMAP" ? connectImap : startOAuth}
+          onClick={startOAuth}
           disabled={busy}
           className="flex h-8 items-center gap-1.5 rounded-full bg-sts-blue px-4 font-sans text-[12.5px] font-medium text-white disabled:opacity-50 dark:text-gray-900"
         >
-          {busy ? <Loader2 className="size-3.5 animate-spin" /> : provider !== "IMAP" && <LogIn className="size-3.5" />}
-          {provider === "OAUTH_M365" ? "Sign in with Microsoft" : provider === "OAUTH_GOOGLE" ? "Sign in with Google" : "Test & connect"}
+          {busy ? <Loader2 className="size-3.5 animate-spin" /> : <LogIn className="size-3.5" />}
+          Sign in with Microsoft
         </button>
       </div>
     </div>
   );
 }
 
-/** Starts re-authorizing an OAuth mailbox whose sign-in expired or was revoked. */
+/** Starts re-authorizing a Microsoft 365 mailbox whose sign-in expired or was revoked. */
 export function reconnectMailbox(connection: MailboxConnection) {
   if (!isOAuthProvider(connection.authType)) return;
   window.location.assign(
-    mailboxOAuthStartUrl(connection.authType === "OAUTH_M365" ? "microsoft" : "google", {
-      connectionId: connection.id,
-      returnTo: window.location.pathname,
-    }),
+    mailboxOAuthStartUrl("microsoft", { connectionId: connection.id, returnTo: window.location.pathname }),
   );
 }
 

@@ -3,22 +3,25 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { MailProviderError, type OAuthMailboxCredentials } from "@/lib/mail-providers/types";
 
 /**
- * OAuth for pull mailboxes (EM-05): the admin signs in with Microsoft or
- * Google and grants read access to the mailbox, and we keep only the
+ * OAuth for Microsoft 365 mailboxes (EM-05): the admin signs in with
+ * Microsoft and grants read access to the mailbox, and we keep only the
  * (encrypted) refresh token. Plain `fetch` against the standard OAuth 2.0
- * endpoints — no provider SDKs.
+ * endpoints — no provider SDK.
+ *
+ * One multi-tenant Entra app serves every organization: each one's admin signs
+ * in with their own account, and the token their directory issues is stored on
+ * that mailbox's connection only.
  *
  * Env: MAILBOX_M365_CLIENT_ID / MAILBOX_M365_CLIENT_SECRET (+ optional
- * MAILBOX_M365_TENANT, default "organizations"), MAILBOX_GOOGLE_CLIENT_ID /
- * MAILBOX_GOOGLE_CLIENT_SECRET. Redirect URI to register with each provider:
- * `<app origin>/api/admin/mailbox-oauth/<microsoft|google>/callback`.
+ * MAILBOX_M365_TENANT, default "organizations"). Redirect URI to register:
+ * `<app origin>/api/admin/mailbox-oauth/microsoft/callback`.
  */
 
-export type OAuthProviderKey = "microsoft" | "google";
+/** The `[provider]` route segment. Microsoft is the only one implemented. */
+export type OAuthProviderKey = "microsoft";
 
 export const OAUTH_AUTH_TYPE = {
   microsoft: "OAUTH_M365",
-  google: "OAUTH_GOOGLE",
 } as const;
 
 type ProviderConfig = {
@@ -30,8 +33,9 @@ type ProviderConfig = {
   extraAuthorizeParams: Record<string, string>;
 };
 
-function providerConfig(provider: OAuthProviderKey): ProviderConfig {
-  if (provider === "microsoft") {
+// Read lazily so env changes apply without a module reload (and tests can set them).
+const PROVIDER_CONFIG: Record<OAuthProviderKey, () => ProviderConfig> = {
+  microsoft: () => {
     const tenant = process.env.MAILBOX_M365_TENANT || "organizations";
     return {
       authorizeUrl: `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/authorize`,
@@ -43,16 +47,11 @@ function providerConfig(provider: OAuthProviderKey): ProviderConfig {
       clientSecret: process.env.MAILBOX_M365_CLIENT_SECRET,
       extraAuthorizeParams: { prompt: "select_account" },
     };
-  }
-  return {
-    authorizeUrl: "https://accounts.google.com/o/oauth2/v2/auth",
-    tokenUrl: "https://oauth2.googleapis.com/token",
-    scopes: ["openid", "email", "https://www.googleapis.com/auth/gmail.readonly"],
-    clientId: process.env.MAILBOX_GOOGLE_CLIENT_ID,
-    clientSecret: process.env.MAILBOX_GOOGLE_CLIENT_SECRET,
-    // offline + consent guarantees Google returns a refresh token every time.
-    extraAuthorizeParams: { access_type: "offline", prompt: "consent", include_granted_scopes: "true" },
-  };
+  },
+};
+
+function providerConfig(provider: OAuthProviderKey): ProviderConfig {
+  return PROVIDER_CONFIG[provider]();
 }
 
 export function isOAuthProviderConfigured(provider: OAuthProviderKey): boolean {
@@ -64,7 +63,7 @@ export function oauthRedirectUri(origin: string, provider: OAuthProviderKey): st
   return `${origin}/api/admin/mailbox-oauth/${provider}/callback`;
 }
 
-export function buildAuthorizeUrl(provider: OAuthProviderKey, redirectUri: string, state: string, loginHint?: string): string {
+export function buildAuthorizeUrl(provider: OAuthProviderKey, redirectUri: string, state: string): string {
   const config = providerConfig(provider);
   const url = new URL(config.authorizeUrl);
   url.searchParams.set("client_id", config.clientId ?? "");
@@ -73,7 +72,6 @@ export function buildAuthorizeUrl(provider: OAuthProviderKey, redirectUri: strin
   url.searchParams.set("scope", config.scopes.join(" "));
   url.searchParams.set("state", state);
   for (const [key, value] of Object.entries(config.extraAuthorizeParams)) url.searchParams.set(key, value);
-  if (loginHint) url.searchParams.set("login_hint", loginHint);
   return url.toString();
 }
 
@@ -109,7 +107,7 @@ export async function exchangeAuthorizationCode(
   if (!tokens.refresh_token) {
     throw new MailProviderError("The provider didn't return a refresh token. Remove the app's access from your account and try again.", "auth");
   }
-  const account = await fetchAccountEmail(provider, tokens.access_token);
+  const account = await fetchAccountEmail(tokens.access_token);
   return {
     kind: "oauth",
     refreshToken: tokens.refresh_token,
@@ -119,14 +117,13 @@ export async function exchangeAuthorizationCode(
   };
 }
 
-async function fetchAccountEmail(provider: OAuthProviderKey, accessToken: string): Promise<string> {
-  const url = provider === "microsoft"
-    ? "https://graph.microsoft.com/v1.0/me?$select=mail,userPrincipalName"
-    : "https://gmail.googleapis.com/gmail/v1/users/me/profile";
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } });
+async function fetchAccountEmail(accessToken: string): Promise<string> {
+  const res = await fetch("https://graph.microsoft.com/v1.0/me?$select=mail,userPrincipalName", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
   if (!res.ok) throw new MailProviderError(`Couldn't read the signed-in account (HTTP ${res.status})`, "auth");
-  const body = (await res.json()) as { mail?: string | null; userPrincipalName?: string; emailAddress?: string };
-  const email = body.emailAddress ?? body.mail ?? body.userPrincipalName;
+  const body = (await res.json()) as { mail?: string | null; userPrincipalName?: string };
+  const email = body.mail ?? body.userPrincipalName;
   if (!email) throw new MailProviderError("The signed-in account has no email address", "auth");
   return email.trim().toLowerCase();
 }

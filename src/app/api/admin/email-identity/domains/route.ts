@@ -32,10 +32,13 @@ export async function POST(request: NextRequest) {
   if (!name.trim()) {
     return NextResponse.json({ error: "A domain name is required" }, { status: 400 });
   }
+  if (body.allDepartments !== undefined && typeof body.allDepartments !== "boolean") {
+    return NextResponse.json({ error: "allDepartments must be a boolean" }, { status: 400 });
+  }
   const departmentId = typeof body?.departmentId === "string" ? body.departmentId : null;
   const subDepartmentId = typeof body?.subDepartmentId === "string" ? body.subDepartmentId : null;
 
-  const result = await addTenantDomain(tenantId, name, { departmentId, subDepartmentId });
+  const result = await addTenantDomain(tenantId, name, { departmentId, subDepartmentId, allDepartments: body.allDepartments === true });
   if ("error" in result) return NextResponse.json({ error: result.error }, { status: 400 });
   return NextResponse.json({ domain: result }, { status: 201 });
 }

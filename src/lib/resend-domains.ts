@@ -98,20 +98,8 @@ export async function checkDomainVerification(email: string): Promise<{
   if (!resend) return { domain, status: "not_configured", receivingEnabled: false };
 
   try {
-    const { data } = await resend.domains.list();
-    // A domain name can be registered in more than one Resend region (e.g. an
-    // old us-east-1 entry that was never verified plus a live eu-west-1 one).
-    // list() returns them all, so match every copy and prefer the verified one
-    // rather than whichever .find() happened to hit first.
-    const candidates: ManagedDomain[] = (data?.data ?? []).map((d) => ({
-      id: d.id,
-      name: d.name,
-      status: d.status,
-      region: d.region ?? null,
-      capabilities: domainCapabilities(d.capabilities),
-      createdAt: d.created_at ?? null,
-      records: [],
-    }));
+    const candidates = await listManagedDomains();
+    if ("error" in candidates) return { domain, status: "unknown", receivingEnabled: false };
     const best = selectBestManagedDomain(candidates, domain);
     if (!best) return { domain, status: "unknown", receivingEnabled: false };
     return {
@@ -124,14 +112,7 @@ export async function checkDomainVerification(email: string): Promise<{
   }
 }
 
-// ─── Domain management (self-serve verification from the platform UI) ─────────
-//
-// Verifying a domain in Resend is a three-step handshake: (1) register the
-// domain to get its required DNS records, (2) the owner adds those records at
-// their DNS provider (external — we can't automate it), (3) ask Resend to
-// re-scan DNS. These wrap the write side of resend.domains.* that
-// checkDomainVerification's read-only list() didn't cover. Account-wide in
-// Resend (one shared API key), so callers must be super-admin gated.
+// Resend domain configuration is managed externally. This module only reads it.
 
 export type DomainOpError = { error: string };
 
@@ -140,48 +121,41 @@ export type DomainOpError = { error: string };
 export async function listManagedDomains(): Promise<ManagedDomain[] | DomainOpError> {
   if (!resend) return { error: "Resend is not configured (no RESEND_API_KEY)." };
   try {
-    const { data, error } = await resend.domains.list();
-    if (error) return { error: error.message };
-    return (data?.data ?? []).map((d) => ({
-      id: d.id,
-      name: d.name,
-      status: d.status,
-      region: d.region ?? null,
-      capabilities: domainCapabilities(d.capabilities),
-      createdAt: d.created_at ?? null,
-      records: [],
-    }));
+    const domains: ManagedDomain[] = [];
+    let after: string | undefined;
+    do {
+      const { data, error } = await resend.domains.list({ limit: 100, ...(after ? { after } : {}) });
+      if (error || !data) return { error: error?.message ?? "Unable to read Resend domains." };
+      domains.push(...data.data.map((d) => ({
+        id: d.id,
+        name: d.name,
+        status: d.status,
+        region: d.region ?? null,
+        capabilities: domainCapabilities(d.capabilities),
+        createdAt: d.created_at ?? null,
+        records: [],
+      })));
+      if (!data.has_more) break;
+      const cursor = data.data.at(-1)?.id;
+      if (!cursor || cursor === after) return { error: "Unable to read all Resend domains." };
+      after = cursor;
+    } while (after);
+    return domains;
   } catch {
     return { error: "Failed to reach Resend." };
   }
 }
 
-/** Registers a new sending domain and returns the DNS records to publish. */
-export async function createManagedDomain(name: string): Promise<ManagedDomain | DomainOpError> {
-  if (!resend) return { error: "Resend is not configured (no RESEND_API_KEY)." };
+/** Checks an existing Resend domain without creating or changing it. */
+export async function findVerifiedManagedDomain(name: string): Promise<ManagedDomain | DomainOpError> {
   const clean = name.trim().toLowerCase();
-  if (!/^([a-z0-9-]+\.)+[a-z]{2,}$/.test(clean)) {
+  if (!/^(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/.test(clean)) {
     return { error: "Enter a valid domain, e.g. mail.example.com" };
   }
-  try {
-    const { data, error } = await resend.domains.create({
-      name: clean,
-      region: RESEND_REGION as "us-east-1" | "eu-west-1" | "sa-east-1" | "ap-northeast-1",
-      capabilities: { sending: "enabled", receiving: "enabled" },
-    });
-    if (error || !data) return { error: error?.message ?? "Failed to create the domain." };
-    return {
-      id: data.id,
-      name: data.name,
-      status: data.status,
-      region: data.region ?? RESEND_REGION,
-      capabilities: domainCapabilities(data.capabilities),
-      createdAt: data.created_at ?? null,
-      records: toDnsRecords(data.records),
-    };
-  } catch {
-    return { error: "Failed to reach Resend." };
-  }
+  const domains = await listManagedDomains();
+  if ("error" in domains) return domains;
+  const domain = selectBestManagedDomain(domains.filter((d) => d.status === "verified"), clean);
+  return domain ?? { error: `The ${clean} domain is not verified in Resend. Verify it in Resend before adding it here.` };
 }
 
 /** Fetches one domain with its current per-record verification status — used
@@ -200,58 +174,6 @@ export async function getManagedDomain(id: string): Promise<ManagedDomain | Doma
       createdAt: data.created_at ?? null,
       records: toDnsRecords(data.records),
     };
-  } catch {
-    return { error: "Failed to reach Resend." };
-  }
-}
-
-/** Turns inbound delivery on or off for an existing sending domain. Enabling
- * makes Resend expose the MX (Receiving) record to publish; disabling drops it,
- * so the domain can still send but stops receiving replies at the provider.
- * Returns the re-fetched domain so the caller sees the new capabilities. */
-export async function setManagedDomainReceiving(
-  id: string,
-  enabled: boolean,
-): Promise<ManagedDomain | DomainOpError> {
-  if (!resend) return { error: "Resend is not configured (no RESEND_API_KEY)." };
-  try {
-    const { error } = await resend.domains.update({
-      id,
-      capabilities: { sending: "enabled", receiving: enabled ? "enabled" : "disabled" },
-    });
-    if (error) return { error: error.message };
-    return getManagedDomain(id);
-  } catch {
-    return { error: `Failed to ${enabled ? "enable" : "disable"} receiving in Resend.` };
-  }
-}
-
-/** Enables inbound delivery for an existing sending domain and returns the MX record to publish. */
-export async function enableManagedDomainReceiving(id: string): Promise<ManagedDomain | DomainOpError> {
-  return setManagedDomainReceiving(id, true);
-}
-
-/** Asks Resend to re-scan DNS for the domain. Returns nothing meaningful on
- * success — the caller should re-fetch getManagedDomain for the new status. */
-export async function verifyManagedDomain(id: string): Promise<{ ok: true } | DomainOpError> {
-  if (!resend) return { error: "Resend is not configured (no RESEND_API_KEY)." };
-  try {
-    const { error } = await resend.domains.verify(id);
-    if (error) return { error: error.message };
-    return { ok: true };
-  } catch {
-    return { error: "Failed to reach Resend." };
-  }
-}
-
-/** Removes a domain from the Resend account. Account-wide — this can break
- * mailbox connections for other departments that send from this domain. */
-export async function removeManagedDomain(id: string): Promise<{ ok: true } | DomainOpError> {
-  if (!resend) return { error: "Resend is not configured (no RESEND_API_KEY)." };
-  try {
-    const { error } = await resend.domains.remove(id);
-    if (error) return { error: error.message };
-    return { ok: true };
   } catch {
     return { error: "Failed to reach Resend." };
   }

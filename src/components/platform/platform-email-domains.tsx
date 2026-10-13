@@ -20,7 +20,7 @@ export function PlatformEmailDomains({
         <PageHeader
           icon={Globe}
           title="Email domains"
-          description="Register and verify the domains you send support email from. Domains are shared across all tenants — verify once here, then department admins can connect mailbox addresses on them."
+          description="View the Resend status of domains used by this project. Domain registration, DNS verification, and receiving settings are managed directly in Resend."
         />
         <div className="mt-6">
           <EmailDomainsManager
@@ -28,7 +28,7 @@ export function PlatformEmailDomains({
             initialDomains={initialDomains}
             loadError={loadError}
             allowRemove={false}
-            allowEnableReceiving
+            allowAdd={false}
           />
         </div>
       </div>

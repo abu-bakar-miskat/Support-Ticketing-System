@@ -2,11 +2,8 @@ import "server-only";
 import { prisma } from "@/lib/db";
 import { runAsSystem } from "@/lib/request-scope";
 import {
-  createManagedDomain,
-  enableManagedDomainReceiving,
+  findVerifiedManagedDomain,
   getManagedDomain,
-  verifyManagedDomain,
-  removeManagedDomain,
   listManagedDomains,
   selectBestManagedDomain,
   type ManagedDomain,
@@ -14,8 +11,7 @@ import {
 } from "@/lib/resend-domains";
 
 /**
- * Per-tenant view of Resend sending domains (slice: tenant self-serve domain
- * verification).
+ * Per-tenant assignments of externally verified Resend domains.
  *
  * Resend domains are account-wide — Resend has no notion of tenancy — so the
  * `EmailDomain` table records which tenant owns which Resend domain. Live status
@@ -32,7 +28,7 @@ import {
  */
 
 /** Same shape the UI already renders (see resend-domains.ManagedDomain); `id`
- * here is the Resend domain id, used for verify/get/remove. `scopeLabel` names
+ * here is the Resend domain id, used for status lookups and local removal. `scopeLabel` names
  * the department / sub-department the tenant admin assigned the domain to. */
 export type TenantDomain = ManagedDomain & { scopeLabel: string | null };
 
@@ -40,6 +36,7 @@ export type TenantDomain = ManagedDomain & { scopeLabel: string | null };
  * of the two ids is chosen by the admin; when a sub-department is chosen its
  * parent department is recorded alongside it. */
 export type DomainScopeInput = {
+  allDepartments?: boolean;
   departmentId?: string | null;
   subDepartmentId?: string | null;
 };
@@ -75,9 +72,14 @@ export async function listTenantDepartmentScopes(tenantId: string): Promise<Depa
 async function resolveScope(
   tenantId: string,
   scope: DomainScopeInput,
-): Promise<{ departmentId: string; subDepartmentId: string | null; label: string } | { error: string }> {
+): Promise<{ departmentId: string | null; subDepartmentId: string | null; label: string } | { error: string }> {
   const subId = scope.subDepartmentId?.trim() || null;
   const deptId = scope.departmentId?.trim() || null;
+
+  if (scope.allDepartments) {
+    if (deptId || subId) return { error: "Choose either all departments or a specific team." };
+    return { departmentId: null, subDepartmentId: null, label: "All departments and sub-departments" };
+  }
 
   if (subId) {
     const sub = await runAsSystem(() =>
@@ -131,7 +133,7 @@ async function scopeLabels(
 export type InUseDomain = {
   domain: string;
   status: ManagedDomain["status"];
-  /** True when this domain is also a managed EmailDomain (add/verify/remove). */
+  /** True when this domain is also a managed EmailDomain assignment. */
   registered: boolean;
   /** Sub-department (or department) names whose mailboxes use this domain. */
   usedBy: string[];
@@ -221,7 +223,7 @@ export async function listTenantDomains(tenantId: string): Promise<TenantDomain[
   return rows.map((r) => {
     const deptName = r.departmentId ? labels.depts.get(r.departmentId) ?? null : null;
     const subName = r.subDepartmentId ? labels.subs.get(r.subDepartmentId) ?? null : null;
-    const scopeLabel = subName ? `${deptName ?? "—"} › ${subName}` : deptName;
+    const scopeLabel = subName ? `${deptName ?? "—"} › ${subName}` : deptName ?? "All departments and sub-departments";
     const managed = selectBestManagedDomain(allDomains, r.name);
     return {
       id: r.resendId,
@@ -236,9 +238,7 @@ export async function listTenantDomains(tenantId: string): Promise<TenantDomain[
   });
 }
 
-/** Registers a domain in Resend and records tenant ownership. Rolls back the
- * Resend registration if the ownership write fails, so a half-add never leaves
- * an orphan domain only the platform admin can see. */
+/** Assigns an already verified Resend domain to a workspace. */
 export async function addTenantDomain(
   tenantId: string,
   name: string,
@@ -246,8 +246,7 @@ export async function addTenantDomain(
 ): Promise<TenantDomain | DomainOpError> {
   const clean = name.trim().toLowerCase();
 
-  // Validate the chosen scope before touching Resend, so a bad selection can't
-  // leave a registered-but-unassigned domain behind.
+  // Validate workspace scope before checking the external domain.
   const resolved = await resolveScope(tenantId, scope);
   if ("error" in resolved) return resolved;
 
@@ -263,28 +262,9 @@ export async function addTenantDomain(
     };
   }
 
-  // Register the domain in Resend — or, if it already exists there (e.g. a
-  // mailbox already sends from it), claim that existing domain rather than
-  // failing. We only roll back the Resend registration on error when *we*
-  // created it, never when we merely claimed a pre-existing one.
-  let resendId: string;
-  let createdNew = false;
-  const existingManaged = await listManagedDomains();
-  const existingMatch = "error" in existingManaged
-    ? undefined
-    : selectBestManagedDomain(existingManaged, clean);
-  if (existingMatch) {
-    resendId = existingMatch.id;
-    if (existingMatch.capabilities.receiving !== "enabled") {
-      const enabled = await enableManagedDomainReceiving(existingMatch.id);
-      if ("error" in enabled) return enabled;
-    }
-  } else {
-    const created = await createManagedDomain(clean);
-    if ("error" in created) return created;
-    resendId = created.id;
-    createdNew = true;
-  }
+  const domain = await findVerifiedManagedDomain(clean);
+  if ("error" in domain) return domain;
+  const resendId = domain.id;
 
   try {
     await runAsSystem(() =>
@@ -299,24 +279,9 @@ export async function addTenantDomain(
       }),
     );
   } catch {
-    if (createdNew) await removeManagedDomain(resendId);
     return { error: "Failed to save the domain. Please try again." };
   }
 
-  // Return live status + records (the claim path has none from `created`).
-  const domain = await getManagedDomain(resendId);
-  if ("error" in domain) {
-    return {
-      id: resendId,
-      name: clean,
-      status: "unknown",
-      region: null,
-      capabilities: { sending: "disabled", receiving: "disabled" },
-      createdAt: null,
-      records: [],
-      scopeLabel: resolved.label,
-    };
-  }
   return { ...domain, scopeLabel: resolved.label };
 }
 
@@ -343,10 +308,10 @@ async function ownedRow(tenantId: string, resendId: string): Promise<OwnedRow | 
  * a stale stored `resendId`. Resend domains occasionally get re-created in another
  * region and receive a NEW id, which leaves our stored `resendId` pointing at a
  * now-deleted copy — a direct get() then 404s even though the domain is live under
- * a different id (this is what made the DNS records spin on "Loading…"). When the
+ * a different id. When the
  * direct lookup fails, fall back to resolving the live copy by NAME (the same
  * logic `listTenantDomains` already uses for display) and self-heal the stored
- * `resendId` so ownership actions (verify / receiving / remove) work again. */
+ * `resendId` so subsequent status lookups use the current domain. */
 async function liveDomainForRow(row: OwnedRow): Promise<ManagedDomain | DomainOpError> {
   const direct = await getManagedDomain(row.resendId);
   if (!("error" in direct)) return direct;
@@ -369,7 +334,7 @@ async function labelForRow(row: { departmentId: string | null; subDepartmentId: 
   );
   const deptName = row.departmentId ? labels.depts.get(row.departmentId) ?? null : null;
   const subName = row.subDepartmentId ? labels.subs.get(row.subDepartmentId) ?? null : null;
-  return subName ? `${deptName ?? "—"} › ${subName}` : deptName;
+  return subName ? `${deptName ?? "—"} › ${subName}` : deptName ?? "All departments and sub-departments";
 }
 
 /** One domain with its DNS records, only if the tenant owns it (else null). */
@@ -384,38 +349,13 @@ export async function getTenantDomain(
   return { ...domain, scopeLabel: await labelForRow(row) };
 }
 
-/** Triggers a Resend DNS re-scan and returns the refreshed domain. */
-export async function verifyTenantDomain(
-  tenantId: string,
-  resendId: string,
-): Promise<TenantDomain | DomainOpError | null> {
-  const row = await ownedRow(tenantId, resendId);
-  if (!row) return null;
-  // Resolve (and self-heal) the live id first — a stale stored id would 404 the
-  // verify call the same way it 404s the record fetch.
-  const current = await liveDomainForRow(row);
-  if ("error" in current) return current;
-  const verified = await verifyManagedDomain(current.id);
-  if ("error" in verified) return verified;
-  const domain = await getManagedDomain(current.id);
-  if ("error" in domain) return domain;
-  return { ...domain, scopeLabel: await labelForRow(row) };
-}
-
-/** Drops the ownership row, and — when `deleteFromResend` is set — also
- * deregisters the domain from the (account-wide) Resend account. With it off,
- * the domain stays registered in Resend and only the local record is removed. */
+/** Removes only the workspace assignment; the Resend domain is managed externally. */
 export async function removeTenantDomain(
   tenantId: string,
   resendId: string,
-  { deleteFromResend = true }: { deleteFromResend?: boolean } = {},
 ): Promise<{ ok: true } | DomainOpError | null> {
   const row = await ownedRow(tenantId, resendId);
   if (!row) return null;
-  if (deleteFromResend) {
-    const removed = await removeManagedDomain(resendId);
-    if ("error" in removed) return removed;
-  }
-  await runAsSystem(() => prisma.emailDomain.delete({ where: { id: row.id } })).catch(() => undefined);
+  await runAsSystem(() => prisma.emailDomain.delete({ where: { id: row.id } }));
   return { ok: true };
 }

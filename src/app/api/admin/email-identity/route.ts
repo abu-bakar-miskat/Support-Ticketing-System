@@ -8,6 +8,8 @@ import {
 } from "@/lib/email-config";
 import { assertTemplateFeatureEnabled } from "@/lib/template-catalogue";
 
+import { findVerifiedManagedDomain } from "@/lib/resend-domains";
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /** Validate an optional sub-department belongs to the given department. */
@@ -80,6 +82,11 @@ export async function PUT(request: NextRequest) {
   const fromEmail = hasFromEmail ? (body.fromEmail as string).trim() : "";
   if (fromEmail && !EMAIL_RE.test(fromEmail)) {
     return NextResponse.json({ error: "A valid From email is required" }, { status: 400 });
+  }
+
+  if (fromEmail) {
+    const verified = await findVerifiedManagedDomain(fromEmail.split("@")[1]);
+    if ("error" in verified) return NextResponse.json({ error: verified.error }, { status: 400 });
   }
 
   await saveDepartmentEmailIdentity(departmentId, {

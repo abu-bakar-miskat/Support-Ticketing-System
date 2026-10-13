@@ -1,8 +1,8 @@
 "use client"
 
-import type { StatusCategory } from "@/lib/status-category";;
+import type { StatusCategory } from "@/lib/status-category";
 
-import { Suspense, useState } from "react";
+import { Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
@@ -14,9 +14,7 @@ import {
   UserCheck,
   Paperclip,
   AtSign,
-  ArrowRight,
   Users,
-  Globe,
   Trash2,
   Inbox,
   CircleDot,
@@ -147,14 +145,6 @@ type ApiResponse = {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const PRIORITY_COLOR: Record<string, string> = {
-  Urgent: "#ff4500",
-  Critical: "#dc2626",
-  High: "#f97316",
-  Medium: "#ec4899",
-  Low: "#22c55e",
-};
-
 type ActionConfig = {
   Icon: React.ElementType;
   color: string;
@@ -200,102 +190,6 @@ const ACTION_CONFIG: Record<string, ActionConfig> = {
   },
 };
 
-// ── Ticket slide-over ─────────────────────────────────────────────────────────
-
-type StatKey =
-  | "total"
-  | "completed"
-  | "inProgress"
-  | "overdue"
-  | "blocked"
-  | "review"
-  | "created";
-const STAT_LABELS: Record<StatKey, string> = {
-  total: "All tickets",
-  completed: "Completed",
-  inProgress: "In progress",
-  overdue: "Overdue",
-  blocked: "Blocked",
-  review: "In review",
-  created: "Created",
-};
-
-function TicketList({
-  statKey,
-  tickets,
-}: {
-  statKey: StatKey;
-  tickets: TicketSummary[];
-}) {
-  return (
-    <div className="flex min-h-[280px] flex-1 flex-col overflow-hidden rounded-xl border border-sts-card-border bg-sts-card">
-      <div className="flex shrink-0 items-baseline justify-between gap-3 border-b border-sts-card-border px-4 py-3">
-        <h2 className="font-sans text-[14px] font-semibold text-sts-foreground">
-          {STAT_LABELS[statKey]}
-        </h2>
-        <p className="font-sans text-[12px] text-sts-subtle">
-          {tickets.length} ticket{tickets.length !== 1 ? "s" : ""}
-        </p>
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        {tickets.length === 0 ? (
-          <div className="flex h-full min-h-[220px] flex-col items-center justify-center px-6 py-12 text-center">
-            <p className="font-sans text-[14px] font-medium text-sts-foreground">
-              {statKey === "total" ? "No assigned tickets" : `No ${STAT_LABELS[statKey].toLowerCase()} tickets`}
-            </p>
-            <p className="mt-1 max-w-[280px] font-sans text-[13px] leading-relaxed text-sts-subtle">
-              Nothing in this period matches. Try a longer range, or pick another status above.
-            </p>
-          </div>
-        ) : (
-          tickets.map((t) => {
-            const ov = t.category !== "COMPLETE" && t.category !== "BLOCKED" && t.dueDate && new Date(t.dueDate) < new Date();
-            return (
-              <Link
-                key={t.id}
-                href={`/tickets/${t.id}`}
-                className="group flex items-start gap-2.5 border-b border-sts-card-border px-4 py-3 transition-colors last:border-b-0 hover:bg-sts-surface"
-              >
-                <span
-                  className="mt-2 size-2 shrink-0 rounded-full"
-                  style={{
-                    backgroundColor: PRIORITY_COLOR[t.priority] ?? "#94a3b8",
-                  }}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="font-mono text-[11.5px] font-semibold text-sts-id">
-                      {t.humanId}
-                    </span>
-                    {t.department && t.isOutsideContribution && (
-                      <span className="rounded bg-amber-500/10 px-1.5 py-px font-sans text-[11.5px] text-amber-700 dark:text-amber-400">
-                        {t.department.name}
-                      </span>
-                    )}
-                  </div>
-                  <p className="mt-0.5 font-sans text-[13px] leading-snug text-sts-foreground group-hover:text-sts-blue">
-                    {t.title}
-                  </p>
-                  <p className="mt-0.5 font-sans text-[11.5px] text-sts-subtle">
-                    {t.status}
-                    {t.project && ` · ${t.project.name}`}
-                    {ov && (
-                      <span className="ml-1 font-semibold text-sts-red">
-                        · Overdue
-                      </span>
-                    )}
-                  </p>
-                </div>
-                <ArrowRight className="mt-1.5 size-3.5 shrink-0 text-sts-subtle" />
-              </Link>
-            );
-          })
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ── Small UI pieces ────────────────────────────────────────────────────────────
 
 function MetricTile({
@@ -306,8 +200,6 @@ function MetricTile({
   iconClass,
   iconBg,
   accent,
-  onClick,
-  active,
 }: {
   label: string;
   value: number;
@@ -316,26 +208,13 @@ function MetricTile({
   iconClass: string;
   iconBg: string;
   accent?: string;
-  onClick: () => void;
-  active?: boolean;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        "flex min-w-0 flex-col items-start gap-2 bg-sts-card px-3.5 py-3 text-left transition-colors",
-        "outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sts-blue",
-        active
-          ? "bg-sts-blue-tint shadow-[inset_0_-2px_0_0_var(--sts-blue)]"
-          : "hover:bg-sts-surface",
-      )}
-    >
+    <div className="flex min-w-0 flex-col items-start gap-4 bg-sts-card px-4 py-4 text-left sm:px-5 sm:py-5">
       <div className="flex w-full items-center justify-between gap-2">
         <span
           className={cn(
-            "flex size-7 items-center justify-center rounded-lg",
+            "flex size-8 items-center justify-center rounded-xl",
             iconBg,
           )}
         >
@@ -350,17 +229,17 @@ function MetricTile({
       <div>
         <span
           className={cn(
-            "block font-sans text-[22px] font-bold leading-none tabular-nums",
+            "block font-sans text-[28px] font-semibold leading-none tracking-tight tabular-nums",
             accent ?? "text-sts-foreground",
           )}
         >
           {value}
         </span>
-        <span className="mt-1 block font-sans text-[12px] font-medium text-sts-muted">
+        <span className="mt-2 block font-sans text-[12px] font-medium text-sts-muted">
           {label}
         </span>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -378,17 +257,17 @@ function MiniStat({
   barClass?: string;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <p className="font-sans text-[11px] font-semibold uppercase tracking-[0.6px] text-sts-subtle">
+    <div className="flex min-w-0 flex-col gap-2.5">
+      <p className="font-sans text-[12px] font-medium text-sts-muted">
         {label}
       </p>
-      <p className="font-sans text-[20px] font-bold leading-none tabular-nums text-sts-foreground">
+      <p className="font-sans text-[26px] font-semibold leading-none tracking-tight tabular-nums text-sts-foreground">
         {value}
       </p>
       {pct !== undefined ? (
         <div className="h-1.5 overflow-hidden rounded-full bg-sts-surface">
           <div
-            className={cn("h-full rounded-full transition-all", barClass ?? "bg-sts-blue")}
+            className={cn("h-full rounded-full", barClass ?? "bg-sts-blue")}
             style={{ width: `${Math.min(100, Math.max(0, pct))}%` }}
           />
         </div>
@@ -402,90 +281,21 @@ function MiniStat({
   );
 }
 
-function shortDuration(totalSecs: number): string {
-  const h = Math.floor(totalSecs / 3600);
-  const m = Math.round((totalSecs % 3600) / 60);
-  if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`;
-  return `${m}m`;
-}
-
-function ProgressRow({
-  label,
-  done,
-  total,
-  overdue,
-  isOutside,
-  created,
-  loggedSecs,
-}: {
-  label: string;
-  done: number;
-  total: number;
-  overdue?: number;
-  isOutside?: boolean;
-  created?: number;
-  loggedSecs?: number;
-}) {
-  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-1.5">
-          {isOutside ? (
-            <Globe className="size-3 shrink-0 text-amber-500" />
-          ) : (
-            <DepartmentIcon className="size-3 shrink-0 text-sts-blue" />
-          )}
-          <span className="truncate font-sans text-[13px] text-sts-foreground">
-            {label}
-          </span>
-          {isOutside && (
-            <span className="shrink-0 font-sans text-[11.5px] text-amber-600 dark:text-amber-400">
-              cross-dept
-            </span>
-          )}
-        </div>
-        <span className="shrink-0 font-sans text-[12px] text-sts-muted">
-          {done}/{total} done
-          {overdue ? (
-            <span className="ml-1.5 text-sts-red">{overdue} overdue</span>
-          ) : null}
-        </span>
-      </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-sts-surface">
-        <div
-          className={cn(
-            "h-full rounded-full transition-all",
-            isOutside ? "bg-amber-500" : "bg-sts-green",
-          )}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      {((created ?? 0) > 0 || (loggedSecs ?? 0) > 0) && (
-        <div className="flex items-center gap-2.5 font-sans text-[11px] text-sts-subtle">
-          {(created ?? 0) > 0 && <span>{created} created</span>}
-          {(loggedSecs ?? 0) > 0 && <span>{shortDuration(loggedSecs!)} logged</span>}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function ActivityPanel({ activities }: { activities: ActivityItem[] }) {
-  const sevenDaysAgo = new Date(Date.now() - 7 * 86400_000);
+function ActivityPanel({ activities, asOf }: { activities: ActivityItem[]; asOf: string }) {
+  const sevenDaysAgo = new Date(new Date(asOf).getTime() - 7 * 86400_000);
   const recent = activities
     .filter((a) => new Date(a.createdAt) >= sevenDaysAgo)
     .slice(0, 15);
 
   return (
-    <div className="flex w-full flex-col border-t border-sts-card-border lg:h-full lg:w-[300px] lg:shrink-0 lg:border-l lg:border-t-0">
+    <div className="flex w-full flex-col border-t border-sts-card-border 2xl:h-full 2xl:w-[280px] 2xl:shrink-0 2xl:border-l 2xl:border-t-0">
       <div className="shrink-0 border-b border-sts-card-border px-4 py-3">
         <p className="font-sans text-[13px] font-semibold text-sts-foreground">
           Recent activity
         </p>
         <p className="font-sans text-[11.5px] text-sts-subtle">Last 7 days</p>
       </div>
-      <div className="flex max-h-[min(420px,50vh)] flex-col overflow-y-auto lg:max-h-none lg:min-h-0 lg:flex-1">
+      <div className="flex max-h-[min(420px,50vh)] flex-col overflow-y-auto 2xl:max-h-none 2xl:min-h-0 2xl:flex-1">
         {recent.length === 0 ? (
           <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 text-center">
             <p className="font-sans text-[13px] font-medium text-sts-foreground">
@@ -611,7 +421,7 @@ function ProfileStatsFilters({
   ];
 
   return (
-    <div className="flex shrink-0 flex-nowrap items-center gap-2">
+    <div className="flex shrink-0 flex-wrap items-center gap-2">
       {isPrivileged && userOptions.length > 0 && (
         <SearchableSelect
           value={selectedUserId}
@@ -650,7 +460,6 @@ function ProfileStatsFilters({
 
 function profileSubtitle(
   stats: Stats,
-  isOwnProfile: boolean,
   viewingOther: boolean,
 ) {
   if (stats.total === 0) {
@@ -675,13 +484,13 @@ export function ProfileStatsPage({
   initialData,
   isPrivileged,
   currentUserId,
+  slaSection,
 }: {
   initialData: ApiResponse;
   isPrivileged: boolean;
   currentUserId: string;
+  slaSection?: React.ReactNode;
 }) {
-  const [activeSlide, setSlide] = useState<StatKey>("total");
-
   const {
     profile,
     stats,
@@ -689,9 +498,6 @@ export function ProfileStatsPage({
       totalSecs: 0,
       totalLabel: "0h",
     },
-    tickets,
-    byProject,
-    byDepartment,
     contributionsByDay,
     recentActivity,
     people,
@@ -701,9 +507,6 @@ export function ProfileStatsPage({
   } = initialData;
 
   const viewingOther = profile.id !== currentUserId;
-
-  const homeDepts = byDepartment.filter((d) => d.isHome);
-  const outsideDepts = byDepartment.filter((d) => !d.isHome);
 
   const perfStats: {
     label: string;
@@ -765,28 +568,27 @@ export function ProfileStatsPage({
       <div className="flex h-full flex-col overflow-hidden">
         {/* Header */}
         <div className="sts-page-header shrink-0 border-b border-sts-card-border bg-sts-card">
-          <div className="flex flex-col gap-4 pb-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex min-w-0 items-start gap-3.5">
+          <div className="mx-auto flex w-full max-w-[1440px] shrink-0 flex-col gap-5 pb-5 pt-2 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex min-w-0 items-center gap-4">
               <AvatarVisual
                 name={profile.name}
                 avatarUrl={profile.avatarUrl}
-                size={48}
+                size={64}
+                className="ring-4 ring-sts-surface"
               />
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                  <h1 className="sts-text-page-title">
+                  <h1 className="font-sans text-[26px] font-semibold leading-tight tracking-[-0.7px] text-sts-foreground">
                     {isOwnProfile ? "My profile" : profile.name}
                   </h1>
-                  {!isOwnProfile && (
-                    <span className="rounded bg-sts-surface px-1.5 py-px font-sans text-[11.5px] capitalize text-sts-muted">
-                      {profile.role}
-                    </span>
-                  )}
+                  <span className="rounded-md border border-sts-card-border bg-sts-surface px-2 py-0.5 font-sans text-[11px] font-medium capitalize text-sts-muted">
+                    {profile.role.replaceAll("_", " ")}
+                  </span>
                 </div>
-                <p className="mt-0.5 sts-text-page-desc">
-                  {profileSubtitle(stats, isOwnProfile, viewingOther)}
+                <p className="mt-1.5 sts-text-page-desc">
+                  {profileSubtitle(stats, viewingOther)}
                 </p>
-                <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[12px] text-sts-subtle">
+                <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 font-sans text-[12px] text-sts-subtle">
                   {(profile.homeDepartmentNames.length > 0 ||
                     profile.subDepartmentName) && (
                     <span className="flex items-center gap-1">
@@ -816,187 +618,113 @@ export function ProfileStatsPage({
                 </div>
               </div>
             </div>
-            <Suspense>
-              <ProfileStatsFilters
-                people={people}
-                projects={projectsForFilter}
-                currentUserId={currentUserId}
-                isPrivileged={isPrivileged}
-              />
-            </Suspense>
+            <div className="flex flex-col gap-2 xl:items-end">
+              <p className="font-sans text-[11px] font-medium text-sts-subtle">Activity period</p>
+              <Suspense>
+                <ProfileStatsFilters
+                  people={people}
+                  projects={projectsForFilter}
+                  currentUserId={currentUserId}
+                  isPrivileged={isPrivileged}
+                />
+              </Suspense>
+            </div>
           </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:flex-row lg:overflow-hidden">
-          <div className="sts-page-pad flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto">
-            {/* Ticket counts — tap a status to list those tickets below */}
-            <div className="grid shrink-0 grid-cols-2 gap-px overflow-hidden rounded-xl border border-sts-card-border bg-sts-card-border sm:grid-cols-3 xl:grid-cols-[repeat(auto-fit,minmax(8.5rem,1fr))]">
-              <MetricTile
-                label="Assigned"
-                value={stats.total}
-                Icon={Inbox}
-                iconClass="text-sts-muted"
-                iconBg="bg-sts-surface"
-                onClick={() => setSlide("total")}
-                active={activeSlide === "total"}
-              />
-              <MetricTile
-                label="Done"
-                value={stats.completed}
-                hint={`${stats.completionRate}%`}
-                Icon={CheckCircle2}
-                iconClass="text-sts-green"
-                iconBg="bg-sts-green/10"
-                accent="text-sts-green"
-                onClick={() => setSlide("completed")}
-                active={activeSlide === "completed"}
-              />
-              <MetricTile
-                label="In progress"
-                value={stats.inProgress}
-                Icon={CircleDot}
-                iconClass="text-sts-blue"
-                iconBg="bg-sts-blue/10"
-                onClick={() => setSlide("inProgress")}
-                active={activeSlide === "inProgress"}
-              />
-              <MetricTile
-                label="Overdue"
-                value={stats.overdue}
-                Icon={CalendarClock}
-                iconClass={stats.overdue > 0 ? "text-sts-red" : "text-sts-muted"}
-                iconBg={stats.overdue > 0 ? "bg-sts-red/10" : "bg-sts-surface"}
-                accent={stats.overdue > 0 ? "text-sts-red" : undefined}
-                onClick={() => setSlide("overdue")}
-                active={activeSlide === "overdue"}
-              />
-              <MetricTile
-                label="Blocked"
-                value={stats.blocked}
-                Icon={Ban}
-                iconClass={stats.blocked > 0 ? "text-sts-red" : "text-sts-muted"}
-                iconBg={stats.blocked > 0 ? "bg-sts-red/10" : "bg-sts-surface"}
-                accent={stats.blocked > 0 ? "text-sts-red" : undefined}
-                onClick={() => setSlide("blocked")}
-                active={activeSlide === "blocked"}
-              />
-              {isManager && (
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto 2xl:flex-row 2xl:overflow-hidden">
+          <div className="sts-page-pad flex min-w-0 flex-none flex-col gap-5 2xl:min-h-0 2xl:flex-1 2xl:overflow-y-auto">
+            <div className="mx-auto flex w-full max-w-[1440px] shrink-0 flex-col gap-5">
+              {/* Ticket counts */}
+              <div className="grid shrink-0 grid-cols-2 gap-px overflow-hidden rounded-2xl border border-sts-card-border bg-sts-card-border sm:grid-cols-3 xl:grid-cols-[repeat(auto-fit,minmax(7rem,1fr))]">
                 <MetricTile
-                  label="In review"
-                  value={stats.review}
-                  Icon={GitPullRequest}
-                  iconClass="text-sts-purple"
-                  iconBg="bg-sts-purple/10"
-                  onClick={() => setSlide("review")}
-                  active={activeSlide === "review"}
+                  label="Assigned"
+                  value={stats.total}
+                  Icon={Inbox}
+                  iconClass="text-sts-muted"
+                  iconBg="bg-sts-surface"
                 />
+                <MetricTile
+                  label="Done"
+                  value={stats.completed}
+                  hint={`${stats.completionRate}%`}
+                  Icon={CheckCircle2}
+                  iconClass="text-sts-green"
+                  iconBg="bg-sts-green/10"
+                  accent="text-sts-green"
+                />
+                <MetricTile
+                  label="In progress"
+                  value={stats.inProgress}
+                  Icon={CircleDot}
+                  iconClass="text-sts-blue"
+                  iconBg="bg-sts-blue/10"
+                />
+                <MetricTile
+                  label="Overdue"
+                  value={stats.overdue}
+                  Icon={CalendarClock}
+                  iconClass={stats.overdue > 0 ? "text-sts-red" : "text-sts-muted"}
+                  iconBg={stats.overdue > 0 ? "bg-sts-red/10" : "bg-sts-surface"}
+                  accent={stats.overdue > 0 ? "text-sts-red" : undefined}
+                />
+                <MetricTile
+                  label="Blocked"
+                  value={stats.blocked}
+                  Icon={Ban}
+                  iconClass={stats.blocked > 0 ? "text-sts-red" : "text-sts-muted"}
+                  iconBg={stats.blocked > 0 ? "bg-sts-red/10" : "bg-sts-surface"}
+                  accent={stats.blocked > 0 ? "text-sts-red" : undefined}
+                />
+                {isManager && (
+                  <MetricTile
+                    label="In review"
+                    value={stats.review}
+                    Icon={GitPullRequest}
+                    iconClass="text-sts-purple"
+                    iconBg="bg-sts-purple/10"
+                  />
+                )}
+                <MetricTile
+                  label="Created"
+                  value={stats.created}
+                  Icon={Plus}
+                  iconClass="text-sts-blue"
+                  iconBg="bg-sts-blue/10"
+                />
+              </div>
+
+              {/* Performance summary */}
+              {perfStats.length > 0 && (
+                <section aria-label="Performance overview" className="shrink-0 rounded-2xl border border-sts-card-border bg-sts-card p-5 sm:p-6">
+                  <div className="mb-6">
+                    <h2 className="font-sans text-[15px] font-semibold tracking-tight text-sts-foreground">Performance overview</h2>
+                    <p className="mt-1 font-sans text-[12px] text-sts-subtle">Completion, delivery and time spent in the selected period.</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-6 sm:grid-cols-3 xl:grid-cols-5">
+                    {perfStats.map((s) => (
+                      <MiniStat key={s.label} {...s} />
+                    ))}
+                  </div>
+                </section>
               )}
-              <MetricTile
-                label="Created"
-                value={stats.created}
-                Icon={Plus}
-                iconClass="text-sts-blue"
-                iconBg="bg-sts-blue/10"
-                onClick={() => setSlide("created")}
-                active={activeSlide === "created"}
-              />
+
+              {/* SLA & response times — streamed separately (slow per-ticket SLA evaluation) */}
+              {slaSection}
+
+              {/* GitHub contribution graph */}
+              {profile.githubUsername ? (
+                <div className="shrink-0">
+                  <ContributionHeatmap
+                    data={contributionsByDay}
+                    username={profile.githubUsername}
+                  />
+                </div>
+              ) : null}
             </div>
-
-            {/* Performance summary */}
-            {perfStats.length > 0 && (
-              <div className="shrink-0 rounded-xl border border-sts-card-border bg-sts-card px-4 py-4">
-                <p className="mb-4 font-sans text-[13px] font-semibold text-sts-foreground">
-                  Performance
-                </p>
-                <div className="grid grid-cols-2 gap-x-6 gap-y-5 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-                  {perfStats.map((s) => (
-                    <MiniStat key={s.label} {...s} />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* GitHub contribution graph */}
-            {profile.githubUsername ? (
-              <div className="shrink-0">
-                <ContributionHeatmap
-                  data={contributionsByDay}
-                  username={profile.githubUsername}
-                />
-              </div>
-            ) : null}
-
-            {/* Work by department */}
-            {byDepartment.length > 0 && (
-              <div className="shrink-0 rounded-xl border border-sts-card-border bg-sts-card px-4 py-4">
-                <p className="mb-3 font-sans text-[13px] font-semibold text-sts-foreground">
-                  Work by department
-                </p>
-                <div className="flex flex-col gap-3">
-                  {homeDepts.map((d) => (
-                    <ProgressRow
-                      key={d.departmentId}
-                      label={d.departmentName}
-                      done={d.completed}
-                      total={d.total}
-                      overdue={d.overdue}
-                      created={d.created}
-                      loggedSecs={d.loggedSecs}
-                    />
-                  ))}
-                  {outsideDepts.length > 0 && (
-                    <>
-                      {homeDepts.length > 0 && (
-                        <div className="border-t border-sts-card-border pt-1" />
-                      )}
-                      <p className="font-sans text-[11.5px] text-sts-subtle">
-                        Cross-department work
-                      </p>
-                      {outsideDepts.map((d) => (
-                        <ProgressRow
-                          key={d.departmentId}
-                          label={d.departmentName}
-                          done={d.completed}
-                          total={d.total}
-                          overdue={d.overdue}
-                          created={d.created}
-                          loggedSecs={d.loggedSecs}
-                          isOutside
-                        />
-                      ))}
-                    </>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Top projects — only when useful */}
-            {byProject.length > 0 && (
-              <div className="shrink-0 rounded-xl border border-sts-card-border bg-sts-card px-4 py-4">
-                <p className="mb-3 font-sans text-[13px] font-semibold text-sts-foreground">
-                  Projects
-                </p>
-                <div className="flex flex-col gap-3">
-                  {byProject.slice(0, 4).map((p) => (
-                    <ProgressRow
-                      key={p.id}
-                      label={p.name}
-                      done={p.completed}
-                      total={p.total}
-                      overdue={p.overdue}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <TicketList
-              statKey={activeSlide}
-              tickets={tickets[activeSlide] ?? []}
-            />
           </div>
 
-          <ActivityPanel activities={recentActivity} />
+          <ActivityPanel activities={recentActivity} asOf={initialData.dateRange.to} />
         </div>
       </div>
     </>

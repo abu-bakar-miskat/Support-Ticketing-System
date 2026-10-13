@@ -3,6 +3,8 @@ import { requireAuth, assertDepartmentAdmin } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { saveDepartmentEmailSenders } from "@/lib/email-config";
 
+import { findVerifiedManagedDomain } from "@/lib/resend-domains";
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
@@ -37,6 +39,11 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: `Invalid sender email: ${email || "(empty)"}` }, { status: 400 });
     }
     senders.push({ id: typeof s?.id === "string" ? s.id : undefined, name, email, isDefault: s?.isDefault === true });
+  }
+
+  for (const domain of new Set(senders.map((sender) => sender.email.split("@")[1].toLowerCase()))) {
+    const verified = await findVerifiedManagedDomain(domain);
+    if ("error" in verified) return NextResponse.json({ error: verified.error }, { status: 400 });
   }
 
   const saved = await saveDepartmentEmailSenders(departmentId, senders, subDepartmentId);

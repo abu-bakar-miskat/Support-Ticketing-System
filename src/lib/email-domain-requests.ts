@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { runAsSystem } from "@/lib/request-scope";
 import { createNotification } from "@/lib/notify";
 import { addTenantDomain, type TenantDomain } from "@/lib/email-domains";
-import { listManagedDomains, type DomainOpError } from "@/lib/resend-domains";
+import { findVerifiedManagedDomain, listManagedDomains, type DomainOpError } from "@/lib/resend-domains";
 
 /**
  * Domain-request workflow (managers/sub-managers ask → tenant admin approves).
@@ -11,7 +11,7 @@ import { listManagedDomains, type DomainOpError } from "@/lib/resend-domains";
  * A department or sub-department manager can't register sending domains directly
  * (that's tenant-admin only), so they file an EmailDomainRequest from their
  * mailbox page. Tenant admins are notified, review the request in the domains
- * section, and approve it — which auto-registers the domain (addTenantDomain)
+ * section, and approve it — which checks Resend verification and assigns the domain (addTenantDomain)
  * assigned to the requested scope — or reject it. Like EmailDomain, this table
  * isn't tenant-scoped by the Prisma extension, so every query runs via
  * runAsSystem with an explicit tenantId filter.
@@ -66,6 +66,9 @@ export async function createDomainRequest(params: {
     prisma.emailDomain.findUnique({ where: { name: domain }, select: { id: true } }),
   );
   if (registered) return { error: "That domain is already registered for this workspace." };
+
+  const verified = await findVerifiedManagedDomain(domain);
+  if ("error" in verified) return verified;
 
   // De-dupe pending requests for the same domain in this tenant.
   const dupe = await runAsSystem(() =>
@@ -200,11 +203,12 @@ export async function listScopeDomainRequests(
     ? {
         tenantId,
         OR: [
+          { departmentId: null, subDepartmentId: null },
           { subDepartmentId: scope.subDepartmentId },
           { subDepartmentId: null, departmentId: scope.departmentId },
         ],
       }
-    : { tenantId, departmentId: scope.departmentId };
+    : { tenantId, OR: [{ departmentId: scope.departmentId }, { departmentId: null, subDepartmentId: null }] };
 
   const [rows, domainRows] = await Promise.all([
     runAsSystem(() =>
@@ -261,7 +265,10 @@ export async function listScopeDomainRequests(
   const reqName = new Map(requesters.map((p) => [p.id, p.name]));
   const verifiedByName = new Map<string, boolean>();
   if (Array.isArray(managed)) {
-    for (const d of managed) verifiedByName.set(d.name.toLowerCase(), d.status === "verified");
+    for (const d of managed) {
+      const name = d.name.toLowerCase();
+      verifiedByName.set(name, (verifiedByName.get(name) ?? false) || d.status === "verified");
+    }
   }
 
   const requestEntries: ScopeDomainRequest[] = rows.map((r) => ({
@@ -275,7 +282,7 @@ export async function listScopeDomainRequests(
     resolvedAt: r.resolvedAt ? r.resolvedAt.toISOString() : null,
   }));
 
-  // A directly-registered domain has no request behind it, so render it as an
+  // A directly-added domain has no request behind it, so render it as an
   // approved entry — the form then shows its verification badge and, once
   // verified, a Connect-mailbox action.
   const domainEntries: ScopeDomainRequest[] = extraDomains.map((d) => ({
@@ -292,8 +299,8 @@ export async function listScopeDomainRequests(
   return [...requestEntries, ...domainEntries].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
-/** Approves a request: registers the domain assigned to the requested scope and
- * notifies the requester. Returns the registered domain for the admin UI. */
+/** Approves a request after rechecking Resend verification, assigns its scope,
+ * and notifies the requester. */
 export async function approveDomainRequest(
   tenantId: string,
   requestId: string,
@@ -324,7 +331,7 @@ export async function approveDomainRequest(
     recipientId: req.requestedById,
     actorId: adminProfileId,
     type: "domain_request_reviewed",
-    message: `Your sending domain ${req.domain} was approved and is being set up.`,
+    message: `Your sending domain ${req.domain} was approved and added to your workspace.`,
   }).catch(() => undefined);
 
   return domain;

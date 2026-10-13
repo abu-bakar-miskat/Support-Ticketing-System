@@ -27,8 +27,7 @@ export function SettingsEmailDomains({
         <header className="flex max-w-[920px] flex-col gap-[3px]">
           <h1 className="sts-text-admin-title">Email domains</h1>
           <p className="font-sans text-[13px] text-sts-muted">
-            Register and verify the domains your workspace sends support email from. Once a domain is verified, you can
-            connect mailbox addresses on it.
+            Add domains already verified in Resend and assign them to a team. Unverified domains cannot be added.
           </p>
         </header>
 

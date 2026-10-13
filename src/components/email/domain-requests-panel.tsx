@@ -24,7 +24,7 @@ export type PendingDomainRequest = {
 };
 
 /**
- * Tenant-admin review of pending domain requests. Approve auto-registers the
+ * Tenant-admin review of pending domain requests. Approve checks Resend verification and adds the
  * domain (it then appears in the domains manager below); reject declines it.
  * Both refresh the server data so the manager list and this panel update.
  */
@@ -115,7 +115,7 @@ export function DomainRequestsPanel({ requests }: { requests: PendingDomainReque
                 </Button>
                 <Button size="sm" disabled={rowBusy} onClick={() => act(r.id, "approve")}>
                   {approving ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
-                  Approve &amp; register
+                  Approve &amp; add
                 </Button>
               </div>
             </li>

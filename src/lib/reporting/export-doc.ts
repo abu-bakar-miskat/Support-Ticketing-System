@@ -6,8 +6,10 @@ import { computeResolutionTimeReport } from "@/lib/reporting/resolution-time-rep
 import { computeCustomFieldReport } from "@/lib/reporting/custom-field-report";
 import { computeCrossDepartmentReport } from "@/lib/reporting/cross-department-report";
 import type { ReportScope } from "@/lib/reporting/report-scope";
+import { loadPerformanceOverview } from "./performance-overview";
+import { buildReportsExportDoc } from "@/lib/exports/reports-export-doc";
 
-export const REPORT_TYPES = ["volume", "resolution_time", "custom_field", "cross_department"] as const;
+export const REPORT_TYPES = ["user_performance", "volume", "resolution_time", "custom_field", "cross_department"] as const;
 export type ReportType = (typeof REPORT_TYPES)[number];
 
 export type ReportRequestParams = {
@@ -16,6 +18,9 @@ export type ReportRequestParams = {
   /** Required for "custom_field" (RPT-04). */
   groupByFieldId?: string;
   filters?: FormFieldFilter[];
+  personId?: string;
+  scopeLabel?: string;
+  timezone?: string;
 };
 
 /**
@@ -32,6 +37,23 @@ export async function buildReportExportDoc(
   const start = new Date(params.start);
   const end = new Date(params.end);
   const subtitle = `${params.start} to ${params.end}`;
+  if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime()) || start >= end) {
+    throw new Error("Invalid report date range");
+  }
+
+  if (reportType === "user_performance") {
+    const report = await loadPerformanceOverview(scope, start, end, params.personId ?? "all");
+    const doc = buildReportsExportDoc({
+      overview: {
+        ...report, created: [], resolved: [], bugResolution: [], commentLoad: [], statusDist: [], priorityDist: [],
+        workload: [], projectTickets: [], moduleTickets: [], projectOptions: [], crossDept: [],
+      },
+      rangeLabel: `${params.start} to ${params.end} (end exclusive)`, scopeLabel: params.scopeLabel,
+    });
+    doc.title = "User Performance Report";
+    if (params.timezone) doc.subtitle += ` · Report timezone: ${params.timezone}`;
+    return { doc, rowCount: doc.sheets.reduce((sum, sheet) => sum + sheet.rows.length, 0) };
+  }
 
   if (reportType === "volume") {
     const report = await computeVolumeReport(scope, start, end);

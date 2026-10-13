@@ -1615,6 +1615,7 @@ model ReportExportJob {
 enum ReportScheduleFrequency {
   DAILY
   WEEKLY
+  MONTHLY
 }
 
 // RPT-06: periodic exportable reports. A Project Admin configures a recurring
@@ -1632,6 +1633,8 @@ model ReportSchedule {
   frequency    ReportScheduleFrequency
   // Rolling window length (days back from run time) the report covers.
   rangeDays    Int                     @default(30)
+  // Scoped filters, calendar period, local run time, and timezone.
+  settings     Json?
   enabled      Boolean                 @default(true)
   lastRunAt    DateTime?
   nextRunAt    DateTime

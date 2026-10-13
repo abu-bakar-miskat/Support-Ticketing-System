@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 
 vi.mock("server-only", () => ({}))
 vi.mock("@/lib/db", () => ({
-  prisma: { reportExportJob: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), findMany: vi.fn() } },
+  prisma: { reportExportJob: { create: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn(), findMany: vi.fn() } },
 }))
 vi.mock("@/lib/reporting/export-doc", () => ({ buildReportExportDoc: vi.fn() }))
 vi.mock("@/lib/exports/to-csv", () => ({ buildCsv: vi.fn() }))
@@ -37,6 +37,7 @@ const deptScope = { kind: "department" as const, tenantId: "tenant-1", subDepart
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(prisma.reportExportJob.updateMany).mockResolvedValue({ count: 1 })
   mockGetPublicUrl.mockReturnValue({ data: { publicUrl: "https://cdn.example.com/report.csv" } })
 })
 
@@ -70,6 +71,19 @@ const baseJob = {
 }
 
 describe("runReportExportJob", () => {
+  it("does not generate a job already claimed by another worker", async () => {
+    mockFindUnique.mockResolvedValue(baseJob as never)
+    vi.mocked(prisma.reportExportJob.updateMany).mockResolvedValue({ count: 0 })
+    await runReportExportJob("job-1")
+    expect(mockBuildDoc).not.toHaveBeenCalled()
+  })
+
+  it("does not interrupt a recently running job", async () => {
+    mockFindUnique.mockResolvedValue({ ...baseJob, status: "RUNNING", startedAt: new Date() } as never)
+    await runReportExportJob("job-1")
+    expect(prisma.reportExportJob.updateMany).not.toHaveBeenCalled()
+    expect(mockBuildDoc).not.toHaveBeenCalled()
+  })
   it("is a no-op for an already-completed job", async () => {
     mockFindUnique.mockResolvedValue({ ...baseJob, status: "COMPLETED" } as never)
     await runReportExportJob("job-1")

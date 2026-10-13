@@ -1,40 +1,39 @@
 import { NextRequest, NextResponse } from "next/server"
-import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { resolveReportScope } from "@/lib/reporting/report-scope"
-
-async function authorize(id: string) {
-  const { profile, error } = await requireAuth()
-  if (error) return { error }
-  const scope = await resolveReportScope(profile!)
-  if (scope.kind !== "cross_department") {
-    return { error: NextResponse.json({ error: "Scheduled reports require Project Admin access" }, { status: 403 }) }
-  }
-  const schedule = await prisma.reportSchedule.findUnique({ where: { id } })
-  if (!schedule || schedule.tenantId !== scope.tenantId) {
-    return { error: NextResponse.json({ error: "Not found" }, { status: 404 }) }
-  }
-  return { schedule }
-}
+import { runAsSystem } from "@/lib/request-scope"
+import { requireScheduleAdmin, parseScheduleInput, resolveScheduleSelection, checkScheduledExportsEnabled, scheduleError } from "@/lib/reporting/schedule-service"
+import { nextScheduledRun } from "@/lib/reporting/schedule-calendar"
+import { readScheduleSettings } from "@/lib/reporting/schedule-settings"
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireScheduleAdmin()
+  if (auth.error) return auth.error
   const { id } = await params
-  const { error } = await authorize(id)
-  if (error) return error
-
-  const body = await req.json().catch(() => ({}))
-  const data: { enabled?: boolean } = {}
-  if (typeof body?.enabled === "boolean") data.enabled = body.enabled
-
-  const updated = await prisma.reportSchedule.update({ where: { id }, data })
-  return NextResponse.json({ schedule: updated })
+  return runAsSystem(async () => {
+    const schedule = await prisma.reportSchedule.findFirst({ where: { id, tenantId: auth.tenantId } })
+    if (!schedule) return NextResponse.json({ error: "Schedule not found" }, { status: 404 })
+    try {
+      const body = await req.json()
+      let data
+      if (typeof body.enabled === "boolean" && Object.keys(body).length === 1) {
+        const settings = readScheduleSettings(schedule.settings)
+        data = { enabled: body.enabled, ...(body.enabled && settings ? { nextRunAt: nextScheduledRun(schedule.frequency, settings, new Date()) } : {}) }
+      } else {
+        const input = parseScheduleInput(body)
+        await checkScheduledExportsEnabled(auth.tenantId)
+        await resolveScheduleSelection(auth.tenantId, input.settings)
+        data = { ...input, nextRunAt: nextScheduledRun(input.frequency, input.settings, new Date()) }
+      }
+      const updated = await prisma.reportSchedule.update({ where: { id }, data })
+      return NextResponse.json({ schedule: updated })
+    } catch (error) { return scheduleError(error) }
+  })
 }
-
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const auth = await requireScheduleAdmin()
+  if (auth.error) return auth.error
   const { id } = await params
-  const { error } = await authorize(id)
-  if (error) return error
-
-  await prisma.reportSchedule.delete({ where: { id } })
+  const deleted = await prisma.reportSchedule.deleteMany({ where: { id, tenantId: auth.tenantId } })
+  if (!deleted.count) return NextResponse.json({ error: "Schedule not found" }, { status: 404 })
   return NextResponse.json({ ok: true })
 }

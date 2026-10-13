@@ -23,7 +23,7 @@ import type { ReportExportFormat } from "@/generated/prisma/enums";
  * dedicated bucket that would need its own provisioning/RLS setup.
  */
 
-type JobParams = { reportParams: ReportRequestParams; scope: ReportScope };
+export type JobParams = { reportParams: ReportRequestParams; scope: ReportScope; context?: { scheduleId?: string; name: string; kind: "scheduled" | "manual" | "retry" } };
 
 export async function createReportExportJob(params: {
   tenantId: string;
@@ -32,8 +32,10 @@ export async function createReportExportJob(params: {
   format: ReportExportFormat;
   reportParams: ReportRequestParams;
   scope: ReportScope;
+  context?: JobParams["context"];
 }) {
   const jobParams: JobParams = { reportParams: params.reportParams, scope: params.scope };
+  if (params.context) jobParams.context = params.context;
   return prisma.reportExportJob.create({
     data: {
       tenantId: params.tenantId,
@@ -61,10 +63,13 @@ export async function runReportExportJob(jobId: string): Promise<void> {
   const job = await prisma.reportExportJob.findUnique({ where: { id: jobId } });
   if (!job || job.status === "COMPLETED") return;
 
-  await prisma.reportExportJob.update({
-    where: { id: jobId },
-    data: { status: "RUNNING", startedAt: job.startedAt ?? new Date() },
+  const now = new Date();
+  if (job.status === "RUNNING" && job.startedAt && job.startedAt.getTime() > now.getTime() - 5 * 60_000) return;
+  const claim = await prisma.reportExportJob.updateMany({
+    where: { id: jobId, status: job.status, startedAt: job.startedAt },
+    data: { status: "RUNNING", startedAt: now, failureReason: null },
   });
+  if (!claim.count) return;
 
   try {
     const { reportParams, scope } = job.params as unknown as JobParams;

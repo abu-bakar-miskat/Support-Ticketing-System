@@ -1,3 +1,4 @@
+import { loadPerformanceOverview } from "@/lib/reporting/performance-overview"
 import { NextResponse } from "next/server"
 import { requireAuth, type AuthProfile } from "@/lib/auth"
 import { prisma } from "@/lib/db"
@@ -5,9 +6,6 @@ import { runAsSystem } from "@/lib/request-scope"
 import { getProfileDeptScope, ticketInDeptWhere, effectiveTicketDept } from "@/lib/dept-scope"
 import { resolveAnalyticsScope } from "@/lib/reporting/analytics-scope"
 import { resolveReportRange } from "@/lib/report-period"
-import { getSlaIndicatorForTicket } from "@/lib/sla-engine"
-import { summarizeTicketPerformance } from "@/lib/reporting/ticket-performance"
-import type { SlaIndicator } from "@/lib/sla-timer"
 import { statusCategory, STATUS_CATEGORIES, STATUS_CATEGORY_LABELS } from "@/lib/status-category"
 import type {
   ReportsOverview,
@@ -77,7 +75,7 @@ async function loadOverview(request: Request, profile: AuthProfile) {
     moduleOpenGroups,
     scopeProjectGroups,
     completeStatuses,
-    performanceTickets,
+    performanceReport,
   ] = await Promise.all([
     prisma.ticket.groupBy({
       by: ["creatorId"],
@@ -136,56 +134,19 @@ async function loadOverview(request: Request, profile: AuthProfile) {
       },
       select: { subDepartmentId: true, label: true, category: true },
     }),
-    prisma.ticket.findMany({
-      where: createdWhere,
-      select: {
-        id: true, status: true, subDepartmentId: true, closedAt: true,
-        assignee: { select: { id: true, name: true } },
-        assignees: { select: { user: { select: { id: true, name: true } } } },
-        intake: { select: { apiKeyId: true, portalIdempotencyKey: true } },
-        slaTimer: { select: { source: true } },
-        activityLogs: {
-          where: { action: "TICKET_CREATED", metadata: { path: ["source"], equals: "email" } },
-          select: { metadata: true },
-          take: 1,
-        },
-      },
-    }),
+    loadPerformanceOverview(
+      analyticsScope.subDepartmentIds ? { kind: "department", tenantId: profile.activeTenantId ?? "__none__", subDepartmentIds: analyticsScope.subDepartmentIds }
+        : { kind: "cross_department", tenantId: profile.activeTenantId ?? "__none__" },
+      start, end, personId, projectId,
+    ),
   ])
 
   const categories = new Map(completeStatuses.map((s) => [`${s.subDepartmentId}::${s.label}`, statusCategory(s)]))
   const ticketCategory = (subDepartmentId: string, label: string) => categories.get(`${subDepartmentId}::${label}`) ?? statusCategory({ label })
   const isDone = (subDepartmentId: string, label: string) => ticketCategory(subDepartmentId, label) === "COMPLETE"
 
-  // Full member list in scope (ignores all filters) for the person picker.
-  // Members never receive the list — the picker is manager/admin-only.
-  const memberOptions = canFilterByPerson
-    ? await prisma.profile.findMany({
-        where: {
-          deletedAt: null,
-          ...(analyticsScope.subDepartmentIds
-            ? { memberships: { some: { subDepartmentId: { in: analyticsScope.subDepartmentIds.length ? analyticsScope.subDepartmentIds : ["__none__"] }, isActive: true } } }
-            : { tenantMemberships: { some: { tenantId: profile.activeTenantId ?? "__no_tenant__", isActive: true } } }),
-        },
-        select: { id: true, name: true, avatarUrl: true },
-        orderBy: { name: "asc" },
-      })
-    : []
-
-  // Use the authoritative SLA engine with persistence disabled: reports must
-  // never reconcile live records or trigger manager notifications.
-  const now = new Date()
-  const evaluatedTickets: (typeof performanceTickets[number] & { completed: boolean; sla: SlaIndicator | null })[] = []
-  for (let offset = 0; offset < performanceTickets.length; offset += 6) {
-    evaluatedTickets.push(...await Promise.all(performanceTickets.slice(offset, offset + 6).map(async (ticket) => {
-      const completed = isDone(ticket.subDepartmentId, ticket.status)
-      const sla = ticket.slaTimer
-        ? await getSlaIndicatorForTicket(ticket.id, completed ? ticket.closedAt ?? now : now, { readOnly: true })
-        : null
-      return { ...ticket, completed, sla }
-    })))
-  }
-  const { ticketSources, personPerformance } = summarizeTicketPerformance(evaluatedTickets, memberOptions, personId)
+  const { ticketSources, personPerformance, userPerformance, performanceDetails } = performanceReport
+  const memberOptions = canFilterByPerson ? performanceReport.memberOptions : []
 
   // ── Resolve display names for creators / resolvers ──
   const personIds = [
@@ -209,7 +170,7 @@ async function loadOverview(request: Request, profile: AuthProfile) {
     .sort((a, b) => b.count - a.count)
     .slice(0, 8)
 
-  const resolved: NamedCount[] = personPerformance
+  const resolved: NamedCount[] = userPerformance
     .filter((person) => person.personId && person.completed > 0)
     .map((person) => ({ name: person.name, count: person.completed }))
     .sort((a, b) => b.count - a.count)
@@ -504,6 +465,8 @@ async function loadOverview(request: Request, profile: AuthProfile) {
     totals,
     ticketSources,
     personPerformance,
+    userPerformance,
+    performanceDetails,
     projectOptions,
     memberOptions: memberOptions.map((m) => ({ id: m.id, name: m.name, avatarUrl: m.avatarUrl ?? null })),
     crossDept,

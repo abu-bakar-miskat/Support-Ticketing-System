@@ -1,18 +1,6 @@
+import { PERFORMANCE_METHOD, formatPerformanceDuration } from "@/lib/reporting/user-performance";
 import type { ExportDoc, ExportSheet } from "./report-doc";
 import type { ReportsOverview, SubDepartmentTimeResponse } from "@/lib/api/reports";
-
-type NamedCountLike = { name: string; count: number };
-
-function namedCountSheet(name: string, rows: NamedCountLike[]): ExportSheet {
-  return {
-    name,
-    columns: [
-      { key: "name", header: "Name", width: 32 },
-      { key: "count", header: "Count", width: 12 },
-    ],
-    rows: rows.map((r) => ({ name: r.name, count: r.count })),
-  };
-}
 
 /**
  * Assembles the Reports page's already-loaded data into a multi-sheet export
@@ -98,18 +86,58 @@ export function buildReportsExportDoc(args: {
         { source: "Shared mailbox", count: overview.ticketSources.mailbox },
       ],
     });
+    const people = overview.userPerformance;
     sheets.push({
       name: "Person Performance",
       columns: [
         { key: "name", header: "Person", width: 26 },
-        { key: "assigned", header: "Assigned", width: 12 },
+        { key: "rank", header: "Rank", width: 10 },
+        { key: "score", header: "Score / 100", width: 12 },
         { key: "completed", header: "Completed", width: 12 },
-        { key: "slaMet", header: "SLA met", width: 12 },
-        { key: "slaMissed", header: "SLA missed", width: 12 },
-        { key: "slaPending", header: "SLA pending", width: 12 },
-        { key: "noSla", header: "No SLA", width: 12 },
+        { key: "assigned", header: "Assigned (created)", width: 18 },
+        ...["Urgent", "Critical", "High", "Medium", "Low"].map((priority) => ({ key: priority, header: priority, width: 12 })),
       ],
-      rows: overview.personPerformance.map((person) => ({ ...person })),
+      rows: people.map((p) => ({ name: p.name, rank: p.rank, score: p.score, completed: p.completed, assigned: p.assigned, ...Object.fromEntries(["Urgent", "Critical", "High", "Medium", "Low"].map((priority) => [priority, p.priorities[priority] ?? 0])) })),
+    });
+    for (const [label, key] of [["Response SLA", "responseSla"], ["Resolution SLA", "resolutionSla"]] as const) {
+      sheets.push({
+        name: label,
+        columns: [{ key: "name", header: "Person", width: 26 }, ...["met", "breached", "pending", "noPolicy"].map((key) => ({ key, header: key === "noPolicy" ? "No policy" : key, width: 14 }))],
+        rows: people.map((person) => ({ name: person.name, ...person[key] })),
+      });
+    }
+    sheets.push({
+      name: "User Timing",
+      columns: [
+        { key: "name", header: "Person", width: 26 },
+        { key: "reply", header: "Avg actual reply", width: 22 },
+        { key: "replySamples", header: "Reply samples", width: 14 },
+        { key: "completion", header: "Avg completion", width: 22 },
+        { key: "completionSamples", header: "Completion samples", width: 16 },
+        { key: "resolution", header: "Avg SLA resolution", width: 22 },
+        { key: "slaResolutionSamples", header: "SLA samples", width: 14 },
+      ],
+      rows: people.map((p) => ({ ...p, reply: formatPerformanceDuration(p.avgReplySecs), completion: formatPerformanceDuration(p.avgCompletionSecs), resolution: formatPerformanceDuration(p.avgSlaResolutionSecs) })),
+    });
+    sheets.push({
+      name: "Ticket Timing Details",
+      columns: [
+        { key: "ticket", header: "Ticket", width: 16, pdf: true },
+        { key: "title", header: "Title", width: 36 },
+        { key: "people", header: "People", width: 24, pdf: true },
+        { key: "priority", header: "Priority", width: 12, pdf: true },
+        { key: "completedAt", header: "Completed at (UTC)", width: 28 },
+        { key: "repliedAt", header: "First reply at (UTC)", width: 28 },
+        { key: "responseSla", header: "Response SLA", width: 16, pdf: true },
+        { key: "resolutionSla", header: "Resolution SLA", width: 16, pdf: true },
+        { key: "reply", header: "Reply time", width: 22, pdf: true },
+        { key: "completion", header: "Completion time", width: 22, pdf: true },
+        { key: "resolution", header: "SLA resolution time", width: 22, pdf: true },
+        { key: "replySecs", header: "Reply seconds", width: 18 },
+        { key: "completionSecs", header: "Completion seconds", width: 18 },
+        { key: "slaResolutionSecs", header: "SLA resolution seconds", width: 20 },
+      ],
+      rows: overview.performanceDetails.map((t) => ({ ...t, reply: formatPerformanceDuration(t.replySecs), completion: formatPerformanceDuration(t.completionSecs), resolution: formatPerformanceDuration(t.slaResolutionSecs) })),
     });
     sheets.push({
       name: "Totals",
@@ -120,85 +148,16 @@ export function buildReportsExportDoc(args: {
       ],
       rows: [{ open: overview.totals.open, closed: overview.totals.closed, total: overview.totals.total }],
     });
-    if (overview.statusDist.length) {
-      sheets.push({
-        name: "Status Distribution",
-        columns: [
-          { key: "label", header: "Status", width: 20 },
-          { key: "count", header: "Count", width: 12 },
-        ],
-        rows: overview.statusDist.map((d) => ({ label: d.label, count: d.count })),
-      });
-    }
-    if (overview.priorityDist.length) {
-      sheets.push({
-        name: "Priority Distribution",
-        columns: [
-          { key: "label", header: "Priority", width: 20 },
-          { key: "count", header: "Count", width: 12 },
-        ],
-        rows: overview.priorityDist.map((d) => ({ label: d.label, count: d.count })),
-      });
-    }
-    if (overview.created.length) sheets.push(namedCountSheet("Tickets Created", overview.created));
-    if (overview.resolved.length) sheets.push(namedCountSheet("Tickets Resolved", overview.resolved));
-    if (overview.workload.length) sheets.push(namedCountSheet("Open Workload", overview.workload));
-    if (overview.projectTickets.length) {
-      sheets.push({
-        name: "Tickets by Project",
-        columns: [
-          { key: "project", header: "Project", width: 30 },
-          { key: "open", header: "Open", width: 10 },
-          { key: "total", header: "Total", width: 10 },
-        ],
-        rows: overview.projectTickets.map((p) => ({ project: p.project, open: p.open, total: p.total })),
-      });
-    }
-    if (overview.moduleTickets.length) {
-      sheets.push({
-        name: "Tickets by Module",
-        columns: [
-          { key: "module", header: "Module", width: 30 },
-          { key: "open", header: "Open", width: 10 },
-          { key: "total", header: "Total", width: 10 },
-        ],
-        rows: overview.moduleTickets.map((m) => ({ module: m.module, open: m.open, total: m.total })),
-      });
-    }
-    if (overview.bugResolution.length) {
-      sheets.push({
-        name: "Bug Resolution Speed",
-        columns: [
-          { key: "module", header: "Module", width: 30 },
-          { key: "days", header: "Avg Days", width: 12 },
-        ],
-        rows: overview.bugResolution.map((b) => ({ module: b.module, days: b.days })),
-      });
-    }
-    if (overview.commentLoad.length) {
-      sheets.push({
-        name: "Comment Load",
-        columns: [
-          { key: "module", header: "Module", width: 26 },
-          { key: "least", header: "Least Commented", width: 22 },
-          { key: "most", header: "Most Commented", width: 22 },
-        ],
-        rows: overview.commentLoad.map((c) => ({
-          module: c.module,
-          least: c.least ? `${c.least.humanId} (${c.least.count})` : "—",
-          most: c.most ? `${c.most.humanId} (${c.most.count})` : "—",
-        })),
-      });
-    }
   }
 
   const subtitleParts = [rangeLabel];
   if (scopeLabel) subtitleParts.push(scopeLabel);
-  subtitleParts.push("Ticket metrics use tickets created in the selected period and current assignees. SLA met: completed without a breach; SLA missed: breached; pending: open without a breach; no SLA: no applicable policy. Each co-assignee receives credit.");
+  subtitleParts.push("Source counts: created in period. Performance: completion and first response events in period, plus open SLA outcomes for tickets created in period. Current co-assignees share credit. Actual times are elapsed from creation; SLA times respect calendars and pauses.");
+  subtitleParts.push(PERFORMANCE_METHOD);
   subtitleParts.push(`Generated ${new Date().toLocaleString()}`);
 
   return {
-    title: "SubDepartment & Reports Summary",
+    title: "User Performance Report",
     subtitle: subtitleParts.join(" · "),
     sheets,
   };

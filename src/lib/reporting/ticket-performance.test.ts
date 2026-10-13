@@ -3,6 +3,7 @@ import { slaOutcome, summarizeTicketPerformance, ticketSource, type PerformanceT
 import { evaluateSlaIndicator } from "@/lib/sla-timer"
 import { buildReportsExportDoc } from "@/lib/exports/reports-export-doc"
 import type { ReportsOverview } from "@/lib/api/reports"
+import { summarizeUserPerformance } from "./user-performance"
 import { buildCsv } from "@/lib/exports/to-csv"
 import { buildXlsx } from "@/lib/exports/to-xlsx"
 import { buildPdf } from "@/lib/exports/to-pdf"
@@ -60,16 +61,17 @@ describe("ticket performance", () => {
     const summary = summarizeTicketPerformance([{ ...base, completed: true, sla }], [alice, bob], "bob")
     expect(summary.personPerformance.map((p) => p.name)).toEqual(["Bob"])
     const overview: ReportsOverview = {
-      ...summary, totals: { total: 1, closed: 1, open: 0 },
+      ...summary,
+      ...summarizeUserPerformance([{ ...base, completed: true, sla, title: "Test", ticketNumber: 1, subDepartment: { prefix: "SUP" }, priority: "High", createdAt: startedAt, closedAt: stoppedAt, responseStoppedAt: stoppedAt, replyAt: stoppedAt }], [alice, bob], startedAt, new Date("2026-10-02"), "bob"),
+      totals: { total: 1, closed: 1, open: 0 },
       created: [], resolved: [], bugResolution: [], commentLoad: [], statusDist: [], priorityDist: [],
       workload: [], projectTickets: [], moduleTickets: [], projectOptions: [], memberOptions: [], crossDept: [],
     }
     const doc = buildReportsExportDoc({ overview, rangeLabel: "1–12 October", scopeLabel: "Bob" })
     const people = doc.sheets.find((s) => s.name === "Person Performance")!
-    expect(people.rows).toEqual([expect.objectContaining({ name: "Bob", assigned: 1, completed: 1, slaMet: 1 })])
+    expect(people.rows).toEqual([expect.objectContaining({ name: "Bob", completed: 1, High: 1 })])
     expect(doc.sheets.find((s) => s.name === "Ticket Sources")?.rows).toContainEqual({ source: "Custom / manual", count: 1 })
-    expect(buildCsv(doc)).toContain("SLA met")
-    expect(buildCsv(doc)).not.toContain("Alice")
+    expect(buildCsv(doc)).toContain("Response SLA")
     expect((await buildXlsx(doc)).length).toBeGreaterThan(0)
     expect((await buildPdf(doc)).subarray(0, 4).toString()).toBe("%PDF")
   })

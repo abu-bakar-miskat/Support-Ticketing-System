@@ -97,6 +97,39 @@ export type PersonTicketPerformance = {
   noSla: number
 }
 
+export type SlaOutcomeCounts = { met: number; breached: number; pending: number; noPolicy: number }
+export type UserPerformance = {
+  personId: string | null
+  name: string
+  assigned: number
+  completed: number
+  priorities: Record<string, number>
+  responseSla: SlaOutcomeCounts
+  resolutionSla: SlaOutcomeCounts
+  avgReplySecs: number | null
+  avgCompletionSecs: number | null
+  avgSlaResolutionSecs: number | null
+  replySamples: number
+  completionSamples: number
+  slaResolutionSamples: number
+  score: number | null
+  rank: number | null
+}
+export type PerformanceTicketDetail = {
+  id: string
+  ticket: string
+  title: string
+  people: string
+  priority: string
+  completedAt: string | null
+  repliedAt: string | null
+  responseSla: string
+  resolutionSla: string
+  replySecs: number | null
+  completionSecs: number | null
+  slaResolutionSecs: number | null
+}
+
 export type CrossDeptDeptBreakdown = {
   departmentName: string
   created: number
@@ -126,6 +159,8 @@ export type ReportsOverview = {
   totals: { open: number; closed: number; total: number }
   ticketSources: TicketSourceCounts
   personPerformance: PersonTicketPerformance[]
+  userPerformance: UserPerformance[]
+  performanceDetails: PerformanceTicketDetail[]
   projectOptions: ProjectOption[]
   memberOptions: MemberOption[]
   crossDept: CrossDeptContribution[]

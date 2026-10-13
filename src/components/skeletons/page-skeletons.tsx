@@ -4,10 +4,6 @@ import {
   Bell,
   Boxes,
   CalendarDays,
-  ChartColumn,
-  ChartPie,
-  FolderKanban,
-  ListTodo,
   SquareKanban,
   Timer,
   Zap,
@@ -1205,78 +1201,7 @@ export function MyTimePageSkeleton() {
   );
 }
 
-export function SubDepartmentTimePageSkeleton() {
-  return (
-    <div className="sts-page-pad flex h-full flex-col gap-4 overflow-y-auto">
-      <PageHeader
-        title="Reports"
-        icon={ChartColumn}
-        iconClassName="text-sts-blue"
-        description="Time and delivery across your sub department and projects — an overview of where the hours go."
-        clampDescription
-        actions={
-          <>
-            <span className="flex h-[30px] w-[160px] shrink-0 items-center justify-between gap-2 rounded-md border border-sts-card-border bg-sts-card px-3 font-sans text-[11.5px] font-semibold text-sts-foreground">
-              All projects
-            </span>
-            <span className="flex h-[30px] w-[180px] shrink-0 items-center justify-between gap-2 rounded-md border border-sts-card-border bg-sts-card px-3 font-sans text-[11.5px] font-semibold text-sts-foreground">
-              Last 30 days
-            </span>
-          </>
-        }
-      />
-      <ReportsSectionsSkeleton />
-    </div>
-  );
-}
-
-export function ReportsSectionsSkeleton() {
-  return (
-    <>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <SubDepartmentTimeStatsRowSkeleton count={4} />
-      </div>
-
-      <div className="grid auto-rows-fr grid-cols-1 gap-3.5 md:grid-cols-3">
-        {["STATUS", "PRIORITY", "OPEN VS CLOSED"].map((title) => (
-          <div key={title} className="rounded-xl border border-sts-card-border bg-sts-card p-4">
-            <p className="mb-4 font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle">
-              {title}
-            </p>
-            <div className="flex items-center gap-4">
-              <Skeleton className="size-24 shrink-0 rounded-full" />
-              <div className="flex flex-1 flex-col gap-2">
-                <Skeleton className="h-3 w-full" />
-                <Skeleton className="h-3 w-[80%]" />
-                <Skeleton className="h-3 w-[60%]" />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="grid auto-rows-fr grid-cols-1 gap-3.5 md:grid-cols-2">
-        {["RESOLVED", "TOP CONTRIBUTORS"].map((title) => (
-          <div key={title} className="rounded-xl border border-sts-card-border bg-sts-card p-4">
-            <p className="mb-3 font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle">
-              {title}
-            </p>
-            <div className="flex flex-col gap-2.5">
-              {Array.from({ length: 5 }).map((_, j) => (
-                <div key={j} className="flex items-center gap-2.5" style={fade(j, 0.08)}>
-                  <Skeleton className="size-[30px] rounded-full" />
-                  <Skeleton className="h-2 flex-1 rounded-full" />
-                  <Skeleton className="h-3 w-8" />
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
-
-    </>
-  );
-}
+export { ReportPageSkeleton as SubDepartmentTimePageSkeleton, ReportContentSkeleton as ReportsSectionsSkeleton } from "@/components/reports/report-skeleton";
 
 export function ModulesPageSkeleton() {
   return (

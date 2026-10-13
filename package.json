@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "NODE_OPTIONS='--max-http-header-size=65536' next dev",
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",

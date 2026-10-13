@@ -4,8 +4,26 @@ import { getProfile } from "@/lib/profile"
 import { ProfileStatsPage } from "@/components/profile/profile-stats-page"
 import { fetchProfileStats } from "@/lib/profile-stats"
 import { ProfileStatsSkeleton } from "@/components/skeletons/page-skeletons"
+import { ProfileSlaPerformance, ProfileSlaPerformanceSkeleton } from "@/components/profile/profile-sla-performance"
+import { loadPersonPerformance } from "@/lib/reporting/performance-overview"
+import { runAsSystem } from "@/lib/request-scope"
 
 export const metadata = { title: "My Profile — Global Support Portal" }
+
+/** Per-ticket SLA evaluation is slow, so this streams in after the main stats.
+ * Only rendered once fetchProfileStats has authorised the viewer for targetId. */
+async function ProfileSlaData(props: {
+  targetId: string
+  targetName: string
+  from: Date
+  to: Date
+  projectId?: string
+}) {
+  const { summary, details } = await runAsSystem(() =>
+    loadPersonPerformance(props.targetId, props.targetName, props.from, props.to, props.projectId),
+  )
+  return <ProfileSlaPerformance summary={summary} details={details} />
+}
 
 async function ProfileData({
   searchParams,
@@ -55,6 +73,17 @@ async function ProfileData({
       initialData={result.data}
       isPrivileged={isPrivileged}
       currentUserId={profile.id}
+      slaSection={
+        <Suspense fallback={<ProfileSlaPerformanceSkeleton />}>
+          <ProfileSlaData
+            targetId={targetId}
+            targetName={result.data.profile.name}
+            from={from}
+            to={to}
+            projectId={projectId}
+          />
+        </Suspense>
+      }
     />
   )
 }

@@ -6,6 +6,8 @@ import { assertFeatureEnabled } from "@/lib/feature-flags"
 import { checkDomainVerification } from "@/lib/resend-domains"
 
 const AUTH_TYPES = ["RESEND", "OAUTH_M365", "OAUTH_GOOGLE", "IMAP"] as const
+// Only RESEND is created here. Microsoft 365 mailboxes need the admin to sign
+// in with Microsoft, so they're created by the /api/admin/mailbox-oauth flow.
 const IMPLEMENTED_AUTH_TYPES = new Set(["RESEND"])
 
 type Params = { params: Promise<{ id: string }> }
@@ -65,7 +67,14 @@ export async function POST(req: NextRequest, { params }: Params) {
     return NextResponse.json({ error: `authType must be one of ${AUTH_TYPES.join(", ")}` }, { status: 400 })
   }
   if (!IMPLEMENTED_AUTH_TYPES.has(resolvedAuthType)) {
-    return NextResponse.json({ error: `${resolvedAuthType} is not implemented yet` }, { status: 400 })
+    return NextResponse.json(
+      {
+        error: resolvedAuthType === "OAUTH_M365"
+          ? "Microsoft 365 mailboxes are connected by signing in with Microsoft, not by this endpoint"
+          : `${resolvedAuthType} is not implemented yet`,
+      },
+      { status: 400 },
+    )
   }
 
   const verification = await checkDomainVerification(address)

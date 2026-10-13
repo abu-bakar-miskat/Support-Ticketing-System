@@ -1227,6 +1227,13 @@ model MailboxConnection {
   lastErrorAt      DateTime?
   lastErrorMessage String?
   nextCheckAt      DateTime?
+  // Pull-provider sync state (OAUTH_M365 / OAUTH_GOOGLE / IMAP — RESEND is
+  // webhook-pushed and leaves these null). `syncCursor` is the provider's
+  // opaque "seen up to here" marker (lib/mailbox-sync.ts); `syncLockedUntil`
+  // is a lease so overlapping cron runs never sync one mailbox twice at once.
+  syncCursor       Json?
+  lastSyncedAt     DateTime?
+  syncLockedUntil  DateTime?
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
 

@@ -515,8 +515,25 @@ export type MailboxConnection = {
   lastErrorAt: string | null
   lastErrorMessage: string | null
   nextCheckAt: string | null
+  /** Last successful poll (Microsoft 365 only; Resend is push). */
+  lastSyncedAt: string | null
   createdAt: string
   updatedAt: string
+}
+
+/**
+ * Browser-navigation URL that starts connecting (or, with `connectionId`,
+ * reconnecting) a Microsoft 365 mailbox. The server redirects to the
+ * provider's sign-in and back to `returnTo` with `mailboxConnected` or
+ * `mailboxError` in the query string.
+ */
+export function mailboxOAuthStartUrl(
+  provider: "microsoft",
+  params: { teamId?: string; scopeType?: "DEPARTMENT" | "SUB_DEPARTMENT"; mailbox?: string; connectionId?: string; returnTo: string },
+): string {
+  const search = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) if (value) search.set(key, value)
+  return `/api/admin/mailbox-oauth/${provider}/start?${search}`
 }
 
 export async function getDepartmentMailboxConnections(departmentId: string): Promise<MailboxConnection[]> {

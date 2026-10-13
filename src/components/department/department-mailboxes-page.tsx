@@ -9,6 +9,7 @@ import {
   Gauge,
   ListChecks,
   Loader2,
+  LogIn,
   Mail,
   Pencil,
   Plus,
@@ -39,6 +40,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ReceivedMailPanel } from "@/components/mailbox/received-mail-panel";
+import {
+  ExternalMailboxConnectForm,
+  MAILBOX_PROVIDER_META,
+  MailboxProviderPicker,
+  INBOX_PROVIDERS,
+  isOAuthProvider,
+  isPullProvider,
+  reconnectMailbox,
+  useMailboxOAuthResult,
+  type MailboxProvider,
+} from "@/components/mailbox/mailbox-provider-connect";
 import {
   DomainRequestStatusList,
   RequestDomainDialog,
@@ -172,6 +184,10 @@ export function DepartmentMailboxesPage({
   const [address, setAddress] = useState("");
   const addressRef = useRef<HTMLInputElement>(null);
   const [teamId, setTeamId] = useState(subDepartments[0]?.id ?? "");
+  const [provider, setProvider] = useState<MailboxProvider>("RESEND");
+  // "domain": opened from an approved domain (forwarding address offered too);
+  // "inbox": the header button — Microsoft 365 only.
+  const [connectMode, setConnectMode] = useState<"domain" | "inbox">("domain");
 
   /** Opens the connect form prefilled with `@<domain>`, cursor at the start so
    * the admin just types the local part. */
@@ -209,14 +225,19 @@ export function DepartmentMailboxesPage({
   // Member rosters cached per sub-department id, loaded lazily for the picker.
   const [membersBySubDept, setMembersBySubDept] = useState<Record<string, SubDepartmentMember[] | undefined>>({});
 
-  useEffect(() => {
+  function loadConnections() {
     getDepartmentMailboxConnections(departmentId)
-      .then(setConnections)
+      .then((rows) => { setConnections(rows); setLoadError(false); })
       .catch(() => {
         setConnections([]);
         setLoadError(true);
       });
-  }, [departmentId]);
+  }
+
+  useEffect(loadConnections, [departmentId]);
+
+  // Back from a Microsoft sign-in: toast the outcome and refresh.
+  useMailboxOAuthResult(loadConnections);
 
   const list = connections ?? [];
   const loading = connections === null;
@@ -254,8 +275,10 @@ export function DepartmentMailboxesPage({
       .catch(() => setMembersBySubDept((prev) => ({ ...prev, [subDepartmentId]: [] })));
   }, [editingAssignmentId, draftAssignmentMethod, membersBySubDept, list]);
 
-  function openConnect() {
+  function openConnect(mode: "domain" | "inbox" = "domain") {
     setFormError(null);
+    setConnectMode(mode);
+    setProvider(mode === "inbox" ? "OAUTH_M365" : "RESEND");
     setTeamId((prev) => prev || subDepartments[0]?.id || "");
     setShowConnect(true);
   }
@@ -292,6 +315,7 @@ export function DepartmentMailboxesPage({
       setSaving(false);
     }
   }
+
 
   function startEditAssignment(c: MailboxConnection) {
     setEditingAssignmentId(c.id);
@@ -423,10 +447,22 @@ export function DepartmentMailboxesPage({
             Connect the shared inboxes that open tickets for {departmentName}.
           </p>
         </div>
-        {/* Request a sending domain (managers / sub-managers) */}
-        {canRequestDomain && (
-          <RequestDomainDialog departmentId={departmentId} subDepartments={subDepartments} />
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {canManage && !noSubDepartments && (
+            <button
+              type="button"
+              onClick={() => openConnect("inbox")}
+              className="flex h-8 items-center gap-1.5 rounded-full bg-sts-blue px-3.5 font-sans text-[12.5px] font-medium text-white dark:text-gray-900"
+            >
+              <Plus className="size-3.5" />
+              Connect inbox
+            </button>
+          )}
+          {/* Request a sending domain (managers / sub-managers) */}
+          {canRequestDomain && (
+            <RequestDomainDialog departmentId={departmentId} subDepartments={subDepartments} />
+          )}
+        </div>
       </div>
 
       {canRequestDomain && (
@@ -440,7 +476,7 @@ export function DepartmentMailboxesPage({
       {canManage && showConnect && !noSubDepartments && (
         <div className="fixed inset-0 z-50 flex items-center justify-center sts-overlay-backdrop" onClick={closeConnect}>
           <div
-            className="w-full max-w-md rounded-2xl border border-sts-card-border bg-sts-bg shadow-2xl"
+            className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-sts-card-border bg-sts-bg shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
@@ -450,6 +486,39 @@ export function DepartmentMailboxesPage({
               </button>
             </div>
             <div className="flex flex-col gap-4 px-5 py-4">
+              <MailboxProviderPicker
+                value={provider}
+                onChange={(p) => { setProvider(p); setFormError(null); }}
+                providers={connectMode === "inbox" ? INBOX_PROVIDERS : undefined}
+              />
+              {provider !== "RESEND" ? (
+                <ExternalMailboxConnectForm
+                  teamId={teamId}
+                  scopeType="DEPARTMENT"
+                  existingAddresses={list.map((c) => c.address)}
+                  onCancel={closeConnect}
+                  teamPicker={
+                    <div>
+                      <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">
+                        Files into
+                      </label>
+                      <select
+                        value={teamId}
+                        onChange={(e) => setTeamId(e.target.value)}
+                        className="h-9 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-blue/50"
+                      >
+                        {subDepartments.map((s) => (
+                          <option key={s.id} value={s.id}>{s.name}</option>
+                        ))}
+                      </select>
+                      <p className="mt-1.5 font-sans text-[11px] text-sts-subtle">
+                        Each new email in this inbox opens a ticket for the chosen subDepartment.
+                      </p>
+                    </div>
+                  }
+                />
+              ) : (
+              <>
               <div>
                 <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">
                   Mailbox address
@@ -484,7 +553,10 @@ export function DepartmentMailboxesPage({
                 </p>
               </div>
               {formError && <p className="font-sans text-[11.5px] text-red-500">{formError}</p>}
+              </>
+              )}
             </div>
+            {provider === "RESEND" && (
             <div className="flex justify-end gap-2 border-t border-sts-card-border px-5 py-3">
               <button
                 type="button"
@@ -503,6 +575,7 @@ export function DepartmentMailboxesPage({
                 Connect
               </button>
             </div>
+            )}
           </div>
         </div>
       )}
@@ -598,10 +671,11 @@ export function DepartmentMailboxesPage({
                           {subDeptName(c.subDepartmentId)}
                         </span>
                       </span>
-                      <span className="rounded bg-sts-surface px-1.5 py-0.5 font-mono text-[9.5px] text-sts-muted">
-                        {c.authType}
+                      <span className="rounded bg-sts-surface px-1.5 py-0.5 font-sans text-[10px] font-medium text-sts-muted">
+                        {MAILBOX_PROVIDER_META[c.authType].short}
                       </span>
                       <span>Checked {relativeTime(c.lastCheckedAt)}</span>
+                      {isPullProvider(c.authType) && <span>Synced {relativeTime(c.lastSyncedAt)}</span>}
                       {c.failureCount > 0 && (
                         <span className="text-amber-600 dark:text-amber-400">
                           {c.failureCount} failed check{c.failureCount === 1 ? "" : "s"}
@@ -672,7 +746,22 @@ export function DepartmentMailboxesPage({
                             {c.isActive ? "On" : "Off"}
                           </button>
                         </Tip>
-                        <Tip label="Test connection">
+                        {isOAuthProvider(c.authType) && (
+                          <Tip label={`Reconnect — sign in with ${MAILBOX_PROVIDER_META[c.authType].label} again`}>
+                            <button
+                              type="button"
+                              aria-label="Reconnect mailbox"
+                              onClick={() => reconnectMailbox(c)}
+                              className={cn(
+                                "rounded-full p-1.5 hover:bg-sts-surface hover:text-sts-foreground",
+                                c.status === "ACTIVE" ? "text-sts-subtle" : "text-red-500",
+                              )}
+                            >
+                              <LogIn className="size-3.5" />
+                            </button>
+                          </Tip>
+                        )}
+                        <Tip label={isPullProvider(c.authType) ? "Test connection & check for new mail" : "Test connection"}>
                           <button
                             type="button"
                             aria-label="Test connection"
@@ -683,16 +772,18 @@ export function DepartmentMailboxesPage({
                             <RefreshCw className={cn("size-3.5", busy && "animate-spin")} />
                           </button>
                         </Tip>
-                        <Tip label="Edit address">
-                          <button
-                            type="button"
-                            aria-label="Edit address"
-                            onClick={() => { setEditingId(c.id); setEditAddress(c.address); }}
-                            className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-                          >
-                            <Pencil className="size-3.5" />
-                          </button>
-                        </Tip>
+                        {!isOAuthProvider(c.authType) && (
+                          <Tip label="Edit address">
+                            <button
+                              type="button"
+                              aria-label="Edit address"
+                              onClick={() => { setEditingId(c.id); setEditAddress(c.address); }}
+                              className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+                            >
+                              <Pencil className="size-3.5" />
+                            </button>
+                          </Tip>
+                        )}
                         <Tip label="Disconnect">
                           <button
                             type="button"
@@ -868,6 +959,7 @@ export function DepartmentMailboxesPage({
         </p>
         <ul className="mt-2 flex flex-col gap-1.5 font-sans text-[12px] text-sts-muted">
           <li>• Mail delivered to a connected address opens a new ticket for the sub department it files into.</li>
+          <li>• Microsoft 365 inboxes are checked for new mail every couple of minutes; mail is only read, never moved or deleted.</li>
           <li>• Replies thread onto the same ticket automatically.</li>
           <li>• We check each connection automatically; use <span className="text-sts-foreground">Test connection</span> to verify one right now.</li>
         </ul>

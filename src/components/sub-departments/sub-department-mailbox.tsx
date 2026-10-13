@@ -7,6 +7,7 @@ import {
   Check,
   Copy,
   Loader2,
+  LogIn,
   Mail,
   Pencil,
   Plus,
@@ -33,6 +34,17 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SubDepartmentReceivedMail } from "@/components/sub-departments/sub-department-received-mail";
+import {
+  ExternalMailboxConnectForm,
+  INBOX_PROVIDERS,
+  MAILBOX_PROVIDER_META,
+  MailboxProviderPicker,
+  isOAuthProvider,
+  isPullProvider,
+  reconnectMailbox,
+  useMailboxOAuthResult,
+  type MailboxProvider,
+} from "@/components/mailbox/mailbox-provider-connect";
 import {
   DomainRequestStatusList,
   RequestDomainDialog,
@@ -133,6 +145,10 @@ export function SubDepartmentMailboxManager({
   const [loadError, setLoadError] = useState(false);
 
   const [showConnect, setShowConnect] = useState(false);
+  const [provider, setProvider] = useState<MailboxProvider>("RESEND");
+  // "domain": opened from an approved domain (forwarding address offered too);
+  // "inbox": the header button — Microsoft 365 only.
+  const [connectMode, setConnectMode] = useState<"domain" | "inbox">("domain");
   const [address, setAddress] = useState("");
   const addressRef = useRef<HTMLInputElement>(null);
   const [saving, setSaving] = useState(false);
@@ -159,14 +175,20 @@ export function SubDepartmentMailboxManager({
   const [confirmDisable, setConfirmDisable] = useState<MailboxConnection | null>(null);
   const [confirmDisconnect, setConfirmDisconnect] = useState<MailboxConnection | null>(null);
 
-  useEffect(() => {
+  function loadConnections() {
     getSubDepartmentMailboxConnections(subDepartmentId)
-      .then(setConnections)
+      .then((rows) => { setConnections(rows); setLoadError(false); })
       .catch(() => {
         setConnections([]);
         setLoadError(true);
       });
-  }, [subDepartmentId]);
+  }
+
+  useEffect(loadConnections, [subDepartmentId]);
+
+  // Back from a Microsoft sign-in: toast the outcome and refresh.
+  useMailboxOAuthResult(loadConnections);
+
 
   // Load the member roster the first time the admin opens the picker for the
   // "Manual user" method — kept lazy so the mailbox view stays cheap otherwise.
@@ -388,13 +410,25 @@ export function SubDepartmentMailboxManager({
             Connect the shared inboxes that open tickets for {subDepartmentName}.
           </p>
         </div>
-        {/* Request a sending domain (managers) */}
-        {canRequestDomain && (
-          <RequestDomainDialog
-            departmentId={departmentId}
-            fixedSubDepartment={{ id: subDepartmentId, name: subDepartmentName }}
-          />
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {canManage && (
+            <button
+              type="button"
+              onClick={() => { setConnectMode("inbox"); setProvider("OAUTH_M365"); setFormError(null); setShowConnect(true); }}
+              className="flex h-8 items-center gap-1.5 rounded-full bg-sts-blue px-3.5 font-sans text-[12.5px] font-medium text-white dark:text-gray-900"
+            >
+              <Plus className="size-3.5" />
+              Connect inbox
+            </button>
+          )}
+          {/* Request a sending domain (managers) */}
+          {canRequestDomain && (
+            <RequestDomainDialog
+              departmentId={departmentId}
+              fixedSubDepartment={{ id: subDepartmentId, name: subDepartmentName }}
+            />
+          )}
+        </div>
       </div>
 
       {canRequestDomain && (
@@ -405,6 +439,8 @@ export function SubDepartmentMailboxManager({
               ? (domain) => {
                   setAddress(`@${domain}`);
                   setVerifiedAddress(null);
+                  setConnectMode("domain");
+                  setProvider("RESEND");
                   setShowConnect(true);
                   setTimeout(() => {
                     const el = addressRef.current;
@@ -425,7 +461,21 @@ export function SubDepartmentMailboxManager({
 
       {/* ── Connect form ── */}
       {canManage && showConnect && (
-        <div className="flex flex-col gap-2 rounded-xl border border-sts-card-border bg-sts-card p-4">
+        <div className="flex flex-col gap-3 rounded-xl border border-sts-card-border bg-sts-card p-4">
+          <MailboxProviderPicker
+            value={provider}
+            onChange={(p) => { setProvider(p); setFormError(null); }}
+            providers={connectMode === "inbox" ? INBOX_PROVIDERS : undefined}
+          />
+          {provider !== "RESEND" ? (
+            <ExternalMailboxConnectForm
+              teamId={subDepartmentId}
+              scopeType="SUB_DEPARTMENT"
+              existingAddresses={list.map((c) => c.address)}
+              onCancel={() => { setShowConnect(false); setFormError(null); }}
+            />
+          ) : (
+          <div className="flex flex-col gap-2">
           <label className="font-sans text-[11.5px] font-medium text-sts-muted">Mailbox address</label>
           <div className="flex flex-col gap-2 sm:flex-row">
             <input
@@ -475,6 +525,8 @@ export function SubDepartmentMailboxManager({
             Forward or deliver mail to this address and each new email opens a{" "}
             <span className="font-mono text-sts-muted">{prefix}-###</span> ticket for the sub-department.
           </p>
+          </div>
+          )}
         </div>
       )}
 
@@ -555,10 +607,11 @@ export function SubDepartmentMailboxManager({
                       </div>
                     )}
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[11px] text-sts-subtle">
-                      <span className="rounded bg-sts-surface px-1.5 py-0.5 font-mono text-[9.5px] text-sts-muted">
-                        {c.authType}
+                      <span className="rounded bg-sts-surface px-1.5 py-0.5 font-sans text-[10px] font-medium text-sts-muted">
+                        {MAILBOX_PROVIDER_META[c.authType].short}
                       </span>
                       <span>Checked {relativeTime(c.lastCheckedAt)}</span>
+                      {isPullProvider(c.authType) && <span>Synced {relativeTime(c.lastSyncedAt)}</span>}
                       {c.failureCount > 0 && (
                         <span className="text-amber-600 dark:text-amber-400">
                           {c.failureCount} failed check{c.failureCount === 1 ? "" : "s"}
@@ -622,7 +675,22 @@ export function SubDepartmentMailboxManager({
                             {c.isActive ? "On" : "Off"}
                           </button>
                         </Tip>
-                        <Tip label="Test connection">
+                        {isOAuthProvider(c.authType) && (
+                          <Tip label={`Reconnect — sign in with ${MAILBOX_PROVIDER_META[c.authType].label} again`}>
+                            <button
+                              aria-label="Reconnect mailbox"
+                              type="button"
+                              onClick={() => reconnectMailbox(c)}
+                              className={cn(
+                                "rounded-full p-1.5 hover:bg-sts-surface hover:text-sts-foreground",
+                                c.status === "ACTIVE" ? "text-sts-subtle" : "text-red-500",
+                              )}
+                            >
+                              <LogIn className="size-3.5" />
+                            </button>
+                          </Tip>
+                        )}
+                        <Tip label={isPullProvider(c.authType) ? "Test connection & check for new mail" : "Test connection"}>
                           <button
                             aria-label="Test connection"
                             type="button"
@@ -633,16 +701,18 @@ export function SubDepartmentMailboxManager({
                             <RefreshCw className={cn("size-3.5", busy && "animate-spin")} />
                           </button>
                         </Tip>
-                        <Tip label="Edit address">
-                          <button
-                            aria-label="Edit address"
-                            type="button"
-                            onClick={() => { setEditingId(c.id); setEditAddress(c.address); }}
-                            className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-                          >
-                            <Pencil className="size-3.5" />
-                          </button>
-                        </Tip>
+                        {!isOAuthProvider(c.authType) && (
+                          <Tip label="Edit address">
+                            <button
+                              aria-label="Edit address"
+                              type="button"
+                              onClick={() => { setEditingId(c.id); setEditAddress(c.address); }}
+                              className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+                            >
+                              <Pencil className="size-3.5" />
+                            </button>
+                          </Tip>
+                        )}
                         <Tip label="Disconnect">
                           <button
                             aria-label="Disconnect"
@@ -779,6 +849,7 @@ export function SubDepartmentMailboxManager({
         <ul className="mt-2 flex flex-col gap-1.5 font-sans text-[12px] text-sts-muted">
           <li>• Mail delivered to a connected address opens a new ticket for {subDepartmentName}.</li>
           <li>• Tickets are keyed <span className="font-mono text-sts-foreground">{prefix}-###</span>, and replies thread onto the same ticket.</li>
+          <li>• Microsoft 365 inboxes are checked for new mail every couple of minutes; mail is only read, never moved or deleted.</li>
           <li>• We check each connection automatically; use <span className="text-sts-foreground">Test connection</span> to verify one right now.</li>
         </ul>
       </div>

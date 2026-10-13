@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   Check,
@@ -43,22 +43,13 @@ import { ReceivedMailPanel } from "@/components/mailbox/received-mail-panel";
 import {
   ExternalMailboxConnectForm,
   MAILBOX_PROVIDER_META,
-  MailboxProviderPicker,
-  INBOX_PROVIDERS,
   isOAuthProvider,
   isPullProvider,
   reconnectMailbox,
   useMailboxOAuthResult,
-  type MailboxProvider,
 } from "@/components/mailbox/mailbox-provider-connect";
 import {
-  DomainRequestStatusList,
-  RequestDomainDialog,
-  type ScopeRequestStatus,
-} from "@/components/email/domain-request-form";
-import {
   getDepartmentMailboxConnections,
-  createDepartmentMailboxConnection,
   updateMailboxConnection,
   deleteMailboxConnection,
   recheckMailboxConnection,
@@ -165,45 +156,18 @@ export function DepartmentMailboxesPage({
   departmentName,
   subDepartments,
   canManage,
-  canRequestDomain = false,
-  domainRequests = [],
 }: {
   departmentId: string;
   departmentName: string;
   subDepartments: { id: string; name: string; assignmentMethod: AssignmentMethod }[];
   canManage: boolean;
-  /** Managers / sub-managers can request a sending domain (admins register directly). */
-  canRequestDomain?: boolean;
-  /** Existing domain requests in this department, shown with their status. */
-  domainRequests?: ScopeRequestStatus[];
 }) {
   const [connections, setConnections] = useState<MailboxConnection[] | null>(null);
   const [loadError, setLoadError] = useState(false);
 
   const [showConnect, setShowConnect] = useState(false);
-  const [address, setAddress] = useState("");
-  const addressRef = useRef<HTMLInputElement>(null);
   const [teamId, setTeamId] = useState(subDepartments[0]?.id ?? "");
-  const [provider, setProvider] = useState<MailboxProvider>("RESEND");
-  // "domain": opened from an approved domain (forwarding address offered too);
-  // "inbox": the header button — Microsoft 365 only.
-  const [connectMode, setConnectMode] = useState<"domain" | "inbox">("domain");
-
-  /** Opens the connect form prefilled with `@<domain>`, cursor at the start so
-   * the admin just types the local part. */
-  function connectForDomain(domain: string) {
-    setAddress(`@${domain}`);
-    openConnect();
-    setTimeout(() => {
-      const el = addressRef.current;
-      if (el) {
-        el.focus();
-        el.setSelectionRange(0, 0);
-      }
-    }, 50);
-  }
   const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAddress, setEditAddress] = useState("");
@@ -275,45 +239,13 @@ export function DepartmentMailboxesPage({
       .catch(() => setMembersBySubDept((prev) => ({ ...prev, [subDepartmentId]: [] })));
   }, [editingAssignmentId, draftAssignmentMethod, membersBySubDept, list]);
 
-  function openConnect(mode: "domain" | "inbox" = "domain") {
-    setFormError(null);
-    setConnectMode(mode);
-    setProvider(mode === "inbox" ? "OAUTH_M365" : "RESEND");
+  function openConnect() {
     setTeamId((prev) => prev || subDepartments[0]?.id || "");
     setShowConnect(true);
   }
 
   function closeConnect() {
     setShowConnect(false);
-    setFormError(null);
-  }
-
-  async function connect() {
-    const value = address.trim();
-    if (!isValidEmail(value)) {
-      setFormError("Enter a valid email address.");
-      return;
-    }
-    if (!teamId) {
-      setFormError("Choose which subDepartment this mailbox files into.");
-      return;
-    }
-    if (list.some((c) => c.address.toLowerCase() === value.toLowerCase())) {
-      setFormError("That address is already connected.");
-      return;
-    }
-    setSaving(true);
-    setFormError(null);
-    try {
-      const created = await createDepartmentMailboxConnection(departmentId, { teamId, address: value });
-      setConnections((prev) => [...(prev ?? []), created]);
-      setAddress("");
-      setShowConnect(false);
-    } catch (e) {
-      setFormError(e instanceof Error ? e.message : "Couldn't connect that mailbox.");
-    } finally {
-      setSaving(false);
-    }
   }
 
 
@@ -451,26 +383,15 @@ export function DepartmentMailboxesPage({
           {canManage && !noSubDepartments && (
             <button
               type="button"
-              onClick={() => openConnect("inbox")}
+              onClick={openConnect}
               className="flex h-8 items-center gap-1.5 rounded-full bg-sts-blue px-3.5 font-sans text-[12.5px] font-medium text-white dark:text-gray-900"
             >
               <Plus className="size-3.5" />
               Connect inbox
             </button>
           )}
-          {/* Request a sending domain (managers / sub-managers) */}
-          {canRequestDomain && (
-            <RequestDomainDialog departmentId={departmentId} subDepartments={subDepartments} />
-          )}
         </div>
       </div>
-
-      {canRequestDomain && (
-        <DomainRequestStatusList
-          requests={domainRequests}
-          onConnectMailbox={canManage && !noSubDepartments ? connectForDomain : undefined}
-        />
-      )}
 
       {/* ── Connect mailbox modal ── */}
       {canManage && showConnect && !noSubDepartments && (
@@ -480,102 +401,38 @@ export function DepartmentMailboxesPage({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
-              <p className="font-sans text-[14px] font-semibold text-sts-foreground">Connect mailbox</p>
+              <p className="font-sans text-[14px] font-semibold text-sts-foreground">Connect inbox</p>
               <button type="button" onClick={closeConnect} aria-label="Close">
                 <X className="size-4 text-sts-muted" />
               </button>
             </div>
             <div className="flex flex-col gap-4 px-5 py-4">
-              <MailboxProviderPicker
-                value={provider}
-                onChange={(p) => { setProvider(p); setFormError(null); }}
-                providers={connectMode === "inbox" ? INBOX_PROVIDERS : undefined}
+              <ExternalMailboxConnectForm
+                teamId={teamId}
+                scopeType="DEPARTMENT"
+                existingAddresses={list.map((c) => c.address)}
+                onCancel={closeConnect}
+                teamPicker={
+                  <div>
+                    <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">
+                      Files into
+                    </label>
+                    <select
+                      value={teamId}
+                      onChange={(e) => setTeamId(e.target.value)}
+                      className="h-9 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-blue/50"
+                    >
+                      {subDepartments.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                    <p className="mt-1.5 font-sans text-[11px] text-sts-subtle">
+                      Each new email in this inbox opens a ticket for the chosen subDepartment.
+                    </p>
+                  </div>
+                }
               />
-              {provider !== "RESEND" ? (
-                <ExternalMailboxConnectForm
-                  teamId={teamId}
-                  scopeType="DEPARTMENT"
-                  existingAddresses={list.map((c) => c.address)}
-                  onCancel={closeConnect}
-                  teamPicker={
-                    <div>
-                      <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">
-                        Files into
-                      </label>
-                      <select
-                        value={teamId}
-                        onChange={(e) => setTeamId(e.target.value)}
-                        className="h-9 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-blue/50"
-                      >
-                        {subDepartments.map((s) => (
-                          <option key={s.id} value={s.id}>{s.name}</option>
-                        ))}
-                      </select>
-                      <p className="mt-1.5 font-sans text-[11px] text-sts-subtle">
-                        Each new email in this inbox opens a ticket for the chosen subDepartment.
-                      </p>
-                    </div>
-                  }
-                />
-              ) : (
-              <>
-              <div>
-                <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">
-                  Mailbox address
-                </label>
-                <input
-                  ref={addressRef}
-                  autoFocus
-                  type="text"
-                  inputMode="email"
-                  value={address}
-                  onChange={(e) => { setAddress(e.target.value); setFormError(null); }}
-                  onKeyDown={(e) => { if (e.key === "Enter") connect(); if (e.key === "Escape") closeConnect(); }}
-                  placeholder="support@yourcompany.com"
-                  className="h-9 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-blue/50"
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">
-                  Files into
-                </label>
-                <select
-                  value={teamId}
-                  onChange={(e) => setTeamId(e.target.value)}
-                  className="h-9 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-blue/50"
-                >
-                  {subDepartments.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-                <p className="mt-1.5 font-sans text-[11px] text-sts-subtle">
-                  Each new email to this address opens a ticket for the chosen subDepartment.
-                </p>
-              </div>
-              {formError && <p className="font-sans text-[11.5px] text-red-500">{formError}</p>}
-              </>
-              )}
             </div>
-            {provider === "RESEND" && (
-            <div className="flex justify-end gap-2 border-t border-sts-card-border px-5 py-3">
-              <button
-                type="button"
-                onClick={closeConnect}
-                className="h-8 rounded-full border border-sts-card-border px-4 font-sans text-[12.5px] text-sts-muted hover:bg-sts-surface"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={connect}
-                disabled={saving || !address.trim() || !teamId}
-                className="flex h-8 items-center gap-1.5 rounded-full bg-sts-blue px-4 font-sans text-[12.5px] font-medium text-white disabled:opacity-50 dark:text-gray-900"
-              >
-                {saving && <Loader2 className="size-3.5 animate-spin" />}
-                Connect
-              </button>
-            </div>
-            )}
           </div>
         </div>
       )}

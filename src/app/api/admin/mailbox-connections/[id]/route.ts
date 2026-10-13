@@ -50,7 +50,7 @@ export async function PATCH(
     const verification = await checkDomainVerification(address)
     if (verification.status !== "verified" || !verification.receivingEnabled) {
       return NextResponse.json(
-        { error: `The ${verification.domain ?? "email"} domain is not ready to receive mail in Resend. Enable receiving and verify its MX record first.` },
+        { error: `The ${verification.domain ?? "email"} domain is not ready to receive mail in Resend. Complete verification and enable receiving directly in Resend before adding this mailbox.` },
         { status: 400 },
       )
     }

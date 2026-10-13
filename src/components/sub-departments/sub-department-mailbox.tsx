@@ -236,11 +236,16 @@ export function SubDepartmentMailboxManager({
     setFormError(null);
     try {
       const res = await fetch(`/api/admin/email-identity/domain-status?email=${encodeURIComponent(value)}`);
-      const data = await res.json().catch(() => ({})) as { domain?: string | null; status?: string; error?: string };
+      const data = await res.json().catch(() => ({})) as { domain?: string | null; status?: string; receivingEnabled?: boolean; error?: string };
       if (!res.ok) throw new Error(data.error ?? "Couldn't check Resend verification.");
       if (data.status !== "verified") {
         setVerifiedAddress(null);
         setFormError(`The ${data.domain ?? "email"} domain is not verified in Resend. Contact the Resend manager to add and verify it.`);
+        return;
+      }
+      if (!data.receivingEnabled) {
+        setVerifiedAddress(null);
+        setFormError(`Enable receiving for ${data.domain ?? "this domain"} directly in Resend before adding this mailbox.`);
         return;
       }
       setVerifiedAddress(value.toLowerCase());

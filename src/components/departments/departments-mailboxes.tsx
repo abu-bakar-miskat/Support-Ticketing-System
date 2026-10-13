@@ -2,18 +2,22 @@
 
 import { Fragment, useMemo, useState } from "react";
 import Link from "next/link";
+import { Dialog } from "@base-ui/react/dialog";
 import {
   AlertTriangle,
   ArrowDown,
   ArrowUp,
+  CheckCircle2,
+  Building2,
   ChevronDown,
   ChevronRight,
-  Globe,
   Inbox,
   Mail,
   Search,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableHeader,
@@ -32,6 +36,7 @@ import {
   type PendingDomainRequest,
 } from "@/components/email/domain-requests-panel";
 import type { InUseDomain } from "@/lib/email-domains";
+import { MailboxesGuide } from "@/components/departments/mailboxes-guide";
 
 export type DepartmentMailboxUsage = {
   departmentId: string;
@@ -84,75 +89,6 @@ function relativeTime(iso: string | null): string {
   const day = Math.round(hr / 24);
   if (day < 30) return `${day}d ago`;
   return new Date(iso).toLocaleDateString();
-}
-
-type Tone = "blue" | "green" | "amber" | "muted";
-
-const TONE: Record<
-  Tone,
-  { card: string; iconWrap: string; icon: string; value: string; accent: string }
-> = {
-  blue: {
-    card: "border-sts-blue/20 bg-sts-blue-tint/40",
-    iconWrap: "bg-sts-blue/15",
-    icon: "text-sts-blue",
-    value: "text-sts-foreground",
-    accent: "bg-sts-blue",
-  },
-  green: {
-    card: "border-sts-green/25 bg-sts-green-tint/40",
-    iconWrap: "bg-sts-green/15",
-    icon: "text-sts-green",
-    value: "text-sts-green",
-    accent: "bg-sts-green",
-  },
-  amber: {
-    card: "border-amber-400/30 bg-amber-50/60 dark:bg-amber-900/10",
-    iconWrap: "bg-amber-400/20",
-    icon: "text-amber-500",
-    value: "text-amber-600 dark:text-amber-400",
-    accent: "bg-amber-500",
-  },
-  muted: {
-    card: "border-sts-card-border bg-sts-card",
-    iconWrap: "bg-sts-surface",
-    icon: "text-sts-subtle",
-    value: "text-sts-foreground",
-    accent: "bg-sts-subtle",
-  },
-};
-
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  tone,
-}: {
-  icon: typeof Mail;
-  label: string;
-  value: number;
-  tone: Tone;
-}) {
-  const t = TONE[tone];
-  return (
-    <div
-      className={cn(
-        "relative flex items-center gap-3 overflow-hidden rounded-2xl border p-4",
-        t.card,
-      )}
-    >
-      <span className={cn("absolute inset-y-0 left-0 w-1", t.accent)} />
-      <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-xl", t.iconWrap)}>
-        <Icon className={cn("size-[18px]", t.icon)} />
-      </span>
-      <div className="flex flex-col gap-0.5">
-        <span className={cn("font-sans text-[22px] font-semibold tabular-nums leading-none", t.value)}>
-          {value}
-        </span>
-        <span className="font-sans text-[11.5px] font-medium text-sts-muted">{label}</span>
-      </div>
-    </div>
-  );
 }
 
 type RowStatus = "healthy" | "attention" | "uncovered";
@@ -222,6 +158,7 @@ export function DepartmentsMailboxes({
   const [sortKey, setSortKey] = useState<SortKey>("total");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [expandedDepartmentIds, setExpandedDepartmentIds] = useState<Set<string>>(() => new Set());
+  const [overviewOpen, setOverviewOpen] = useState(false);
 
   const totals = useMemo(() => {
     let mailboxes = 0;
@@ -292,282 +229,343 @@ export function DepartmentsMailboxes({
   return (
     <div className="flex flex-col gap-5 px-6 py-6 sm:px-10">
       {/* ── Header ── */}
-      <div>
-        <div className="flex items-center gap-2">
-          <Mail className="size-4 text-sts-muted" />
-          <h1 className="sts-text-admin-title">Mailboxes</h1>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <Mail className="size-4 text-sts-muted" />
+            <h1 className="sts-text-admin-title">Mailboxes</h1>
+          </div>
+          <p className="mt-[3px] font-sans text-[13px] text-sts-muted">
+            Add email domains already verified in Resend for your department mailboxes.
+          </p>
         </div>
-        <p className="mt-[3px] font-sans text-[13px] text-sts-muted">
-          How shared inboxes are distributed across every department in this tenant.
-        </p>
-      </div>
-
-      {/* ── Summary cards ── */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <StatCard icon={Mail} label="Mailboxes" value={totals.mailboxes} tone="blue" />
-        <StatCard icon={Inbox} label="Healthy" value={totals.healthy} tone="green" />
-        <StatCard icon={AlertTriangle} label="Need attention" value={totals.attention} tone="amber" />
-        <StatCard icon={Inbox} label="Uncovered depts" value={totals.uncovered} tone="muted" />
-      </div>
-
-      {/* ── Controls ── */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-wrap items-center gap-1">
-          {filterTabs.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              onClick={() => setFilter(t.key)}
-              className={cn(
-                "flex items-center gap-1.5 rounded-full px-2.5 py-1.5 font-sans text-[12px] font-medium transition-colors",
-                filter === t.key
-                  ? "bg-sts-blue-tint text-sts-id"
-                  : "text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",
-              )}
-            >
-              {t.label}
-              <span
-                className={cn(
-                  "rounded px-1.5 py-0.5 text-[10.5px] tabular-nums",
-                  filter === t.key ? "bg-sts-blue/15 text-sts-id" : "bg-sts-surface text-sts-subtle",
-                )}
-              >
-                {t.count}
+        <div className="flex flex-wrap items-center gap-2">
+          <MailboxesGuide />
+          <Button variant="outline" onClick={() => setOverviewOpen(true)}>
+            <Inbox className="size-4" />
+            Mailbox overview
+            <span className="rounded-full bg-sts-surface px-1.5 py-0.5 text-[10.5px] font-semibold tabular-nums text-sts-subtle">
+              {totals.mailboxes}
+            </span>
+            {totals.attention > 0 && (
+              <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10.5px] font-semibold tabular-nums text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                {totals.attention} need attention
               </span>
-            </button>
-          ))}
-        </div>
-
-        <div className="relative sm:w-64">
-          <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sts-subtle" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search departments…"
-            className="h-9 w-full rounded-lg border border-sts-card-border bg-sts-surface pl-8 pr-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-blue/50"
-          />
-        </div>
-      </div>
-
-      {/* ── Table ── */}
-      <div className="overflow-hidden rounded-2xl border border-sts-card-border bg-sts-card">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>
-                <button
-                  type="button"
-                  onClick={() => toggleSort("name")}
-                  className="flex items-center gap-1 hover:text-sts-foreground"
-                >
-                  Department
-                  <SortIcon column="name" sortKey={sortKey} sortDir={sortDir} />
-                </button>
-              </TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">
-                <button
-                  type="button"
-                  onClick={() => toggleSort("total")}
-                  className="ml-auto flex items-center gap-1 hover:text-sts-foreground"
-                >
-                  Mailboxes
-                  <SortIcon column="total" sortKey={sortKey} sortDir={sortDir} />
-                </button>
-              </TableHead>
-              <TableHead className="text-right">Healthy</TableHead>
-              <TableHead className="text-right">
-                <button
-                  type="button"
-                  onClick={() => toggleSort("issues")}
-                  className="ml-auto flex items-center gap-1 hover:text-sts-foreground"
-                >
-                  Need attention
-                  <SortIcon column="issues" sortKey={sortKey} sortDir={sortDir} />
-                </button>
-              </TableHead>
-              <TableHead className="text-right">Last checked</TableHead>
-              <TableHead className="w-8" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center font-sans text-[12.5px] text-sts-muted">
-                  No departments yet.
-                </TableCell>
-              </TableRow>
-            ) : visible.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} className="py-10 text-center font-sans text-[12.5px] text-sts-muted">
-                  No departments match your search.
-                </TableCell>
-              </TableRow>
-            ) : (
-              visible.map((r) => {
-                const status = rowStatus(r);
-                const s = ROW_STATUS[status];
-                const isExpanded = expandedDepartmentIds.has(r.departmentId);
-                return (
-                <Fragment key={r.departmentId}>
-                  <TableRow
-                    role="button"
-                    tabIndex={0}
-                    aria-expanded={isExpanded}
-                    aria-controls={`department-mailboxes-${r.departmentId}`}
-                    onClick={() => toggleDepartment(r.departmentId)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        toggleDepartment(r.departmentId);
-                      }
-                    }}
-                    className="group cursor-pointer hover:bg-sts-surface/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sts-blue"
-                  >
-                  <TableCell className="font-sans text-[13px] font-medium text-sts-foreground">
-                    <span className="flex items-center gap-2.5">
-                      <span className={cn("flex size-7 shrink-0 items-center justify-center rounded-lg", s.avatar)}>
-                        <Mail className={cn("size-3.5", s.avatarIcon)} />
-                      </span>
-                      {r.name}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span
-                      className={cn(
-                        "inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 font-sans text-[10.5px] font-semibold",
-                        s.chip,
-                      )}
-                    >
-                      <span className={cn("size-1.5 rounded-full", s.dot)} />
-                      {s.label}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right font-sans text-[13px] tabular-nums">
-                    {r.total === 0 ? (
-                      <span className="text-sts-subtle">—</span>
-                    ) : (
-                      <span className="font-semibold text-sts-foreground">{r.total}</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right font-sans text-[13px] tabular-nums">
-                    {r.active > 0 ? (
-                      <span className="font-medium text-sts-green">{r.active}</span>
-                    ) : (
-                      <span className="text-sts-subtle">0</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right font-sans text-[13px] tabular-nums">
-                    {r.issues > 0 ? (
-                      <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
-                        <AlertTriangle className="size-3" />
-                        {r.issues}
-                      </span>
-                    ) : (
-                      <span className="text-sts-subtle">0</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right font-sans text-[11.5px] tabular-nums text-sts-subtle">
-                    {relativeTime(r.lastCheckedAt)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <ChevronDown
-                      className={cn(
-                        "ml-auto size-4 text-sts-subtle transition-transform group-hover:text-sts-foreground",
-                        !isExpanded && "-rotate-90",
-                      )}
-                    />
-                  </TableCell>
-                  </TableRow>
-                  {isExpanded && (
-                    <TableRow id={`department-mailboxes-${r.departmentId}`} className="bg-sts-surface/40 hover:bg-sts-surface/40">
-                      <TableCell colSpan={7} className="px-5 py-3">
-                        {r.subDepartments.length === 0 ? (
-                          <p className="font-sans text-[12px] text-sts-muted">No sub-departments yet.</p>
-                        ) : (
-                          <div className="divide-y divide-sts-card-border rounded-lg border border-sts-card-border bg-sts-card">
-                            {r.subDepartments.map((subDepartment) => (
-                              <div key={subDepartment.id} className="px-3 py-3">
-                                <div className="flex items-center justify-between gap-4">
-                                  <div>
-                                    <p className="font-sans text-[12.5px] font-medium text-sts-foreground">
-                                      {subDepartment.name}
-                                    </p>
-                                    <p className="mt-0.5 font-sans text-[11px] text-sts-muted">
-                                      {subDepartment.mailboxes.length} {subDepartment.mailboxes.length === 1 ? "mailbox" : "mailboxes"}
-                                    </p>
-                                  </div>
-                                  <Link
-                                    href={`${r.basePath}/sub-departments/${encodeURIComponent(subDepartment.name)}/mailbox`}
-                                    onClick={(event) => event.stopPropagation()}
-                                    className="inline-flex items-center gap-1 font-sans text-[12px] font-medium text-sts-blue hover:underline"
-                                  >
-                                    Manage mailboxes
-                                    <ChevronRight className="size-3.5" />
-                                  </Link>
-                                </div>
-                                {subDepartment.mailboxes.length === 0 ? (
-                                  <p className="mt-2 font-sans text-[11.5px] text-sts-subtle">No mailbox connected.</p>
-                                ) : (
-                                  <div className="mt-2 grid gap-2 sm:grid-cols-2">
-                                    {subDepartment.mailboxes.map((mailbox) => {
-                                      const mailboxStatus = MAILBOX_STATUS[mailbox.status];
-                                      return (
-                                        <div key={mailbox.address} className="rounded-md bg-sts-surface px-2.5 py-2">
-                                          <p className="truncate font-sans text-[11.5px] font-medium text-sts-foreground">
-                                            {mailbox.address}
-                                          </p>
-                                          <div className="mt-1 flex items-center justify-between gap-2 font-sans text-[10.5px]">
-                                            <span className={cn("inline-flex items-center gap-1", mailboxStatus.text)}>
-                                              <span className={cn("size-1.5 rounded-full", mailboxStatus.dot)} />
-                                              {mailboxStatus.label}
-                                            </span>
-                                            <span className="text-sts-subtle">{relativeTime(mailbox.lastCheckedAt)}</span>
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </Fragment>
-                );
-              })
             )}
-          </TableBody>
-        </Table>
+          </Button>
+        </div>
       </div>
-
-      <p className="font-sans text-[11.5px] text-sts-subtle">
-        Click a department to view its sub-departments and their mailboxes.
-      </p>
 
       {/* ── Email domains ── */}
-      <div className="mt-2 border-t border-sts-card-border pt-6">
-        <div className="flex items-center gap-2">
-          <Globe className="size-4 text-sts-muted" />
-          <h2 className="sts-text-admin-title">Email domains for your mailboxes</h2>
-        </div>
-        <p className="mt-[3px] mb-4 font-sans text-[13px] text-sts-muted">
-          Register and verify the domains your mailboxes send and receive from. A mailbox address can only be connected
-          once its domain is verified. Domains already used by your mailboxes are listed below — verify any that
-          aren&apos;t yet.
-        </p>
-        <DomainRequestsPanel requests={domainRequests} />
-        <EmailDomainsManager
-          apiBase="/api/admin/email-identity/domains"
-          initialDomains={domains}
-          loadError={null}
-          departments={departments}
-          inUseDomains={inUseDomains}
-        />
-      </div>
+      <DomainRequestsPanel requests={domainRequests} />
+      <EmailDomainsManager
+        apiBase="/api/admin/email-identity/domains"
+        initialDomains={domains}
+        loadError={null}
+        departments={departments}
+        inUseDomains={inUseDomains}
+      />
+
+      {/* ── Mailbox overview (modal) ── */}
+      <Dialog.Root open={overviewOpen} onOpenChange={setOverviewOpen}>
+        <Dialog.Portal>
+          <Dialog.Backdrop className="sts-overlay-backdrop fixed inset-0 z-50" />
+          <Dialog.Popup className="fixed top-1/2 left-1/2 z-50 flex h-[min(680px,90dvh)] w-[min(1080px,calc(100vw-2rem))] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-2xl border border-sts-card-border bg-sts-bg shadow-2xl">
+            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-sts-card-border px-5 py-6 sm:px-8">
+              <div className="flex items-start gap-4">
+                <span className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-sts-blue/15 bg-sts-blue-tint text-sts-blue">
+                  <Inbox className="size-6" strokeWidth={1.5} />
+                </span>
+                <div>
+                  <Dialog.Title className="font-sans text-[22px] font-semibold tracking-tight text-sts-foreground">
+                    Mailbox overview
+                  </Dialog.Title>
+                  <Dialog.Description className="mt-1.5 max-w-md font-sans text-[13px] leading-relaxed text-sts-muted">
+                    Connection health across your departments. Expand a row to view and manage its mailboxes.
+                  </Dialog.Description>
+                </div>
+              </div>
+              <Dialog.Close
+                aria-label="Close mailbox overview"
+                className="inline-flex size-8 shrink-0 items-center justify-center rounded-lg text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-blue"
+              >
+                <X className="size-4" />
+              </Dialog.Close>
+            </div>
+            <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden px-5 py-6 sm:px-8">
+              <dl className="grid shrink-0 grid-cols-2 gap-y-5 rounded-xl bg-sts-surface/70 px-5 py-5 sm:grid-cols-4 sm:gap-y-0">
+                {[
+                  { label: "Connected mailboxes", value: totals.mailboxes, icon: Mail, color: "text-sts-foreground" },
+                  { label: "Healthy connections", value: totals.healthy, icon: CheckCircle2, color: "text-sts-green" },
+                  { label: "Need attention", value: totals.attention, icon: AlertTriangle, color: totals.attention > 0 ? "text-amber-600 dark:text-amber-400" : "text-sts-muted" },
+                  { label: "Uncovered departments", value: totals.uncovered, icon: Building2, color: "text-sts-muted" },
+                ].map((stat) => (
+                  <div key={stat.label} className="px-2 sm:border-l sm:border-sts-card-border sm:px-5 sm:first:border-l-0 sm:first:pl-0">
+                    <dt className="font-sans text-[11px] font-medium text-sts-muted sm:text-[12px]">{stat.label}</dt>
+                    <dd className={cn("mt-2 flex items-center gap-2.5 font-sans text-[28px] font-semibold leading-none tracking-tight tabular-nums", stat.color)}>
+                      {stat.value}
+                      <stat.icon className="size-4 opacity-70" strokeWidth={1.75} />
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+              {/* ── Controls ── */}
+              <div className="flex shrink-0 flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div className="flex flex-wrap items-center gap-1 rounded-lg bg-sts-surface p-1">
+                  {filterTabs.map((t) => (
+                    <button
+                      key={t.key}
+                      type="button"
+                      onClick={() => setFilter(t.key)}
+                      aria-pressed={filter === t.key}
+                      className={cn(
+                        "flex items-center gap-2 rounded-md px-3 py-2 font-sans text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-blue",
+                        filter === t.key
+                          ? "bg-sts-card text-sts-foreground shadow-sm"
+                          : "text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",
+                      )}
+                    >
+                      {t.label}
+                      <span
+                        className={cn(
+                          "rounded px-1.5 py-0.5 text-[10.5px] font-semibold tabular-nums",
+                          filter === t.key ? "bg-sts-blue-tint text-sts-blue" : "text-sts-subtle",
+                        )}
+                      >
+                        {t.count}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="relative md:w-64 md:shrink-0">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-sts-subtle" />
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    aria-label="Search departments"
+                    placeholder="Search departments…"
+                    className="h-10 w-full rounded-lg border border-sts-card-border bg-sts-card pl-8 pr-3 font-sans text-[13px] text-sts-foreground outline-none transition-shadow placeholder:text-sts-subtle focus-visible:border-sts-blue/50 focus-visible:ring-2 focus-visible:ring-sts-blue/15"
+                  />
+                </div>
+              </div>
+
+              {/* ── Table ── */}
+              <div className="min-h-0 flex-1 overflow-auto rounded-xl border border-sts-card-border bg-sts-card">
+                <Table className="[&_td]:px-4 [&_th]:h-11 [&_th]:px-4 [&_th]:text-[11px] [&_th]:font-medium [&_th]:text-sts-muted">
+                  <TableHeader className="bg-sts-surface/70">
+                    <TableRow>
+                      <TableHead>
+                        <button
+                          type="button"
+                          onClick={() => toggleSort("name")}
+                          className="flex items-center gap-1 rounded-sm hover:text-sts-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-blue"
+                        >
+                          Department
+                          <SortIcon column="name" sortKey={sortKey} sortDir={sortDir} />
+                        </button>
+                      </TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">
+                        <button
+                          type="button"
+                          onClick={() => toggleSort("total")}
+                          className="ml-auto flex items-center gap-1 rounded-sm hover:text-sts-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-blue"
+                        >
+                          Mailboxes
+                          <SortIcon column="total" sortKey={sortKey} sortDir={sortDir} />
+                        </button>
+                      </TableHead>
+                      <TableHead className="text-right">Healthy</TableHead>
+                      <TableHead className="text-right">
+                        <button
+                          type="button"
+                          onClick={() => toggleSort("issues")}
+                          className="ml-auto flex items-center gap-1 rounded-sm hover:text-sts-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-blue"
+                        >
+                          Need attention
+                          <SortIcon column="issues" sortKey={sortKey} sortDir={sortDir} />
+                        </button>
+                      </TableHead>
+                      <TableHead className="text-right">Last checked</TableHead>
+                      <TableHead className="w-8" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {rows.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="py-10 text-center font-sans text-[12.5px] text-sts-muted">
+                          No departments yet.
+                        </TableCell>
+                      </TableRow>
+                    ) : visible.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="py-10 text-center font-sans text-[12.5px] text-sts-muted">
+                          <p className="font-medium text-sts-foreground">No matching departments</p>
+                          <p className="mt-1">Try another search or change the selected filter.</p>
+                          <button
+                            type="button"
+                            onClick={() => { setQuery(""); setFilter("all"); }}
+                            className="mt-3 rounded-md px-3 py-1.5 font-medium text-sts-blue hover:bg-sts-blue-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-blue"
+                          >
+                            Clear filters
+                          </button>
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      visible.map((r) => {
+                        const status = rowStatus(r);
+                        const s = ROW_STATUS[status];
+                        const isExpanded = expandedDepartmentIds.has(r.departmentId);
+                        return (
+                        <Fragment key={r.departmentId}>
+                          <TableRow
+                            role="button"
+                            tabIndex={0}
+                            aria-expanded={isExpanded}
+                            aria-controls={`department-mailboxes-${r.departmentId}`}
+                            onClick={() => toggleDepartment(r.departmentId)}
+                            onKeyDown={(event) => {
+                              if (event.key === "Enter" || event.key === " ") {
+                                event.preventDefault();
+                                toggleDepartment(r.departmentId);
+                              }
+                            }}
+                            className="group h-[72px] cursor-pointer transition-colors aria-expanded:bg-sts-surface/60 hover:bg-sts-surface/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-sts-blue"
+                          >
+                          <TableCell className="font-sans text-[13px] font-medium text-sts-foreground">
+                            <span className="flex items-center gap-2.5">
+                              <span className={cn("flex size-9 shrink-0 items-center justify-center rounded-xl", s.avatar)}>
+                                <Building2 className={cn("size-4", s.avatarIcon)} />
+                              </span>
+                              <span>
+                                <span className="block text-[13px] font-semibold">{r.name}</span>
+                                <span className="mt-1 block text-[11px] font-normal text-sts-muted">
+                                  {r.subDepartments.length} {r.subDepartments.length === 1 ? "sub-department" : "sub-departments"}
+                                </span>
+                              </span>
+                            </span>
+                          </TableCell>
+                          <TableCell>
+                            <span
+                              className={cn(
+                                "inline-flex items-center gap-1.5 rounded-md px-2 py-1 font-sans text-[11px] font-semibold",
+                                s.chip,
+                              )}
+                            >
+                              <span className={cn("size-1.5 rounded-full", s.dot)} />
+                              {s.label}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right font-sans text-[13px] tabular-nums">
+                            {r.total === 0 ? (
+                              <span className="text-sts-subtle">—</span>
+                            ) : (
+                              <span className="font-semibold text-sts-foreground">{r.total}</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right font-sans text-[13px] tabular-nums">
+                            {r.active > 0 ? (
+                              <span className="font-medium text-sts-green">{r.active}</span>
+                            ) : (
+                              <span className="text-sts-subtle">0</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right font-sans text-[13px] tabular-nums">
+                            {r.issues > 0 ? (
+                              <span className="inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+                                <AlertTriangle className="size-3" />
+                                {r.issues}
+                              </span>
+                            ) : (
+                              <span className="text-sts-subtle">0</span>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right font-sans text-[11.5px] tabular-nums text-sts-subtle">
+                            {relativeTime(r.lastCheckedAt)}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <ChevronDown
+                              className={cn(
+                                "ml-auto size-4 text-sts-subtle transition-transform group-hover:text-sts-foreground",
+                                !isExpanded && "-rotate-90",
+                              )}
+                            />
+                          </TableCell>
+                          </TableRow>
+                          {isExpanded && (
+                            <TableRow id={`department-mailboxes-${r.departmentId}`} className="bg-sts-surface/40 hover:bg-sts-surface/40">
+                              <TableCell colSpan={7} className="whitespace-normal px-5 py-1 sm:px-7">
+                                {r.subDepartments.length === 0 ? (
+                                  <p className="font-sans text-[12px] text-sts-muted">No sub-departments yet.</p>
+                                ) : (
+                                  <div className="divide-y divide-sts-card-border">
+                                    {r.subDepartments.map((subDepartment) => (
+                                      <div key={subDepartment.id} className="py-4 pl-4 border-l-2 border-sts-card-border">
+                                        <div className="flex flex-wrap items-center justify-between gap-3">
+                                          <div>
+                                            <p className="font-sans text-[12.5px] font-medium text-sts-foreground">
+                                              {subDepartment.name}
+                                            </p>
+                                            <p className="mt-0.5 font-sans text-[11px] text-sts-muted">
+                                              {subDepartment.mailboxes.length} {subDepartment.mailboxes.length === 1 ? "mailbox" : "mailboxes"}
+                                            </p>
+                                          </div>
+                                          <Link
+                                            href={`${r.basePath}/sub-departments/${encodeURIComponent(subDepartment.name)}/mailbox`}
+                                            onClick={(event) => event.stopPropagation()}
+                                            className="inline-flex items-center gap-1 rounded-md px-2 py-1.5 font-sans text-[12px] font-medium text-sts-blue transition-colors hover:bg-sts-blue-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-blue"
+                                          >
+                                            Manage mailboxes
+                                            <ChevronRight className="size-3.5" />
+                                          </Link>
+                                        </div>
+                                        {subDepartment.mailboxes.length === 0 ? (
+                                          <p className="mt-2 font-sans text-[11.5px] text-sts-subtle">No mailbox connected.</p>
+                                        ) : (
+                                          <div className="mt-3 flex flex-col gap-2">
+                                            {subDepartment.mailboxes.map((mailbox) => {
+                                              const mailboxStatus = MAILBOX_STATUS[mailbox.status];
+                                              return (
+                                                <div key={mailbox.address} className="flex flex-wrap items-center justify-between gap-x-5 gap-y-2 py-1">
+                                                  <p className="flex min-w-0 items-center gap-2 font-sans text-[12px] font-medium text-sts-foreground">
+                                                    <Mail className="size-3.5 shrink-0 text-sts-subtle" />
+                                                    <span className="break-all">{mailbox.address}</span>
+                                                  </p>
+                                                  <div className="flex items-center gap-5 font-sans text-[11px]">
+                                                    <span className={cn("inline-flex items-center gap-1", mailboxStatus.text)}>
+                                                      <span className={cn("size-1.5 rounded-full", mailboxStatus.dot)} />
+                                                      {mailboxStatus.label}
+                                                    </span>
+                                                    <span className="text-sts-subtle">{relativeTime(mailbox.lastCheckedAt)}</span>
+                                                  </div>
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </Fragment>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-sts-card-border bg-sts-surface/40 px-5 py-3 font-sans text-[11px] text-sts-muted sm:px-8">
+              <span>Showing {visible.length} of {rows.length} departments</span>
+              <span>Connection status reflects the latest mailbox health check.</span>
+            </div>
+          </Dialog.Popup>
+        </Dialog.Portal>
+      </Dialog.Root>
     </div>
   );
 }

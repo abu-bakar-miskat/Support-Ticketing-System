@@ -7,19 +7,14 @@ import {
   Loader2,
   RefreshCw,
   Trash2,
-  Copy,
-  Check,
   CheckCircle2,
   Clock,
   AlertTriangle,
-  ChevronDown,
-  ChevronRight,
   Mail,
   Building2,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Switch } from "@/components/ui/switch";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Select,
@@ -107,29 +102,13 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function CopyButton({ value }: { value: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <Tip label={copied ? "Copied" : "Copy"}>
-      <button
-        type="button"
-        onClick={async () => {
-          try {
-            await navigator.clipboard.writeText(value);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1200);
-          } catch {
-            /* clipboard unavailable */
-          }
-        }}
-        className="inline-flex size-6 shrink-0 items-center justify-center rounded text-sts-subtle hover:bg-sts-blue-tint hover:text-sts-foreground"
-        aria-label="Copy value"
-      >
-        {copied ? <Check className="size-3.5 text-sts-green" /> : <Copy className="size-3.5" />}
-      </button>
-    </Tip>
-  );
-}
+/**
+ * Hostname check for the register form: dot-separated labels of letters,
+ * digits and inner hyphens (≤63 chars each), ending in a 2+ letter TLD.
+ * Stricter than the server's check in resend-domains.ts, so anything this
+ * accepts the API accepts too.
+ */
+const DOMAIN_RE = /^(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
 
 // ── Merged row model ─────────────────────────────────────────────────────────
 
@@ -153,11 +132,11 @@ const datedFirst =
     !a.createdAt ? (b.createdAt ? 1 : 0) : !b.createdAt ? -1 : compare(a, b);
 
 /**
- * Add / verify / remove UI for Resend sending domains, with the tenant's
+ * Add / remove workspace assignments for externally verified Resend domains, with the tenant's
  * in-use mailbox domains merged into one list. Presentation-only — it talks to
  * whichever REST base it's given (`apiBase`), so the same component drives the
  * super-admin platform view and the tenant-admin views. Endpoints under
- * `apiBase`: GET / POST `/`, GET / DELETE `/:id`, POST `/:id/verify`.
+ * `apiBase`: GET / POST `/`, GET / DELETE `/:id`, read-only Resend status checks.
  */
 export function EmailDomainsManager({
   apiBase,
@@ -166,7 +145,7 @@ export function EmailDomainsManager({
   departments,
   inUseDomains = [],
   allowRemove = true,
-  allowEnableReceiving = false,
+  allowAdd = true,
 }: {
   apiBase: string;
   initialDomains: ManagerDomain[];
@@ -176,25 +155,18 @@ export function EmailDomainsManager({
   departments?: ManagerDepartmentScope[];
   /** Domains the tenant's mailboxes already send from, merged in read-only. */
   inUseDomains?: ManagerInUseDomain[];
-  /** When false, the Delete button is hidden for verified domains (but still
-   * shown for unverified ones). Defaults to true (always show). */
+  /** Allow removing local workspace assignments. */
   allowRemove?: boolean;
-  /** When true, domains registered for sending only (receiving disabled in
-   * Resend) show an "Enable receiving" button that turns on inbound delivery so
-   * the MX record appears. Requires an `POST :id/enable-receiving` endpoint —
-   * only the super-admin platform base has one, so defaults to false. */
-  allowEnableReceiving?: boolean;
+  /** Platform view lists domains; workspace views can assign verified domains. */
+  allowAdd?: boolean;
 }) {
-  const requiresScope = Array.isArray(departments) && departments.length > 0;
+  const requiresScope = Array.isArray(departments);
   const [domains, setDomains] = useState<ManagerDomain[]>(initialDomains);
-  const [expanded, setExpanded] = useState<string | null>(null);
   const [newName, setNewName] = useState("");
   const [deptId, setDeptId] = useState("");
   const [subId, setSubId] = useState("");
   const [adding, setAdding] = useState(false);
-  const [busyId, setBusyId] = useState<string | null>(null);
   const [removing, setRemoving] = useState<{ id: string; name: string } | null>(null);
-  const [deleteFromResend, setDeleteFromResend] = useState(true);
   const [error, setError] = useState<string | null>(loadError);
   const [status, setStatus] = useState<string | null>(null);
   const addCardRef = useRef<HTMLDivElement>(null);
@@ -203,7 +175,11 @@ export function EmailDomainsManager({
   const selectedDept = requiresScope ? departments!.find((d) => d.id === deptId) ?? null : null;
   const showSub = Boolean(selectedDept && selectedDept.subDepartments.length > 0);
   const scopeChosen = !requiresScope || Boolean(deptId && (!showSub || subId));
-  const canAdd = Boolean(newName.trim()) && scopeChosen;
+  const domainValid = DOMAIN_RE.test(newName.trim().toLowerCase());
+  // Only complain once the user has left the field, not on every keystroke.
+  const [nameTouched, setNameTouched] = useState(false);
+  const showDomainError = nameTouched && newName.trim() !== "" && !domainValid;
+  const canAdd = domainValid && scopeChosen;
 
   const mergedRows = useMemo<MergedRow[]>(() => {
     const byName = new Map<string, MergedRow>();
@@ -299,81 +275,33 @@ export function EmailDomainsManager({
         return;
       }
       upsertDomain(body.domain);
-      setExpanded(body.domain.id);
       setNewName("");
+      setNameTouched(false);
       setDeptId("");
       setSubId("");
-      setStatus(`${body.domain.name} added — publish the DNS records below, then verify.`);
+      setStatus(`${body.domain.name} is verified in Resend and has been added.`);
+    } catch {
+      setError("Unable to check the domain in Resend. Please try again.");
     } finally {
       setAdding(false);
     }
   }
 
-  async function loadRecords(id: string) {
-    const existing = domains.find((d) => d.id === id);
-    if (existing && existing.records.length > 0) return;
-    try {
-      const res = await fetch(`${apiBase}/${id}`);
-      const body = await res.json().catch(() => ({}));
-      if (res.ok) upsertDomain(body.domain);
-    } catch {
-      /* non-fatal — the row still renders */
-    }
-  }
-
-  async function verifyDomain(id: string) {
-    setBusyId(id);
+  async function refreshDomains() {
     setError(null);
-    setStatus(null);
     try {
-      const res = await fetch(`${apiBase}/${id}/verify`, { method: "POST" });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(body.error ?? "Verification check failed");
-        return;
-      }
-      upsertDomain(body.domain);
-      setStatus(
-        body.domain.status === "verified"
-          ? `${body.domain.name} is verified — addresses on it can now be connected.`
-          : `Re-checked ${body.domain.name}. DNS can take up to a few hours to propagate.`,
-      );
-    } finally {
-      setBusyId(null);
-    }
-  }
-
-  async function setReceiving(id: string, enabled: boolean) {
-    setBusyId(id);
-    setError(null);
-    setStatus(null);
-    try {
-      const res = await fetch(`${apiBase}/${id}/enable-receiving`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ enabled }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(body.error ?? `Failed to ${enabled ? "enable" : "disable"} receiving`);
-        return;
-      }
-      upsertDomain(body.domain);
-      setStatus(
-        enabled
-          ? `Receiving enabled for ${body.domain.name} — publish the new MX record below, then click Verify.`
-          : `Receiving disabled for ${body.domain.name} — this domain will no longer receive email.`,
-      );
-    } finally {
-      setBusyId(null);
-    }
+      const res = await fetch(apiBase);
+      const body = await res.json();
+      if (!res.ok) { setError(body.error ?? "Unable to check Resend status"); return; }
+      setDomains(body.domains);
+    } catch { setError("Unable to check Resend status. Please try again."); }
   }
 
   async function performRemove() {
     if (!removing) return;
     setError(null);
     setStatus(null);
-    const res = await fetch(`${apiBase}/${removing.id}?resend=${deleteFromResend}`, {
+    const res = await fetch(`${apiBase}/${removing.id}`, {
       method: "DELETE",
     });
     const body = await res.json().catch(() => ({}));
@@ -399,25 +327,32 @@ export function EmailDomainsManager({
       )}
 
       {/* Add domain */}
-      <div
+      {allowAdd && <div
         ref={addCardRef}
         className="flex flex-col gap-4 rounded-xl border border-sts-card-border bg-sts-card px-[22px] py-5 shadow-sts-card"
       >
         <div className="flex flex-col gap-[3px]">
-          <h3 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Register a domain</h3>
+          <h3 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Add a verified domain</h3>
           <p className="font-sans text-[12px] text-sts-muted">
-            Register the domain you send from (e.g. <span className="font-mono">mail.example.com</span>) and choose the
-            team that will use it. You&apos;ll then add DNS records and verify.
+            Add a domain already verified in Resend (e.g. <span className="font-mono">mail.example.com</span>) and choose the
+            team that will use it. Domains that are not verified in Resend cannot be added.
           </p>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="flex flex-col gap-[5px]">
-            <label className="font-sans text-[12px] font-medium text-sts-muted">Domain</label>
+            <label className="font-sans text-[12px] font-medium text-sts-muted">
+              Domain <span className="text-red-500">*</span>
+            </label>
             <Input
               ref={nameInputRef}
+              required
+              aria-required
+              aria-invalid={showDomainError || undefined}
+              aria-describedby={showDomainError ? "register-domain-error" : undefined}
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
+              onBlur={() => setNameTouched(true)}
               onKeyDown={(e) => e.key === "Enter" && canAdd && !adding && addDomain()}
               className="h-9 w-full"
               placeholder="mail.example.com"
@@ -425,38 +360,55 @@ export function EmailDomainsManager({
               autoCorrect="off"
               spellCheck={false}
             />
+            {showDomainError && (
+              <p id="register-domain-error" className="font-sans text-[11.5px] text-destructive">
+                Enter a valid domain, e.g. mail.example.com
+              </p>
+            )}
           </div>
 
           {requiresScope && (
             <div className="flex flex-col gap-[5px]">
-              <label className="font-sans text-[12px] font-medium text-sts-muted">Department</label>
-              <Select
-                value={deptId}
-                onValueChange={(v) => {
-                  setDeptId(v ?? "");
-                  setSubId("");
-                }}
-              >
-                <SelectTrigger className="h-9 w-full">
-                  <span className={cn("truncate font-sans text-[12.5px]", !selectedDept && "text-sts-subtle")}>
-                    {selectedDept?.name ?? "Select a department"}
-                  </span>
-                </SelectTrigger>
-                <SelectContent>
-                  {departments!.map((d) => (
-                    <SelectItem key={d.id} value={d.id} className="font-sans text-[12.5px]">
-                      {d.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <label className="font-sans text-[12px] font-medium text-sts-muted">
+                Department <span className="text-red-500">*</span>
+              </label>
+              {/* Disabled triggers swallow pointer events, so the tooltip sits on a wrapper
+                  and the trigger ignores the pointer while disabled. */}
+              <Tip label={domainValid ? null : "Add a valid domain first"}>
+                <div className="w-full">
+                  <Select
+                    required
+                    disabled={!domainValid}
+                    value={deptId}
+                    onValueChange={(v) => {
+                      setDeptId(v ?? "");
+                      setSubId("");
+                    }}
+                  >
+                    <SelectTrigger className={cn("h-9 w-full", !domainValid && "pointer-events-none")}>
+                      <span className={cn("truncate font-sans text-[12.5px]", !selectedDept && "text-sts-subtle")}>
+                        {selectedDept?.name ?? "Select a department"}
+                      </span>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {departments!.map((d) => (
+                        <SelectItem key={d.id} value={d.id} className="font-sans text-[12.5px]">
+                          {d.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </Tip>
             </div>
           )}
 
           {requiresScope && showSub && (
             <div className="flex flex-col gap-[5px]">
-              <label className="font-sans text-[12px] font-medium text-sts-muted">Sub-department</label>
-              <Select value={subId} onValueChange={(v) => setSubId(v ?? "")}>
+              <label className="font-sans text-[12px] font-medium text-sts-muted">
+                Sub-department <span className="text-red-500">*</span>
+              </label>
+              <Select disabled={!domainValid} value={subId} onValueChange={(v) => setSubId(v ?? "")}>
                 <SelectTrigger className="h-9 w-full">
                   <span className={cn("truncate font-sans text-[12.5px]", !subId && "text-sts-subtle")}>
                     {subId === WHOLE_DEPT
@@ -482,10 +434,14 @@ export function EmailDomainsManager({
         <div className="flex justify-end">
           <Button disabled={adding || !canAdd} onClick={addDomain}>
             {adding ? <Loader2 className="size-4 animate-spin" /> : <Plus className="size-4" />}
-            Register domain
+            Add domain
           </Button>
         </div>
       </div>
+
+      }
+
+      <Button variant="outline" onClick={refreshDomains}><RefreshCw className="size-4" />Refresh Resend status</Button>
 
       {/* Domain list */}
       <div className="flex flex-col gap-3">
@@ -505,24 +461,11 @@ export function EmailDomainsManager({
           </p>
         ) : mergedRows.length === 0 ? (
           <p className="rounded-xl border border-sts-card-border bg-sts-card px-[22px] py-10 text-center font-sans text-[12.5px] text-sts-muted shadow-sts-card">
-            No domains yet. Register one above to start sending and receiving from your own domain.
+            No domains added yet. Only domains already verified in Resend can be added.
           </p>
         ) : (
           domainList.visible.map((d) => {
-            const isOpen = d.registered && d.id !== null && expanded === d.id;
-            const busy = d.id !== null && busyId === d.id;
             const pending = d.status !== "verified";
-            const clickable = d.registered && d.id !== null;
-            // Receiving off in Resend ⇒ no MX record is returned, so the domain
-            // can send but never receive replies. Prefer the explicit capability
-            // flag; fall back to "records loaded but none is the MX/Receiving
-            // record" for older payloads that don't carry capabilities.
-            const receivingDisabled = d.capabilities
-              ? d.capabilities.receiving !== "enabled"
-              : d.records.length > 0 &&
-                !d.records.some((r) => r.type === "MX" || r.record === "Receiving");
-            const showReceivingToggle =
-              allowEnableReceiving && d.registered && d.id !== null;
             return (
               <div
                 key={d.name}
@@ -531,29 +474,7 @@ export function EmailDomainsManager({
                   pending ? "border-amber-400/40" : "border-sts-card-border",
                 )}
               >
-                <div
-                  role={clickable ? "button" : undefined}
-                  tabIndex={clickable ? 0 : undefined}
-                  onClick={() => {
-                    if (!clickable) return;
-                    const next = isOpen ? null : d.id;
-                    setExpanded(next);
-                    if (next && d.id) void loadRecords(d.id);
-                  }}
-                  className={cn(
-                    "flex w-full items-center gap-3 px-[22px] py-4 text-left",
-                    clickable && "cursor-pointer transition-colors hover:bg-sts-surface/40",
-                  )}
-                >
-                  {clickable ? (
-                    isOpen ? (
-                      <ChevronDown className="size-4 shrink-0 text-sts-subtle" />
-                    ) : (
-                      <ChevronRight className="size-4 shrink-0 text-sts-subtle" />
-                    )
-                  ) : (
-                    <span className="size-4 shrink-0" />
-                  )}
+                <div className="flex w-full items-center gap-3 px-[22px] py-4 text-left">
                   <div className="flex min-w-0 flex-1 flex-col gap-1.5">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="font-mono text-[13.5px] font-medium text-sts-foreground">{d.name}</span>
@@ -583,15 +504,13 @@ export function EmailDomainsManager({
                     </div>
                   </div>
                   {d.registered && d.id ? (
-                    allowRemove || d.status !== "verified" ? (
+                    allowRemove ? (
                       <Button
                         variant="ghost"
                         size="sm"
-                        disabled={busy}
                         onClick={(e) => {
                           e.stopPropagation();
                           if (d.id) {
-                            setDeleteFromResend(true);
                             setRemoving({ id: d.id, name: d.name });
                           }
                         }}
@@ -601,127 +520,21 @@ export function EmailDomainsManager({
                         Delete
                       </Button>
                     ) : null
-                  ) : (
+                  ) : allowAdd ? (
                     <Button
                       variant="outline"
                       size="sm"
+                      disabled={d.status !== "verified"}
                       onClick={(e) => {
                         e.stopPropagation();
                         focusAddForm(d.name);
                       }}
                     >
                       <Plus className="size-3.5" />
-                      {d.status === "verified" ? "Add to workspace" : "Register & verify"}
+                      Add to workspace
                     </Button>
-                  )}
+                  ) : null}
                 </div>
-
-                {isOpen && (
-                  <div className="border-t border-sts-card-border px-[22px] py-4">
-                    {pending && (
-                      <div className="mb-3 flex items-start gap-2 rounded-lg border border-amber-400/30 bg-amber-50/60 px-3 py-2 dark:bg-amber-900/10">
-                        <Clock className="mt-0.5 size-3.5 shrink-0 text-amber-500" />
-                        <p className="font-sans text-[12px] text-amber-700 dark:text-amber-400">
-                          Waiting for verification. Add the records below at your DNS provider (Cloudflare, GoDaddy,
-                          Route&nbsp;53…), then click <span className="font-semibold">Verify</span>. DNS can take a few
-                          hours to propagate.
-                        </p>
-                      </div>
-                    )}
-
-                    {d.records.length > 0 ? (
-                      <div className="overflow-x-auto rounded-lg border border-sts-card-border">
-                        <table className="w-full border-collapse font-sans text-[12px]">
-                          <thead>
-                            <tr className="bg-sts-surface text-left text-sts-subtle">
-                              <th className="px-3 py-2 font-medium">Type</th>
-                              <th className="px-3 py-2 font-medium">Name / Host</th>
-                              <th className="px-3 py-2 font-medium">Value</th>
-                              <th className="px-3 py-2 font-medium">Priority</th>
-                              <th className="px-3 py-2 font-medium">Status</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {d.records.map((r, i) => (
-                              <tr key={i} className="border-t border-sts-card-border/60 align-top">
-                                <td className="whitespace-nowrap px-3 py-2 font-mono text-sts-foreground">
-                                  {r.type}
-                                  <span className="ml-1 text-[10px] uppercase text-sts-subtle">{r.record}</span>
-                                </td>
-                                <td className="px-3 py-2">
-                                  <div className="flex items-center gap-1">
-                                    <span className="break-all font-mono text-sts-foreground">{r.name}</span>
-                                    <CopyButton value={r.name} />
-                                  </div>
-                                </td>
-                                <td className="px-3 py-2">
-                                  <div className="flex items-center gap-1">
-                                    <span className="break-all font-mono text-sts-foreground">{r.value}</span>
-                                    <CopyButton value={r.value} />
-                                  </div>
-                                </td>
-                                <td className="whitespace-nowrap px-3 py-2 font-mono text-sts-muted">
-                                  {r.priority ?? "—"}
-                                </td>
-                                <td className="px-3 py-2">
-                                  <StatusBadge status={r.status} />
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    ) : (
-                      <p className="font-sans text-[12.5px] text-sts-muted">
-                        {d.status === "verified" ? "This domain is verified. No action needed." : "Loading DNS records…"}
-                      </p>
-                    )}
-
-                    {showReceivingToggle && (
-                      <div className="mt-3 flex items-center justify-between gap-3 rounded-lg border border-sts-card-border bg-sts-surface px-3.5 py-3">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <Mail className="size-3.5 text-sts-muted" />
-                            <span className="font-sans text-[13px] font-medium text-sts-foreground">
-                              Email receiving
-                            </span>
-                            <span
-                              className={cn(
-                                "rounded-full px-2 py-0.5 font-sans text-[10px] font-semibold uppercase tracking-wide",
-                                busy
-                                  ? "bg-sts-surface text-sts-subtle"
-                                  : receivingDisabled
-                                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
-                                    : "bg-sts-green/15 text-sts-green",
-                              )}
-                            >
-                              {busy ? "Saving…" : receivingDisabled ? "Off" : "On"}
-                            </span>
-                          </div>
-                          <p className="mt-1 font-sans text-[12px] text-sts-muted">
-                            {receivingDisabled
-                              ? "Inbound delivery is off — this domain can send but won't receive replies. Turn it on to publish the MX record above and verify."
-                              : "Inbound delivery is on. Turning it off stops this domain from receiving email into tickets (the MX record is dropped in Resend)."}
-                          </p>
-                        </div>
-                        <Switch
-                          checked={!receivingDisabled}
-                          disabled={busy}
-                          onCheckedChange={(checked) => d.id && setReceiving(d.id, checked)}
-                          size="sm"
-                          aria-label="Toggle email receiving"
-                        />
-                      </div>
-                    )}
-
-                    <div className="mt-4 flex items-center gap-2">
-                      <Button variant="outline" disabled={busy} onClick={() => d.id && verifyDomain(d.id)}>
-                        {busy ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />}
-                        {d.status === "verified" ? "Re-check" : "Verify"}
-                      </Button>
-                    </div>
-                  </div>
-                )}
               </div>
             );
           })
@@ -734,34 +547,11 @@ export function EmailDomainsManager({
           if (!o) setRemoving(null);
         }}
         title="Remove domain?"
-        description={
-          removing
-            ? `Remove ${removing.name}? Any mailbox that sends from this domain will stop working.${
-                deleteFromResend
-                  ? " The domain is also deregistered from Resend."
-                  : " The domain stays registered in Resend and only the local record is removed."
-              }`
-            : ""
-        }
+        description={removing ? `Remove ${removing.name} from this workspace? Its configuration in Resend will remain unchanged.` : ""}
         confirmLabel="Remove"
         successMessage={removing ? `${removing.name} removed.` : undefined}
         onConfirm={performRemove}
-      >
-        {allowRemove ? (
-        <label className="flex cursor-pointer items-start gap-2 font-sans text-[12px] text-sts-muted">
-          <input
-            type="checkbox"
-            checked={deleteFromResend}
-            onChange={(e) => setDeleteFromResend(e.target.checked)}
-            className="mt-0.5 h-3.5 w-3.5 cursor-pointer accent-sts-blue"
-          />
-          <span>
-            Also delete from Resend. Leave unchecked to remove only the local record and keep the
-            domain registered in Resend.
-          </span>
-        </label>
-        ) : null}
-      </ConfirmDialog>
+      />
     </div>
   );
 }

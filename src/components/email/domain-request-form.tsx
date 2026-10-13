@@ -185,7 +185,7 @@ function DomainRequestIntro() {
   return (
     <p className="font-sans text-[12px] text-sts-muted">
       Want to send from your own domain (e.g. <span className="font-mono">mail.example.com</span>)? Request it here —
-      a workspace admin will register and verify it.
+      the domain must already be verified in Resend before a workspace admin can add it.
     </p>
   );
 }

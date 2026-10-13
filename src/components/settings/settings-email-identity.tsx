@@ -135,7 +135,7 @@ function EmailIdentityRow({ department }: { department: DeptOption }) {
   const invalidEmail = filledSenders.some((s) => !EMAIL_RE.test(s.email.trim()));
   const unverified = filledSenders.some((s) => {
     const status = domainByEmail[s.email.trim()]?.status;
-    return status && status !== "verified" && status !== "not_configured";
+    return status !== "verified";
   });
   const saveAllowed = !invalidEmail && !checkingDomain && !unverified;
 

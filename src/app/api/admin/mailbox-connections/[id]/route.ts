@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAdminOrManager } from "@/lib/auth"
 import { canAdminDeptSettings } from "@/lib/dept-scope"
-import { updateMailboxConnection, deleteMailboxConnection } from "@/lib/mailbox-connection"
+import { updateMailboxConnection, deleteMailboxConnection, replacePullCredentials } from "@/lib/mailbox-connection"
 import { checkDomainVerification } from "@/lib/resend-domains"
+import { prepareImapConnection } from "@/lib/mailbox-imap"
 import { AssignmentMethod } from "@/generated/prisma/enums"
 import type { AuthProfile } from "@/lib/auth"
 
@@ -28,7 +29,7 @@ export async function PATCH(
   const { id } = await params
   const existing = await prisma.mailboxConnection.findUnique({
     where: { id },
-    select: { departmentId: true, subDepartmentId: true },
+    select: { departmentId: true, subDepartmentId: true, authType: true },
   })
   if (!existing) {
     return NextResponse.json({ error: "Connection not found" }, { status: 404 })
@@ -46,7 +47,23 @@ export async function PATCH(
     return NextResponse.json({ error: "isActive must be a boolean" }, { status: 400 })
   }
 
-  if (address !== undefined) {
+  const isOAuth = existing.authType === "OAUTH_M365" || existing.authType === "OAUTH_GOOGLE"
+  if (isOAuth && (address !== undefined || plaintextCredentials !== undefined)) {
+    return NextResponse.json(
+      { error: "This mailbox is tied to the account that signed in. Use Reconnect to change it." },
+      { status: 400 },
+    )
+  }
+
+  // IMAP: new settings are validated and test-signed-in before they replace
+  // the stored ones (and clear any failure state).
+  if (existing.authType === "IMAP" && plaintextCredentials !== undefined) {
+    const imap = await prepareImapConnection(plaintextCredentials)
+    if (!imap.ok) return NextResponse.json({ error: imap.error }, { status: 400 })
+    await replacePullCredentials(id, imap.credentials, caller!.id)
+  }
+
+  if (address !== undefined && existing.authType === "RESEND") {
     const verification = await checkDomainVerification(address)
     if (verification.status !== "verified" || !verification.receivingEnabled) {
       return NextResponse.json(
@@ -106,7 +123,8 @@ export async function PATCH(
     id,
     {
       address,
-      plaintextCredentials,
+      // Pull credentials were replaced above; only RESEND stores them as-is.
+      plaintextCredentials: existing.authType === "RESEND" ? plaintextCredentials : undefined,
       ...(methodProvided ? { assignmentMethod: assignmentMethod as AssignmentMethod | null, manualAssigneeIds: manualIds } : {}),
       ...(isActive !== undefined ? { isActive: isActive as boolean } : {}),
     },

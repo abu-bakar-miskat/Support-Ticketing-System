@@ -4,14 +4,15 @@ import { requireAuth, assertDepartmentAdmin } from "@/lib/auth"
 import { listMailboxConnections, createMailboxConnection } from "@/lib/mailbox-connection"
 import { assertFeatureEnabled } from "@/lib/feature-flags"
 import { checkDomainVerification } from "@/lib/resend-domains"
+import { prepareImapConnection } from "@/lib/mailbox-imap"
 
 const AUTH_TYPES = ["RESEND", "OAUTH_M365", "OAUTH_GOOGLE", "IMAP"] as const
 const SCOPE_TYPES = ["DEPARTMENT", "SUB_DEPARTMENT"] as const
 
-// Only RESEND is a functional provider today (D-10/EM-05) — OAuth/IMAP land
-// behind lib/mail-providers later, so creating a connection with one of those
-// auth types is rejected rather than silently accepted and never working.
-const IMPLEMENTED_AUTH_TYPES = new Set(["RESEND"])
+// RESEND and IMAP are created here. OAuth mailboxes (M365 / Google) need the
+// admin to sign in with the provider, so they're created by the
+// /api/admin/mailbox-oauth/[provider] flow instead.
+const IMPLEMENTED_AUTH_TYPES = new Set(["RESEND", "IMAP"])
 
 export async function GET(
   _req: NextRequest,
@@ -63,15 +64,22 @@ export async function POST(
     return NextResponse.json({ error: `authType must be one of ${AUTH_TYPES.join(", ")}` }, { status: 400 })
   }
   if (!IMPLEMENTED_AUTH_TYPES.has(resolvedAuthType)) {
-    return NextResponse.json({ error: `${resolvedAuthType} is not implemented yet` }, { status: 400 })
-  }
-
-  const verification = await checkDomainVerification(address)
-  if (verification.status !== "verified" || !verification.receivingEnabled) {
     return NextResponse.json(
-      { error: `The ${verification.domain ?? "email"} domain is not ready to receive mail in Resend. Enable receiving and verify its MX record first.` },
+      { error: `${resolvedAuthType} mailboxes are connected by signing in with the provider, not by this endpoint` },
       { status: 400 },
     )
+  }
+
+  // Resend routes by address on its inbound domain, so that domain must be
+  // set up for receiving. IMAP reads the mailbox directly — no domain setup.
+  if (resolvedAuthType === "RESEND") {
+    const verification = await checkDomainVerification(address)
+    if (verification.status !== "verified" || !verification.receivingEnabled) {
+      return NextResponse.json(
+        { error: `The ${verification.domain ?? "email"} domain is not ready to receive mail in Resend. Enable receiving and verify its MX record first.` },
+        { status: 400 },
+      )
+    }
   }
 
   const [department, subDepartment] = await Promise.all([
@@ -91,6 +99,13 @@ export async function POST(
     return NextResponse.json({ error: featureCheck.error }, { status: 403 })
   }
 
+  // IMAP: validate and test-sign-in before saving, and start syncing from now.
+  let imap: Awaited<ReturnType<typeof prepareImapConnection>> | null = null
+  if (resolvedAuthType === "IMAP") {
+    imap = await prepareImapConnection(plaintextCredentials)
+    if (!imap.ok) return NextResponse.json({ error: imap.error }, { status: 400 })
+  }
+
   try {
     const connection = await createMailboxConnection({
       tenantId: department.tenantId,
@@ -99,7 +114,8 @@ export async function POST(
       scopeType: scopeType as never,
       address,
       authType: resolvedAuthType as never,
-      plaintextCredentials,
+      plaintextCredentials: imap?.ok ? JSON.stringify(imap.credentials) : plaintextCredentials,
+      syncCursor: imap?.ok ? imap.syncCursor : undefined,
       actorId: caller!.id,
     })
     return NextResponse.json(connection, { status: 201 })

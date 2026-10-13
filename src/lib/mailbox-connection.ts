@@ -1,7 +1,8 @@
 import "server-only";
 import { prisma } from "@/lib/db";
-import { encryptMailboxCredentials } from "@/lib/mailbox-credentials";
-import { getMailProvider } from "@/lib/mail-providers";
+import { decryptMailboxCredentials, encryptMailboxCredentials } from "@/lib/mailbox-credentials";
+import { getMailProvider, getPullMailProvider, type HealthCheckResult, type PullCredentials } from "@/lib/mail-providers";
+import type { PullContext } from "@/lib/mail-providers/types";
 import { createNotification } from "@/lib/notify";
 import { sendMailboxConnectionFailedAlertEmail } from "@/lib/email";
 import { recordAuditEvent } from "@/lib/audit-log";
@@ -33,6 +34,7 @@ const SAFE_SELECT = {
   lastErrorAt: true,
   lastErrorMessage: true,
   nextCheckAt: true,
+  lastSyncedAt: true,
   createdAt: true,
   updatedAt: true,
 } as const;
@@ -54,6 +56,7 @@ export type MailboxConnectionSafe = {
   lastErrorAt: Date | null;
   lastErrorMessage: string | null;
   nextCheckAt: Date | null;
+  lastSyncedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 };
@@ -95,6 +98,8 @@ export async function createMailboxConnection(params: {
   authType: MailboxAuthType;
   /** Plaintext, encrypted before storage. Omit/null for RESEND (uses the platform API key). */
   plaintextCredentials?: string | null;
+  /** Pull providers: the starting sync cursor ("now"), so history isn't imported. */
+  syncCursor?: unknown;
   /** Profile id of the admin performing the change, for the audit trail. */
   actorId: string;
 }): Promise<MailboxConnectionSafe> {
@@ -111,6 +116,7 @@ export async function createMailboxConnection(params: {
       address: params.address.trim().toLowerCase(),
       authType: params.authType,
       credentialsRef,
+      ...(params.syncCursor !== undefined ? { syncCursor: params.syncCursor as never } : {}),
     },
     select: SAFE_SELECT,
   });
@@ -122,7 +128,7 @@ export async function createMailboxConnection(params: {
     action: "MAILBOX_CONNECTION_CREATED",
     targetType: "MailboxConnection",
     targetId: created.id,
-    after: { address: created.address, scopeType: created.scopeType, subDepartmentId: created.subDepartmentId },
+    after: { address: created.address, scopeType: created.scopeType, subDepartmentId: created.subDepartmentId, authType: created.authType },
   }).catch(() => undefined);
 
   return created;
@@ -236,6 +242,75 @@ export async function findMailboxConnectionForRecipients(
   });
 }
 
+/** Pull providers already know which connection a message came from. */
+export async function getMailboxRouteById(id: string): Promise<(MailboxRoute & { isActive: boolean }) | null> {
+  return prisma.mailboxConnection.findUnique({
+    where: { id },
+    select: { id: true, address: true, tenantId: true, departmentId: true, subDepartmentId: true, isActive: true },
+  });
+}
+
+// ─── Pull-provider credentials ──────────────────────────────────────────────
+
+/** Encrypts OAuth/IMAP credentials into an opaque `credentialsRef` blob. */
+export function encryptPullCredentials(credentials: PullCredentials): string {
+  return encryptMailboxCredentials(JSON.stringify(credentials));
+}
+
+/**
+ * Builds the provider context for a pull connection: decrypted credentials
+ * plus a writer that re-encrypts rotated OAuth tokens back onto the row.
+ */
+export function pullContextFor(connection: { id: string; credentialsRef: string | null }): PullContext {
+  if (!connection.credentialsRef) throw new Error("This mailbox has no stored credentials — reconnect it");
+  const credentials = JSON.parse(decryptMailboxCredentials(connection.credentialsRef)) as PullCredentials;
+  return {
+    credentials,
+    saveCredentials: async (next) => {
+      await prisma.mailboxConnection.update({
+        where: { id: connection.id },
+        data: { credentialsRef: encryptPullCredentials(next) },
+      });
+    },
+  };
+}
+
+/**
+ * Replaces a pull connection's credentials after the admin re-authorizes it
+ * (OAuth reconnect / new IMAP password) and clears its failure state so sync
+ * resumes on the next run.
+ */
+export async function replacePullCredentials(
+  id: string,
+  credentials: PullCredentials,
+  actorId: string,
+  syncCursor?: unknown,
+): Promise<MailboxConnectionSafe> {
+  const updated = await prisma.mailboxConnection.update({
+    where: { id },
+    data: {
+      credentialsRef: encryptPullCredentials(credentials),
+      status: "ACTIVE",
+      failureCount: 0,
+      lastErrorAt: null,
+      lastErrorMessage: null,
+      nextCheckAt: null,
+      ...(syncCursor !== undefined ? { syncCursor: syncCursor as never } : {}),
+    },
+    select: SAFE_SELECT,
+  });
+  await recordAuditEvent({
+    tenantId: updated.tenantId,
+    departmentId: updated.departmentId,
+    actorId,
+    action: "MAILBOX_CONNECTION_UPDATED",
+    targetType: "MailboxConnection",
+    targetId: updated.id,
+    after: { address: updated.address, reauthorized: true },
+  }).catch(() => undefined);
+  return updated;
+}
+
 /**
  * EM-06: records inbound mail that intentionally did not create a ticket
  * (auto-generated mail or email received while the mailbox is paused). There
@@ -298,10 +373,7 @@ export async function checkMailboxConnectionHealth(
     });
     if (!connection) return;
 
-    const provider = getMailProvider(connection.authType);
-    const result = provider
-      ? await provider.checkHealth({ credentialsRef: connection.credentialsRef })
-      : { ok: false as const, error: `No provider implementation for ${connection.authType}` };
+    const result = await runProviderHealthCheck(connection);
 
     if (result.ok) {
       await prisma.mailboxConnection.update({
@@ -318,27 +390,63 @@ export async function checkMailboxConnectionHealth(
       return;
     }
 
-    const wasHealthy = connection.status === "ACTIVE";
-    const failureCount = connection.failureCount + 1;
-    const backoffMinutes = nextBackoffMinutes(failureCount);
-
-    await prisma.mailboxConnection.update({
-      where: { id: connectionId },
-      data: {
-        status: "AUTH_ERROR",
-        failureCount,
-        lastCheckedAt: now,
-        lastErrorAt: now,
-        lastErrorMessage: result.error,
-        nextCheckAt: new Date(now.getTime() + backoffMinutes * 60_000),
-      },
-    });
-
-    if (wasHealthy && notifyOnNewFailure) {
-      await notifyMailboxConnectionFailure(connection.departmentId, connection.address, result.error);
-    }
+    await recordMailboxConnectionFailure(connection, result.error, now, { notifyOnNewFailure });
   } catch {
     // best-effort — a health-check failure must never crash the sweep
+  }
+}
+
+async function runProviderHealthCheck(connection: {
+  id: string;
+  authType: MailboxAuthType;
+  credentialsRef: string | null;
+}): Promise<HealthCheckResult> {
+  const pull = getPullMailProvider(connection.authType);
+  if (pull) {
+    try {
+      return await pull.checkHealth(pullContextFor(connection));
+    } catch (err) {
+      return { ok: false, error: err instanceof Error ? err.message : "Couldn't check the mailbox" };
+    }
+  }
+  const provider = getMailProvider(connection.authType);
+  return provider
+    ? provider.checkHealth({ credentialsRef: connection.credentialsRef })
+    : { ok: false, error: `No provider implementation for ${connection.authType}` };
+}
+
+/**
+ * Moves a connection into the failing state with exponential backoff. Shared
+ * by the health check and the pull sync (an expired OAuth grant surfaces
+ * there first). Notifies managers only on the healthy→failed transition.
+ */
+export async function recordMailboxConnectionFailure(
+  connection: { id: string; status: string; failureCount: number; departmentId: string; address: string },
+  error: string,
+  now: Date = new Date(),
+  {
+    notifyOnNewFailure = true,
+    status = "AUTH_ERROR",
+  }: { notifyOnNewFailure?: boolean; status?: "AUTH_ERROR" | "UNREACHABLE" } = {},
+): Promise<void> {
+  const wasHealthy = connection.status === "ACTIVE";
+  const failureCount = connection.failureCount + 1;
+  const backoffMinutes = nextBackoffMinutes(failureCount);
+
+  await prisma.mailboxConnection.update({
+    where: { id: connection.id },
+    data: {
+      status,
+      failureCount,
+      lastCheckedAt: now,
+      lastErrorAt: now,
+      lastErrorMessage: error.slice(0, 500),
+      nextCheckAt: new Date(now.getTime() + backoffMinutes * 60_000),
+    },
+  });
+
+  if (wasHealthy && notifyOnNewFailure) {
+    await notifyMailboxConnectionFailure(connection.departmentId, connection.address, error);
   }
 }
 

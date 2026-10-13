@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
   // pdfkit reads its .afm font-metric files from disk at runtime; exceljs is a
   // heavy CJS package. Keep both out of the server bundle so they load from
   // node_modules directly (avoids missing-font runtime errors in production).
-  serverExternalPackages: ["pdfkit", "exceljs"],
+  serverExternalPackages: ["pdfkit", "exceljs", "imapflow", "mailparser"],
   experimental: {
     staleTimes: {
       // Visited routes stay instant from the client router cache for 5 min —

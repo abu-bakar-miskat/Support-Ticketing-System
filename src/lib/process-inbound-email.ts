@@ -19,8 +19,8 @@ import { classifyAttachment, INBOUND_MAX_BYTES } from "@/lib/message-attachments
 import { maybeReopenTicket } from "@/lib/customer-reopen"
 import { isOverRateLimit } from "@/lib/inbound-rate-limit"
 import { syncWorkTimerWithConversation } from "@/lib/timer-conversation-sync"
-import { getMailProvider, type MailProvider, type NormalizedAttachment } from "@/lib/mail-providers"
-import { findMailboxConnectionForRecipients, logMailSuppression } from "@/lib/mailbox-connection"
+import { getMailProvider, type NormalizedAttachment, type NormalizedInboundEmail } from "@/lib/mail-providers"
+import { findMailboxConnectionForRecipients, getMailboxRouteById, logMailSuppression } from "@/lib/mailbox-connection"
 import { broadcastMailboxMail } from "@/lib/realtime-broadcast"
 import {
   createTicketFromInboundEmail,
@@ -49,9 +49,11 @@ type MatchedTicket = {
 /** Display shape returned to the realtime broadcast (mirrors MessageData.attachments). */
 type StoredAttachment = { id: string; storageUrl: string; fileName: string; fileSize: number }
 
+/** Resolves a download URL for an attachment whose bytes weren't delivered inline (Resend). */
+type AttachmentUrlResolver = (attachmentId: string) => Promise<string | null>
+
 async function storeInboundAttachments(
-  provider: MailProvider,
-  emailId: string,
+  resolveAttachmentUrl: AttachmentUrlResolver | null,
   ticketId: string,
   messageDbId: string | null,
   uploaderProfileId: string,
@@ -71,18 +73,25 @@ async function storeInboundAttachments(
         return null
       }
 
-      const downloadUrl = await provider.fetchAttachmentUrl(emailId, att.id)
-      if (!downloadUrl) {
-        console.error("[inbound] failed to get attachment download URL, att.id:", att.id)
-        return null
-      }
+      // Pull providers parse the full MIME message, so the bytes are already
+      // in hand; Resend only hands back a per-attachment download URL.
+      let buffer: ArrayBuffer | Buffer
+      if (att.content) {
+        buffer = att.content
+      } else {
+        const downloadUrl = resolveAttachmentUrl ? await resolveAttachmentUrl(att.id) : null
+        if (!downloadUrl) {
+          console.error("[inbound] failed to get attachment download URL, att.id:", att.id)
+          return null
+        }
 
-      const response = await fetch(downloadUrl)
-      if (!response.ok) {
-        console.error("[inbound] failed to download attachment:", response.status, att.filename)
-        return null
+        const response = await fetch(downloadUrl)
+        if (!response.ok) {
+          console.error("[inbound] failed to download attachment:", response.status, att.filename)
+          return null
+        }
+        buffer = await response.arrayBuffer()
       }
-      const buffer = await response.arrayBuffer()
 
       const safeName = (att.filename ?? "attachment").replace(/[^\w.\-()+ ]/g, "_").slice(0, 200)
       const storagePath = `${ticketId}/${messageDbId ? `msg-${messageDbId}` : "description"}/${Date.now()}-${safeName}`
@@ -162,10 +171,10 @@ export async function processInboundEmail(
   messageId: string,
   recipients: string[],
 ): Promise<boolean> {
-  const normalizedMessageId = normalizeMessageId(messageId) || messageId
   const idVariants = messageIdLookupVariants(messageId)
 
-  // Idempotency check (normalized + legacy bracketed / bare forms)
+  // Idempotency fast path before the Resend fetch (normalized + legacy
+  // bracketed / bare forms); the core re-checks under its advisory lock.
   const existing = await prisma.ticketMessage.findFirst({
     where: { providerMessageId: { in: idVariants } },
     select: { id: true },
@@ -191,6 +200,54 @@ export async function processInboundEmail(
 
   console.log("[inbound] email fetched — from:", email.from, "subject:", email.subject)
 
+  return processNormalizedInboundEmail({
+    email,
+    messageId,
+    recipients,
+    resendEmailId: emailId,
+    resolveAttachmentUrl: (attachmentId) => provider.fetchAttachmentUrl(emailId, attachmentId),
+    idempotencyChecked: true,
+  })
+}
+
+/**
+ * Provider-agnostic core: match a normalized email to a ticket (reply token →
+ * threading headers → subject reference), or open a new ticket through the
+ * mailbox it arrived at. Resend resolves that mailbox from the webhook's
+ * recipients; pull providers (M365 / Google / IMAP) already know it and pass
+ * `mailboxConnectionId`, so mail reaching the inbox via an alias, group or
+ * Bcc still routes correctly.
+ *
+ * Idempotent on the RFC Message-ID; throws only on unexpected failures so the
+ * caller can retry.
+ */
+export async function processNormalizedInboundEmail(params: {
+  email: NormalizedInboundEmail
+  messageId: string
+  recipients: string[]
+  mailboxConnectionId?: string
+  resendEmailId?: string
+  resolveAttachmentUrl?: AttachmentUrlResolver
+  /** The caller already ran the fast-path dedupe check (Resend, before fetching). */
+  idempotencyChecked?: boolean
+}): Promise<boolean> {
+  const { email, messageId, recipients, resendEmailId } = params
+  const resolveAttachmentUrl = params.resolveAttachmentUrl ?? null
+  const normalizedMessageId = normalizeMessageId(messageId) || messageId
+  const idVariants = messageIdLookupVariants(messageId)
+
+  // Fast path only — the atomic re-check happens under the advisory lock below.
+  if (!params.idempotencyChecked) {
+    const existing = await prisma.ticketMessage.findFirst({
+      where: { providerMessageId: { in: idVariants } },
+      select: { id: true },
+    })
+    const origin = await prisma.activityLog.findFirst({
+      where: mailboxOriginIdsWhere(idVariants), select: { id: true },
+    })
+    if (existing || origin) return false
+  }
+
   const headers = normalizeHeaderKeys(email.headers)
   const isSystem = isAutoReply(headers)
   const { name: fromName, email: fromEmail } = parseFromAddress(email.from)
@@ -211,7 +268,7 @@ export async function processInboundEmail(
     rawPayload: {
       from: email.from, to: email.to, subject: email.subject,
       text: email.text, html: email.html, headers, quotedText: quoted,
-      resendEmailId: emailId,
+      resendEmailId,
       // The webhook envelope is the source used to route direct mail. Keep
       // it separately from the provider's fetched `to` field, which can be
       // rewritten during forwarding. The resolved connection makes mailbox
@@ -310,7 +367,9 @@ export async function processInboundEmail(
     // Always resolve the configured mailbox first. Its on/off state controls
     // ticket creation only; it must never control whether the provider's email
     // is received and recorded in the application's mailbox view.
-    const mailbox = await findMailboxConnectionForRecipients(recipients)
+    const mailbox = params.mailboxConnectionId
+      ? await getMailboxRouteById(params.mailboxConnectionId)
+      : await findMailboxConnectionForRecipients(recipients)
     if (!mailbox) {
       console.log("[inbound] no matching mailbox route, dropping message:", messageId)
       return false
@@ -414,7 +473,7 @@ export async function processInboundEmail(
     }
     // The original body is the description, not a customer reply.
     if (email.attachments.length > 0) {
-      await storeInboundAttachments(provider, emailId, ticket.id, null, ticket.creatorId, email.attachments)
+      await storeInboundAttachments(resolveAttachmentUrl, ticket.id, null, ticket.creatorId, email.attachments)
     }
     broadcastMailboxMail(route.departmentId, route.subDepartmentId).catch(() => undefined)
     return true
@@ -475,7 +534,7 @@ export async function processInboundEmail(
   // here would hide inbound images until a manual reload.
   const storedAttachments =
     email.attachments.length > 0
-      ? await storeInboundAttachments(provider, emailId, ticket.id, created.id, ticket.creatorId, email.attachments)
+      ? await storeInboundAttachments(resolveAttachmentUrl, ticket.id, created.id, ticket.creatorId, email.attachments)
       : []
 
   broadcastChatMessage(ticket.id, {

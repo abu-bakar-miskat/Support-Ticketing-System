@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, X } from "lucide-react";
+import { Loader2, X, Copy, Check, TriangleAlert } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { createTenantInvite } from "@/lib/api/admin";
@@ -40,7 +40,7 @@ export function InviteMemberModal({
   canInvitePrivileged: boolean;
   departments: { id: string; name: string }[];
   subDepartments: { id: string; name: string; departmentId?: string | null }[];
-  onSent?: () => void;
+  onSent?: (delivered: boolean) => void;
   onClose: () => void;
 }) {
   const roleOptions: Role[] = canInvitePrivileged
@@ -57,6 +57,11 @@ export function InviteMemberModal({
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Set when the invite was created but its email could NOT be delivered. We keep
+  // the modal open and show the accept link so the admin can share it manually,
+  // rather than reporting a success that never reached the invitee.
+  const [undeliveredLink, setUndeliveredLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   const needsDept = role === "manager" || role === "sub_manager" || role === "agent";
   const needsSubDept = role === "sub_manager" || role === "agent";
@@ -84,19 +89,40 @@ export function InviteMemberModal({
     }
     setSaving(true);
     try {
-      await createTenantInvite(tenantId, {
+      const invite = await createTenantInvite(tenantId, {
         email: email.trim(),
         role,
         departmentIds: role === "manager" ? [departmentId] : undefined,
         subDepartmentId: needsSubDept ? subDepartmentId : null,
         message: message.trim() || undefined,
       });
-      onSent?.();
-      onClose();
+      const delivered = invite.emailDelivery?.status !== "failed";
+      // Refresh the list either way (the pending invite now exists), but only
+      // close + report success when the email actually went out. On delivery
+      // failure, surface the accept link so it can be shared by hand.
+      onSent?.(delivered);
+      if (delivered) {
+        onClose();
+      } else {
+        const origin = typeof window !== "undefined" ? window.location.origin : "";
+        setUndeliveredLink(`${origin}${invite.acceptPath}`);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send invite");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function copyLink() {
+    if (!undeliveredLink) return;
+    try {
+      await navigator.clipboard.writeText(undeliveredLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard can be blocked (e.g. insecure context) — the link is still
+      // visible for manual selection, so just ignore the failure.
     }
   }
 
@@ -107,11 +133,50 @@ export function InviteMemberModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
-          <p className="font-sans text-[14px] font-semibold text-sts-foreground">Invite new member</p>
+          <p className="font-sans text-[14px] font-semibold text-sts-foreground">
+            {undeliveredLink ? "Invite created — email not sent" : "Invite new member"}
+          </p>
           <button type="button" onClick={onClose} aria-label="Close">
             <X className="size-4 text-sts-muted" />
           </button>
         </div>
+        {undeliveredLink ? (
+          <div className="flex flex-col gap-4 px-5 py-4">
+            <div className="flex gap-2.5 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2.5 dark:border-amber-900/50 dark:bg-amber-900/20">
+              <TriangleAlert className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <p className="font-sans text-[12.5px] leading-relaxed text-amber-800 dark:text-amber-200">
+                The invite for <span className="font-semibold">{email.trim()}</span> was saved, but we
+                couldn&apos;t deliver the email. Share this link with them directly — it works the same
+                as the emailed one and expires in 24 hours.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                readOnly
+                value={undeliveredLink}
+                onFocus={(e) => e.currentTarget.select()}
+                className="h-9 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-mono text-[12px] text-sts-foreground outline-none"
+              />
+              <button
+                type="button"
+                onClick={copyLink}
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg bg-sts-blue px-3 font-sans text-[12.5px] font-medium text-white hover:opacity-90 dark:text-gray-900"
+              >
+                {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+                {copied ? "Copied" : "Copy"}
+              </button>
+            </div>
+            <div className="flex justify-end border-t border-sts-card-border pt-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="h-8 rounded-full bg-sts-surface px-3.5 font-sans text-[12.5px] font-medium text-sts-foreground hover:bg-sts-bg"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        ) : (
         <form onSubmit={submit} className="flex flex-col gap-4 px-5 py-4">
           {/* Role first — decides which targets are needed. */}
           <div>
@@ -235,6 +300,7 @@ export function InviteMemberModal({
             </button>
           </div>
         </form>
+        )}
       </div>
     </div>
   );

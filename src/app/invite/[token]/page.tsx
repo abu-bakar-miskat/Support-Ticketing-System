@@ -5,6 +5,8 @@ import { PenLogo } from "@/components/auth/sts-logo";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 import { AutoAcceptInvite } from "@/components/auth/auto-accept-tenant-invite";
 import { SubmitButton } from "@/components/auth/submit-button";
+import { SignOutToAcceptButton } from "@/components/auth/sign-out-to-accept-button";
+import { getUnscopedPrisma } from "@/lib/db";
 import { sendInviteLoginCode } from "@/lib/auth/invite-code-action";
 import { cn } from "@/lib/utils";
 
@@ -17,11 +19,11 @@ type PageProps = {
 
 const ERROR_COPY: Record<string, string> = {
   not_found: "This invitation link is invalid.",
-  expired: "This invitation has expired. Ask your manager to send a new one.",
-  revoked: "This invitation has been revoked.",
+  expired: "This invitation has expired. Ask the person who invited you to send a new one.",
+  revoked: "This invitation has been revoked. If you still need access, ask the person who invited you to send a new one.",
   already_accepted: "This invitation has already been accepted.",
   email_mismatch:
-    "You're signed in with a different email than this invitation was sent to. Sign out and use the invited Microsoft account.",
+    "You're signed in with a different email than this invitation was sent to. Sign out, then sign in with the invited email to receive a sign-in code.",
 };
 
 function InviteShell({ children }: { children: React.ReactNode }) {
@@ -46,6 +48,7 @@ export default async function InvitePage({ params, searchParams }: PageProps) {
   const { token } = await params;
   const { error: errorCode } = await searchParams;
   const invite = await getInvitePreview(token);
+  const loginHref = `/login?next=${encodeURIComponent(`/invite/${token}`)}`;
 
   if (!invite) {
     return (
@@ -75,17 +78,21 @@ export default async function InvitePage({ params, searchParams }: PageProps) {
         <p className="mt-2 text-center text-[13.5px] text-sts-muted">
           {ERROR_COPY[errorCode]}
         </p>
-        {errorCode === "email_mismatch" && (
-          <p className="mt-3 text-center text-[12px] text-sts-subtle">
-            Invitation was sent to {invite.email}.
-          </p>
+        {errorCode === "email_mismatch" ? (
+          <>
+            <p className="mt-3 text-center text-[12px] text-sts-subtle">
+              Invitation was sent to {invite.email}.
+            </p>
+            <SignOutToAcceptButton invitedEmail={invite.email} loginHref={loginHref} />
+          </>
+        ) : (
+          <Link
+            href="/"
+            className="mt-6 text-[13px] font-medium text-sts-blue hover:underline"
+          >
+            Go to dashboard
+          </Link>
         )}
-        <Link
-          href="/"
-          className="mt-6 text-[13px] font-medium text-sts-blue hover:underline"
-        >
-          Go to dashboard
-        </Link>
       </InviteShell>
     );
   }
@@ -97,7 +104,8 @@ export default async function InvitePage({ params, searchParams }: PageProps) {
           Invitation revoked
         </h1>
         <p className="mt-2 text-center text-[13.5px] text-sts-muted">
-          This invitation to {invite.department.name} has been revoked.
+          This invitation to {invite.department.name} has been revoked. If you
+          still need access, ask the person who invited you to send a new one.
         </p>
       </InviteShell>
     );
@@ -129,7 +137,8 @@ export default async function InvitePage({ params, searchParams }: PageProps) {
           Invitation expired
         </h1>
         <p className="mt-2 text-center text-[13.5px] text-sts-muted">
-          Ask your manager to send a new invitation to join {invite.department.name}.
+          Ask the person who invited you to send a new invitation to join{" "}
+          {invite.department.name}.
         </p>
       </InviteShell>
     );
@@ -176,6 +185,34 @@ export default async function InvitePage({ params, searchParams }: PageProps) {
         <p className="mt-3 text-center text-[12px] text-sts-subtle">
           We&apos;ll email you a one-time sign-in code to continue.
         </p>
+      </InviteShell>
+    );
+  }
+
+  // Signed in as someone else: catch it here with a sign-out path instead of
+  // letting the accept call fail and strand them on an error screen.
+  const profile = await getUnscopedPrisma().profile.findUnique({
+    where: { id: user.id },
+    select: { email: true },
+  });
+  const signedInEmail = (profile?.email ?? user.email ?? "").toLowerCase();
+  if (signedInEmail && signedInEmail !== invite.email.toLowerCase()) {
+    return (
+      <InviteShell>
+        <h1 className="text-center text-[18px] font-semibold text-sts-foreground">
+          You&apos;re invited
+        </h1>
+        <p className="mt-2 text-center text-[13.5px] text-sts-muted">
+          Join{" "}
+          <span className="font-medium text-sts-foreground">{invite.department.name}</span>{" "}
+          as{" "}
+          <span className="font-medium text-sts-foreground">{invite.role}</span>.
+        </p>
+        <p className="mt-3 text-center text-[12.5px] text-red-600 dark:text-red-400">
+          You&apos;re signed in as {signedInEmail}. This invitation is for{" "}
+          {invite.email}. Sign out first, then continue.
+        </p>
+        <SignOutToAcceptButton invitedEmail={invite.email} loginHref={loginHref} />
       </InviteShell>
     );
   }

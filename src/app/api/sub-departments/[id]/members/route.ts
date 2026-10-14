@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { subDepartmentInScope, canReadSubDepartmentData } from "@/lib/dept-scope"
+import { canReadSubDepartmentData } from "@/lib/dept-scope"
 
 export async function GET(
   _req: NextRequest,
@@ -42,6 +42,7 @@ export async function GET(
       id: m.user.id,
       name: m.user.name,
       avatarUrl: m.user.avatarUrl ?? null,
+      role: m.role,
       departmentName: subDepartment.department?.name ?? null,
       subDepartmentName: subDepartment.name,
     })),

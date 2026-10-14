@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/table";
 import { TemplateFormModal } from "./template-form-modal";
 import { createTemplate, updateTemplate, deleteTemplate } from "@/lib/api/templates";
+import { Tip } from "@/components/ui/tooltip";
+import { ListSearchInput, SortDropdown, byDateAsc, byDateDesc, byText, useListControls } from "@/components/ui/list-controls";
 
 export type TemplateRow = {
   id: string;
@@ -39,6 +41,16 @@ export function SettingsTemplatesPage({ templates: initial }: { templates: Templ
   const [editingTemplate, setEditingTemplate] = useState<TemplateRow | null>(null);
   const [saving, setSaving] = useState(false);
   const [deletingTemplate, setDeletingTemplate] = useState<TemplateRow | null>(null);
+  const list = useListControls(templates, {
+    searchText: (t) => `${t.name} ${t.createdBy.name} ${t.createdBy.email}`,
+    sortOptions: [
+      { id: "name", label: "Name A–Z", compare: byText((t: TemplateRow) => t.name) },
+      { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((t: TemplateRow) => t.name)(b, a) },
+      { id: "newest", label: "Newest first", compare: byDateDesc((t: TemplateRow) => t.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((t: TemplateRow) => t.createdAt) },
+      { id: "updated", label: "Recently updated", compare: byDateDesc((t: TemplateRow) => t.updatedAt) },
+    ],
+  });
 
   async function handleSave(data: {
     name: string;
@@ -114,6 +126,11 @@ export function SettingsTemplatesPage({ templates: initial }: { templates: Templ
         </Button>
       </div>
 
+      <div className="flex items-center justify-between gap-2">
+        <ListSearchInput value={list.query} onChange={list.setQuery} placeholder="Search templates…" />
+        <SortDropdown value={list.sortKey} onChange={list.setSortKey} options={list.sortDropdownOptions} />
+      </div>
+
       <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
         <Table className="min-w-[640px]">
           <TableHeader>
@@ -138,7 +155,17 @@ export function SettingsTemplatesPage({ templates: initial }: { templates: Templ
               </TableRow>
             ) : null}
 
-            {templates.map((template) => (
+            {templates.length > 0 && list.visible.length === 0 ? (
+              <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
+                <TableCell colSpan={3} className="py-0">
+                  <div className="flex h-[46px] items-center">
+                    <span className="font-sans text-[11.5px] text-sts-muted">No templates match &ldquo;{list.query.trim()}&rdquo;</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : null}
+
+            {list.visible.map((template) => (
               <TableRow key={template.id} className="border-[#f0f4f8] hover:bg-sts-bg/40 dark:border-[#3a3a37]">
                 <TableCell className="py-0">
                   <div className="flex h-[46px] items-center">
@@ -152,24 +179,26 @@ export function SettingsTemplatesPage({ templates: initial }: { templates: Templ
                 </TableCell>
                 <TableCell className="py-0 text-right">
                   <div className="flex h-[46px] items-center justify-end gap-2">
-                    <button
-                      type="button"
-                      onClick={() => startEdit(template)}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-sts-blue bg-sts-blue/10 text-sts-blue font-sans text-[11px] font-medium transition-all hover:bg-sts-blue hover:text-white"
-                      title="Edit template"
-                    >
-                      <Edit2 className="size-3.5" />
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setDeletingTemplate(template)}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-sts-red bg-sts-red/10 text-sts-red font-sans text-[11px] font-medium transition-all hover:bg-sts-red hover:text-white"
-                      title="Delete template"
-                    >
-                      <Trash2 className="size-3.5" />
-                      Delete
-                    </button>
+                    <Tip label="Edit template">
+                      <button
+                        type="button"
+                        onClick={() => startEdit(template)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-sts-blue bg-sts-blue/10 text-sts-blue font-sans text-[11px] font-medium transition-all hover:bg-sts-blue hover:text-white"
+                      >
+                        <Edit2 className="size-3.5" />
+                        Edit
+                      </button>
+                    </Tip>
+                    <Tip label="Delete template">
+                      <button
+                        type="button"
+                        onClick={() => setDeletingTemplate(template)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-sts-red bg-sts-red/10 text-sts-red font-sans text-[11px] font-medium transition-all hover:bg-sts-red hover:text-white"
+                      >
+                        <Trash2 className="size-3.5" />
+                        Delete
+                      </button>
+                    </Tip>
                   </div>
                 </TableCell>
               </TableRow>

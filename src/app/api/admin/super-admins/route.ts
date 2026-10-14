@@ -1,10 +1,13 @@
+import { randomBytes } from "crypto"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireSuperAdmin } from "@/lib/auth"
 import { recordAuditEvent } from "@/lib/audit-log"
+import { sendSuperAdminInviteEmail } from "@/lib/email"
+import { INVITE_TTL_MS } from "@/lib/invites/constants"
 
 /**
- * Platform Settings > Administrators — manage who carries Profile.isSuperAdmin
+ * Platform super-admin API — manage who carries Profile.isSuperAdmin
  * (the platform-wide role, distinct from a tenant's own "admin"). Every
  * handler re-requires super-admin so a just-demoted caller can't keep acting
  * on a stale session.
@@ -31,23 +34,54 @@ export async function POST(request: NextRequest) {
   if (!userId && !email) {
     return NextResponse.json({ error: "userId or email is required" }, { status: 400 })
   }
+  if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return NextResponse.json({ error: "A valid email is required" }, { status: 400 })
+  }
 
-  // Super-admin is a platform-wide flag on an existing Profile, and a Profile
-  // only exists once its owner has signed in (id is the Supabase auth uid).
-  // So an invite-by-email can only be granted to someone who already has an
-  // account — there's nothing to flag before that.
   const user = await prisma.profile.findFirst({
     where: userId ? { id: userId } : { email },
     select: { id: true, deletedAt: true, isSuperAdmin: true },
   })
   if (!user || user.deletedAt) {
+    // Grant-by-id can only elevate someone who already has an account.
+    if (userId || !email) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 })
+    }
+
+    // New email: do not create an auth user or Profile. Store the invite and
+    // email the accept link. The account is created when they accept and sign in.
+    const dup = await prisma.superAdminInvite.findFirst({
+      where: { email, revokedAt: null, acceptedAt: null, expiresAt: { gt: new Date() } },
+      select: { id: true },
+    })
+    if (dup) {
+      return NextResponse.json({ error: "A pending invite already exists for this email" }, { status: 409 })
+    }
+
+    const token = randomBytes(32).toString("hex")
+    const expiresAt = new Date(Date.now() + INVITE_TTL_MS)
+    await prisma.superAdminInvite.create({
+      data: { token, email, invitedBy: profile!.id, expiresAt },
+    })
+
+    let emailDelivery: { status: "sent"; via: "mailpit" | "resend" } | { status: "failed" }
+    try {
+      const delivery = await sendSuperAdminInviteEmail({
+        to: email,
+        inviterName: profile!.name,
+        inviterId: profile!.id,
+        inviteToken: token,
+        expiresAt,
+      })
+      emailDelivery = { status: "sent", via: delivery.via }
+    } catch (err) {
+      console.error("[super-admins] failed to send invite email:", err)
+      emailDelivery = { status: "failed" }
+    }
+
     return NextResponse.json(
-      {
-        error: email
-          ? "No account exists for this email yet. They must sign in once before they can be made a super admin."
-          : "User not found",
-      },
-      { status: 404 },
+      { invited: true, email, acceptPath: `/super-admin-invite/${token}`, emailDelivery },
+      { status: 201 },
     )
   }
 

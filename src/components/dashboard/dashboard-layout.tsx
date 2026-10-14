@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import type { DeptSidebarColors } from "@/lib/sidebar-colors";
 import { useQuery } from "@tanstack/react-query";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { TopBar } from "@/components/dashboard/top-bar";
@@ -93,15 +94,19 @@ export function DashboardLayout({
   initialLayoutData,
   brandingName = null,
   brandingLogoUrl = null,
+  brandingLogoUrlDark = null,
   brandingHideLogo = false,
   brandingHideDisplayName = false,
+  sidebarColors,
 }: {
   children: React.ReactNode;
   initialLayoutData?: LayoutData;
   brandingName?: string | null;
   brandingLogoUrl?: string | null;
+  brandingLogoUrlDark?: string | null;
   brandingHideLogo?: boolean;
   brandingHideDisplayName?: boolean;
+  sidebarColors: DeptSidebarColors;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -120,7 +125,12 @@ export function DashboardLayout({
       return r.json() as Promise<LayoutData>;
     },
     staleTime: 60_000,
+    // Seed paints immediately (including the department feature allowlist).
+    // Treat it as stale so the full layout still loads — global refetchOnMount
+    // is false, and fresh initialData would otherwise stick at "every feature".
     initialData: initialLayoutData,
+    initialDataUpdatedAt: initialLayoutData ? 0 : undefined,
+    refetchOnMount: "always",
     placeholderData: initialLayoutData ?? EMPTY,
     refetchOnWindowFocus: false,
   });
@@ -128,6 +138,16 @@ export function DashboardLayout({
   const { data: taskMeta, isError: taskMetaError, refetch: retryTaskMeta } = useTasksMeta(showCreateTask);
 
   const openCreateTask = useCallback(() => setShowCreateTask(true), []);
+
+  // Escape closes the mobile navigation drawer.
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSidebarOpen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [sidebarOpen]);
 
   // X+Space — create task (skip when typing in an input/textarea)
   useEffect(() => {
@@ -201,6 +221,12 @@ export function DashboardLayout({
           ready && collapsed && "sts-sidebar-collapsed",
         )}
       >
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[100] focus:rounded-full focus:bg-sts-button focus:px-4 focus:py-2 focus:font-sans focus:text-[13px] focus:font-semibold focus:text-sts-button-fg"
+        >
+          Skip to content
+        </a>
         <CommandPalette open={open} onClose={() => setOpen(false)} />
 
         {/* Sidebar — desktop / tablet landscape */}
@@ -212,8 +238,10 @@ export function DashboardLayout({
           onCreateTask={openCreateTask}
           brandingName={brandingName}
           brandingLogoUrl={brandingLogoUrl}
+          brandingLogoUrlDark={brandingLogoUrlDark}
           brandingHideLogo={brandingHideLogo}
           brandingHideDisplayName={brandingHideDisplayName}
+          sidebarColors={sidebarColors}
         />
 
         {/* Sidebar — mobile & tablet portrait drawer */}
@@ -224,7 +252,12 @@ export function DashboardLayout({
               onClick={() => setSidebarOpen(false)}
               aria-hidden="true"
             />
-            <div className="sts-drawer-enter fixed inset-y-0 left-0 z-40 flex lg:hidden">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Navigation"
+              className="sts-drawer-enter fixed inset-y-0 left-0 z-40 flex lg:hidden"
+            >
               <Sidebar
                 isDrawer
                 onClose={() => setSidebarOpen(false)}
@@ -235,8 +268,10 @@ export function DashboardLayout({
                 onCreateTask={openCreateTask}
                 brandingName={brandingName}
                 brandingLogoUrl={brandingLogoUrl}
+                brandingLogoUrlDark={brandingLogoUrlDark}
                 brandingHideLogo={brandingHideLogo}
                 brandingHideDisplayName={brandingHideDisplayName}
+                sidebarColors={sidebarColors}
               />
             </div>
           </>
@@ -249,10 +284,15 @@ export function DashboardLayout({
             onOpenSearch={() => setOpen(true)}
             onNotifClick={() => setNotifOpen(true)}
           />
-          <main className="min-h-0 flex-1 flex flex-col overflow-hidden">
+          <main
+            id="main-content"
+            tabIndex={-1}
+            className="min-h-0 flex-1 flex flex-col overflow-hidden focus:outline-none"
+          >
             <ProjectTabSyncProvider>
-              <FeatureRouteGuard />
-              <PageEnter>{children}</PageEnter>
+              <FeatureRouteGuard>
+                <PageEnter>{children}</PageEnter>
+              </FeatureRouteGuard>
             </ProjectTabSyncProvider>
           </main>
         </div>

@@ -8,12 +8,13 @@
  * Client-safe: constants + slug helpers only. The prisma-backed
  * ensureSystemTemplates lives in template-catalogue.ts (server-only).
  */
-import type { TemplateFeatureKey } from "@/lib/template-features";
+import { type TemplateFeatureKey } from "@/lib/template-features";
 import {
   DEFAULT_DEPARTMENT_TYPE,
   isValidDepartmentType,
   type DepartmentType,
 } from "@/lib/department-types";
+import { OPERATION_TEMPLATES } from "@/lib/operation-templates";
 
 export type SystemTemplate = {
   slug: string;
@@ -49,6 +50,36 @@ export const SUPPORT_TEMPLATE: SystemTemplate = {
 
 /** Every system template. Seeded by default and protected from deletion. */
 export const SYSTEM_TEMPLATES: SystemTemplate[] = [SUPPORT_TEMPLATE];
+
+export type FeatureTemplateSeed = {
+  slug: string;
+  name: string;
+  description: string;
+  featureKeys: TemplateFeatureKey[];
+  /** Protected from archive/delete. Feature edits are kept once the row exists. */
+  system: boolean;
+};
+
+/**
+ * Templates that should exist without anyone creating them by hand: the
+ * Support bundle, plus one pre-configured template per operation.
+ */
+export const AVAILABLE_FEATURE_TEMPLATES: FeatureTemplateSeed[] = [
+  {
+    slug: SUPPORT_TEMPLATE.slug,
+    name: SUPPORT_TEMPLATE.name,
+    description: SUPPORT_TEMPLATE.description,
+    featureKeys: SUPPORT_TEMPLATE.featureKeys,
+    system: true,
+  },
+  ...OPERATION_TEMPLATES.map((operation) => ({
+    slug: operation.slug,
+    name: operation.name,
+    description: operation.useCase,
+    featureKeys: operation.featureKeys,
+    system: false,
+  })),
+];
 
 const SYSTEM_TEMPLATE_SLUGS = new Set(SYSTEM_TEMPLATES.map((t) => t.slug));
 

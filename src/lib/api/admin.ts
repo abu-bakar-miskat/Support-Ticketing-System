@@ -121,7 +121,10 @@ export async function updateAdminUser(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error("Failed to update user")
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(typeof data.error === "string" ? data.error : "Failed to update user")
+  }
   return res.json()
 }
 
@@ -192,7 +195,10 @@ export async function addAdminSubDepartmentMember(subDepartmentId: string, userI
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ userId, ...(role ? { role } : {}) }),
   })
-  if (!res.ok) throw new Error("Failed to add subDepartment member")
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(typeof data.error === "string" ? data.error : "Failed to add subDepartment member")
+  }
 }
 
 export async function removeAdminSubDepartmentMember(subDepartmentId: string, userId: string) {
@@ -419,6 +425,10 @@ export async function createDepartmentInvite(
   return res.json()
 }
 
+export type InviteEmailDelivery =
+  | { status: "sent"; via: "mailbox" | "mailpit" | "resend" }
+  | { status: "failed" }
+
 export async function createTenantInvite(
   tenantId: string,
   body: {
@@ -428,7 +438,7 @@ export async function createTenantInvite(
     subDepartmentId?: string | null
     message?: string
   },
-): Promise<{ id: string; email: string; role: string; token: string; acceptPath: string }> {
+): Promise<{ id: string; email: string; role: string; token: string; acceptPath: string; emailDelivery?: InviteEmailDelivery }> {
   const res = await fetch(`/api/admin/tenants/${tenantId}/invites`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -491,9 +501,10 @@ export async function removeDepartmentMember(deptId: string, userId: string) {
 export type MailboxConnection = {
   id: string
   tenantId: string
-  departmentId: string
-  subDepartmentId: string
-  scopeType: "DEPARTMENT" | "SUB_DEPARTMENT"
+  /** Null for the tenant-wide (send-only) mailbox. */
+  departmentId: string | null
+  subDepartmentId: string | null
+  scopeType: "TENANT" | "DEPARTMENT" | "SUB_DEPARTMENT"
   address: string
   authType: "RESEND" | "OAUTH_M365" | "OAUTH_GOOGLE" | "IMAP"
   assignmentMethod: "RULE_BASED" | "ROUND_ROBIN" | "WORKLOAD_BASED" | "MANUAL" | "MANUAL_SELECT" | null
@@ -505,8 +516,31 @@ export type MailboxConnection = {
   lastErrorAt: string | null
   lastErrorMessage: string | null
   nextCheckAt: string | null
+  /** Last successful poll (Microsoft 365 only; Resend is push). */
+  lastSyncedAt: string | null
   createdAt: string
   updatedAt: string
+}
+
+/**
+ * Browser-navigation URL that starts connecting (or, with `connectionId`,
+ * reconnecting) a Microsoft 365 mailbox. The server redirects to the
+ * provider's sign-in and back to `returnTo` with `mailboxConnected` or
+ * `mailboxError` in the query string.
+ */
+export function mailboxOAuthStartUrl(
+  provider: "microsoft",
+  params: {
+    teamId?: string
+    scopeType?: "TENANT" | "DEPARTMENT" | "SUB_DEPARTMENT"
+    mailbox?: string
+    connectionId?: string
+    returnTo: string
+  },
+): string {
+  const search = new URLSearchParams()
+  for (const [key, value] of Object.entries(params)) if (value) search.set(key, value)
+  return `/api/admin/mailbox-oauth/${provider}/start?${search}`
 }
 
 export async function getDepartmentMailboxConnections(departmentId: string): Promise<MailboxConnection[]> {
@@ -515,41 +549,15 @@ export async function getDepartmentMailboxConnections(departmentId: string): Pro
   return res.json()
 }
 
-export async function createDepartmentMailboxConnection(
-  departmentId: string,
-  body: { teamId: string; address: string; authType?: string; plaintextCredentials?: string | null },
-): Promise<MailboxConnection> {
-  const res = await fetch(`/api/admin/departments/${departmentId}/mailbox-connections`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...body, scopeType: "DEPARTMENT" }),
-  })
-  return readJsonResponse<MailboxConnection>(res)
-}
-
 export async function getSubDepartmentMailboxConnections(subDepartmentId: string): Promise<MailboxConnection[]> {
   const res = await fetch(`/api/admin/sub-departments/${subDepartmentId}/mailbox-connections`)
   if (!res.ok) throw new Error("Failed to fetch mailbox connections")
   return res.json()
 }
 
-export async function createSubDepartmentMailboxConnection(
-  subDepartmentId: string,
-  body: { address: string; authType?: string; plaintextCredentials?: string | null },
-): Promise<MailboxConnection> {
-  const res = await fetch(`/api/admin/sub-departments/${subDepartmentId}/mailbox-connections`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  })
-  return readJsonResponse<MailboxConnection>(res)
-}
-
 export async function updateMailboxConnection(
   connectionId: string,
   body: {
-    address?: string
-    plaintextCredentials?: string | null
     assignmentMethod?: MailboxConnection["assignmentMethod"]
     manualAssigneeIds?: string[]
     isActive?: boolean
@@ -587,11 +595,12 @@ export async function smartAssignTickets(
   ticketIds: string[],
   mode: "single" | "round-robin",
   assigneeIds: string[],
+  subDepartmentId?: string,
 ): Promise<{ updated: number }> {
   const res = await fetch("/api/admin/tickets/smart-assign", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ticketIds, mode, assigneeIds }),
+    body: JSON.stringify({ ticketIds, mode, assigneeIds, subDepartmentId }),
   })
   if (!res.ok) throw new Error("Failed to assign tickets")
   return res.json()

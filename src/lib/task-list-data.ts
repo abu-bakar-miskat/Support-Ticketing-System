@@ -1,5 +1,6 @@
 import "server-only";
 import { getBoardCards, countBoardCards, resolveBoardCardFilters } from "@/lib/board-data";
+import { attachSlaResolution } from "@/lib/task-sla-resolution";
 import type { TaskListQuery } from "@/lib/task-list-query";
 import type { AllTasksResponse } from "@/lib/api/tasks";
 
@@ -14,7 +15,8 @@ export async function getTaskListData(
   const filterParams = await resolveBoardCardFilters(query.filterParams);
   const [total, tasks] = await Promise.all([
     countBoardCards(filterParams),
-    getBoardCards({ ...filterParams, timeForUserId: userId, sortKey: query.sortKey, skip, take: limit }),
+    getBoardCards({ ...filterParams, timeForUserId: userId, sortKey: query.sortKey, skip, take: limit })
+      .then(attachSlaResolution),
   ]);
   return {
     tasks, total, page, limit,

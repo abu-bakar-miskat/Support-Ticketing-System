@@ -35,6 +35,7 @@ export default async function SettingsInstitutionsRoute() {
       domain: institution.domain,
       students: "—",
       status: institution.active ? "live" : "onboarding",
+      createdAt: institution.createdAt.toISOString(),
     }),
   );
 

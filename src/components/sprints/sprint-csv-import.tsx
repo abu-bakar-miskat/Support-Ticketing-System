@@ -1,5 +1,6 @@
 "use client";
 
+import { Tip } from "@/components/ui/tooltip";
 import { useRef, useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import {
@@ -99,14 +100,17 @@ export function SprintCSVImport({
             <Dialog.Title className="font-sans text-[14px] font-semibold text-sts-foreground">
               Import sprints from CSV
             </Dialog.Title>
-            <button
-              type="button"
-              onClick={() => handleOpenChange(false)}
-              disabled={isLoading}
-              className="rounded-full p-1 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
-            >
-              <X className="size-4" />
-            </button>
+            <Tip label="Close">
+              <button
+                aria-label="Close"
+                type="button"
+                onClick={() => handleOpenChange(false)}
+                disabled={isLoading}
+                className="rounded-full p-1 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
+              >
+                <X className="size-4" />
+              </button>
+            </Tip>
           </div>
 
           <div className="flex flex-col gap-4 px-5 py-5">

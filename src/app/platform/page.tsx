@@ -6,6 +6,8 @@ import { TenantsClient } from "@/components/platform/tenants-client"
 
 export const dynamic = "force-dynamic"
 
+export const metadata = { title: "Tenants — Global Support Portal" }
+
 export default async function TenantsPage() {
   const profile = await getProfile()
   if (!profile) redirect("/login")
@@ -20,8 +22,15 @@ export default async function TenantsPage() {
       type: true,
       status: true,
       deletedAt: true,
+      createdAt: true,
       branding: true,
       _count: { select: { departments: true } },
+      // Current agreement — same "latest end date" rule as listTenantAgreementSummaries.
+      agreements: {
+        select: { endDate: true, renewalStatus: true },
+        orderBy: { endDate: "desc" },
+        take: 1,
+      },
     },
   })
 
@@ -50,6 +59,7 @@ export default async function TenantsPage() {
 
   const tenants = rows.map((t) => {
     const b = readTenantBranding(t.branding)
+    const agreement = t.agreements[0]
     return {
       id: t.id,
       slug: t.slug,
@@ -60,6 +70,9 @@ export default async function TenantsPage() {
       logoUrl: b.logoUrl ?? null,
       departments: t._count.departments,
       members: memberIdsByTenant.get(t.id)?.size ?? 0,
+      agreementEndDate: agreement?.endDate.toISOString() ?? null,
+      renewalStatus: agreement?.renewalStatus ?? null,
+      createdAt: t.createdAt.toISOString(),
     }
   })
 

@@ -1,5 +1,6 @@
 "use client"
 
+import type { StatusCategory } from "@/lib/status-category"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   getSubDepartmentStatuses,
@@ -25,7 +26,7 @@ export function useSubDepartmentStatuses(subDepartmentId: string) {
 export function useCreateSubDepartmentStatus(subDepartmentId: string) {
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: (body: { label: string; color: string; order?: number }) =>
+    mutationFn: (body: { category: StatusCategory; label: string; color: string; order?: number }) =>
       createSubDepartmentStatus(subDepartmentId, body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: subDepartmentKeys.statuses(subDepartmentId) })
@@ -42,10 +43,10 @@ export function useUpdateSubDepartmentStatus(subDepartmentId: string) {
     }: {
       statusId: string
       body: {
+        category?: StatusCategory
         label?: string
         color?: string
         order?: number
-        isComplete?: boolean
         allowedLabels?: string[]
       }
     }) => updateSubDepartmentStatus(subDepartmentId, statusId, body),

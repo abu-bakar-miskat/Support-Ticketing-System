@@ -23,11 +23,17 @@ vi.mock("@/lib/auth", async (importOriginal) => {
 })
 vi.mock("@/lib/db", () => ({
   prisma: {
-    ticket: { findUnique: vi.fn() },
-    comment: { create: vi.fn() },
+    ticket: { findUnique: vi.fn(), update: vi.fn().mockResolvedValue({}) },
+    comment: { create: vi.fn(), findFirst: vi.fn() },
     attachment: { findMany: vi.fn(), updateMany: vi.fn() },
     activityLog: { create: vi.fn() },
   },
+}))
+vi.mock("@/lib/sla-engine", () => ({
+  stopFirstResponseOnPublicAgentMessage: vi.fn().mockResolvedValue(undefined),
+}))
+vi.mock("@/lib/timer-conversation-sync", () => ({
+  syncWorkTimerWithConversation: vi.fn().mockResolvedValue(undefined),
 }))
 vi.mock("@/lib/mentions", () => ({
   processMentions: vi.fn().mockResolvedValue(undefined),
@@ -38,15 +44,19 @@ import { getProfile } from "@/lib/profile"
 import { assertTicketAccess } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { processMentions } from "@/lib/mentions"
+import { stopFirstResponseOnPublicAgentMessage } from "@/lib/sla-engine"
+import { syncWorkTimerWithConversation } from "@/lib/timer-conversation-sync"
 
 const mockGetProfile = vi.mocked(getProfile)
 const mockAssertAccess = vi.mocked(assertTicketAccess)
 const mockTicketFindUnique = vi.mocked(prisma.ticket.findUnique)
 const mockCommentCreate = vi.mocked(prisma.comment.create)
+const mockCommentFindFirst = vi.mocked(prisma.comment.findFirst)
 const mockAttachmentFindMany = vi.mocked(prisma.attachment.findMany)
 const mockAttachmentUpdateMany = vi.mocked(prisma.attachment.updateMany)
 const mockActivityLogCreate = vi.mocked(prisma.activityLog.create)
 const mockProcessMentions = vi.mocked(processMentions)
+const mockStopFirstResponse = vi.mocked(stopFirstResponseOnPublicAgentMessage)
 
 function makeRequest(body: unknown) {
   return new Request("http://localhost/api/tickets/ticket-1/comments", {
@@ -66,6 +76,7 @@ const accessibleTicket = {
   creatorId: "00000000-0000-0000-0000-000000000009",
   deletedAt: null,
   assignees: [],
+  intake: null,
 }
 
 beforeEach(() => {
@@ -103,9 +114,11 @@ describe("POST /api/tickets/[id]/comments", () => {
           body: "Looks good",
           authorId: mockProfile.id,
           ticketId: "ticket-1",
+          portalVisible: false,
         }),
       }),
     )
+    expect(mockStopFirstResponse).not.toHaveBeenCalled()
     expect(mockActivityLogCreate).toHaveBeenCalledWith(
       expect.objectContaining({
         data: expect.objectContaining({ action: "COMMENT_ADDED" }),
@@ -128,6 +141,77 @@ describe("POST /api/tickets/[id]/comments", () => {
         ticketId: "ticket-1",
         body: "Hey @Sara check this",
         ticketTitle: "Fix login",
+      }),
+    )
+  })
+
+  it("creates requester-visible replies only for portal tickets", async () => {
+    mockTicketFindUnique.mockResolvedValue({
+      ...accessibleTicket,
+      intake: { apiKeyId: "portal-key" },
+    } as never)
+    const createdAt = new Date("2026-10-07T15:41:14.170Z")
+    mockCommentCreate.mockResolvedValue({
+      id: "comment-public",
+      body: "We are looking into this",
+      portalVisible: true,
+      createdAt,
+      author: { id: mockProfile.id, name: "Dev User", avatarUrl: null },
+    } as never)
+
+    const res = await POST(
+      makeRequest({ body: "We are looking into this", portalVisible: true }),
+      { params: mockParams },
+    )
+
+    expect(res.status).toBe(201)
+    expect(mockCommentCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ portalVisible: true }),
+      }),
+    )
+    // The portal reply thread is the requester-facing channel, so it stops
+    // the first-response SLA just like a public email reply does.
+    expect(mockStopFirstResponse).toHaveBeenCalledWith("ticket-1", createdAt)
+    // ...and leaves the ticket Waiting for customer, pausing work tracking.
+    expect(vi.mocked(syncWorkTimerWithConversation)).toHaveBeenCalledWith("ticket-1", "outbound")
+  })
+
+  it("rejects requester-visible replies on non-portal tickets", async () => {
+    const res = await POST(
+      makeRequest({ body: "Should not be public", portalVisible: true }),
+      { params: mockParams },
+    )
+
+    expect(res.status).toBe(400)
+    expect(mockCommentCreate).not.toHaveBeenCalled()
+  })
+
+  it("inherits the parent comment audience for threaded replies", async () => {
+    mockCommentFindFirst.mockResolvedValue({ portalVisible: true } as never)
+    mockCommentCreate.mockResolvedValue({
+      id: "reply-public",
+      body: "Public threaded reply",
+      portalVisible: true,
+      author: { id: mockProfile.id, name: "Dev User", avatarUrl: null },
+    } as never)
+
+    const res = await POST(
+      makeRequest({
+        body: "Public threaded reply",
+        parentId: "portal-comment",
+        portalVisible: false,
+      }),
+      { params: mockParams },
+    )
+
+    expect(res.status).toBe(201)
+    expect(mockCommentCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          parentId: "portal-comment",
+          portalVisible: true,
+        }),
       }),
     )
   })

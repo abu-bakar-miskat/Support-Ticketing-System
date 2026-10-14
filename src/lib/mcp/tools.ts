@@ -1,3 +1,5 @@
+import { isCompleteStatus } from "@/lib/status-category"
+import { syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
 import { prisma } from "@/lib/db"
 import { createNotification } from "@/lib/notify"
 import { sendAssignmentEmail, sendResolutionEmail } from "@/lib/email"
@@ -8,8 +10,8 @@ import { ensureProjectMembers } from "@/lib/ensure-project-members"
 import { notifyTicketCompletion } from "@/lib/ticket-completion-notify"
 import { cascadeCompleteToSubtickets } from "@/lib/ticket-cascade"
 import { stopRunningTimersOnStatusChange } from "@/lib/timer-autostop"
-import { startSlaTimers } from "@/lib/sla-engine"
 import { BASE_URL } from "@/lib/email-templates/_shared"
+import { AGENT_UNAVAILABLE_LABEL, clearAgentUnavailableLabel } from "@/lib/agent-unavailable"
 import type { ApiKeyContext } from "@/lib/api-key-auth"
 import {
   resolveCurrentStage,
@@ -39,7 +41,7 @@ export async function listSubDepartments(ctx: ApiKeyContext): Promise<ToolResult
       name: true,
       prefix: true,
       department: { select: { name: true } },
-      statuses: { orderBy: { order: "asc" }, select: { label: true, isComplete: true } },
+      statuses: { orderBy: { order: "asc" }, select: { label: true, category: true } },
     },
   })
   return {
@@ -325,16 +327,7 @@ export async function createTicket(
 
   const humanId = `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`
 
-  if (subDepartment.departmentId) {
-    await startSlaTimers(
-      ticket.id,
-      subDepartment.tenantId,
-      subDepartment.departmentId,
-      { priority: input.priority, type: input.type, title: input.title },
-      ticket.createdAt,
-      subDepartment.id,
-    )
-  }
+  // Manual creation via MCP follows the same no-SLA policy as the ticket UI.
 
   await appendTicketEvent(ticket.id, ctx.createdById, "TICKET_CREATED", {
     humanId,
@@ -553,7 +546,7 @@ export async function updateTicket(ctx: ApiKeyContext, input: UpdateTicketInput)
     const subDepartmentStatuses = await prisma.subDepartmentStatus.findMany({
       where: { subDepartmentId: ticket.subDepartmentId },
       orderBy: { order: "asc" },
-      select: { label: true, isComplete: true },
+      select: { label: true, category: true },
     })
     const target = subDepartmentStatuses.find((s) => s.label === input.status)
     if (!target) {
@@ -562,9 +555,14 @@ export async function updateTicket(ctx: ApiKeyContext, input: UpdateTicketInput)
         message: `Invalid status "${input.status}" for this subDepartment — valid: ${subDepartmentStatuses.map((s) => s.label).join(", ")}`,
       }
     }
-    statusChange = { to: target.label, isComplete: target.isComplete }
+    statusChange = { to: target.label, isComplete: isCompleteStatus(target) }
     data.status = target.label
-    data.closedAt = target.isComplete ? (ticket.closedAt ?? new Date()) : null
+    data.closedAt = isCompleteStatus(target) ? (ticket.closedAt ?? new Date()) : null
+    // A closed ticket isn't waiting on anyone — the availability sweep only
+    // revisits open tickets, so the flag would otherwise stick forever.
+    if (isCompleteStatus(target) && ticket.labels.includes(AGENT_UNAVAILABLE_LABEL)) {
+      data.labels = clearAgentUnavailableLabel(ticket.labels)
+    }
     changed.status = { from: ticket.status, to: target.label }
   }
 
@@ -606,6 +604,7 @@ export async function updateTicket(ctx: ApiKeyContext, input: UpdateTicketInput)
     broadcastTicketEvent(ticket.id, "STATUS_CHANGED", actorId, {
       from: ticket.status, to: statusChange.to,
     }).catch(() => undefined)
+    if (ticket.closedAt !== data.closedAt) await syncResolutionTimerOnClosedAtChange(ticket.id, data.closedAt as Date | null)
     await stopRunningTimersOnStatusChange(ticket.id, statusChange.to)
     if (statusChange.isComplete) {
       const humanId = `${prefix}-${number}`

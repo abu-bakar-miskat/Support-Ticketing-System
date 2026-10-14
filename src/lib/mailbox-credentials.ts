@@ -11,7 +11,7 @@ import { createCipheriv, createDecipheriv, randomBytes } from "node:crypto";
  * The Resend provider (the only functional one today) never calls this —
  * it authenticates via the platform-wide `RESEND_API_KEY`, so
  * `MailboxConnection.credentialsRef` stays null for it. This module only
- * matters once OAuth (M365/Google) or IMAP credentials land (EM-05).
+ * matters for Microsoft 365 (OAuth) connections (EM-05).
  */
 
 const IV_LENGTH = 12;

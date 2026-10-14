@@ -33,6 +33,7 @@ import {
   type ActivityAction,
 } from "@/components/audit/ticket-action-meta";
 import { adminActionMeta, humanizeAction, ChangeDiff } from "@/components/audit/admin-action-meta";
+import { auditTargetTypeLabel } from "@/lib/audit-display";
 import type { AuditLogEntry, AuditScopeKind, AuditFilterOption } from "@/lib/audit-log-types";
 
 // ── Date range presets ──────────────────────────────────────────────────────
@@ -62,7 +63,7 @@ function resolveRange(preset: RangePreset, customFrom: string, customTo: string)
 }
 
 const SOURCE_OPTIONS = [
-  { value: "", label: "All actions" },
+  { value: "", label: "All types" },
   { value: "ticket", label: "Ticket activity" },
   { value: "admin", label: "Admin & settings" },
 ];
@@ -231,8 +232,8 @@ function AdminRow({ entry, showTenant, showDepartment }: { entry: AuditLogEntry;
 
         <div className="mt-1 flex flex-wrap items-center gap-1.5">
           <ScopeChips entry={entry} showTenant={showTenant} showDepartment={showDepartment} />
-          <span className="inline-flex shrink-0 items-center rounded-md bg-sts-surface px-2 py-0.5 font-mono text-[10.5px] font-semibold text-sts-id">
-            {target.type}
+          <span className="inline-flex shrink-0 items-center rounded-md bg-sts-surface px-2 py-0.5 font-sans text-[10.5px] font-semibold text-sts-id">
+            {auditTargetTypeLabel(target.type)}
           </span>
           {target.name ? (
             <span
@@ -408,8 +409,35 @@ export function AuditLog({
 
   const sourceOptions = SOURCE_OPTIONS;
   const actorOptions = [{ value: "", label: "All actors" }, ...actors.map((a) => ({ value: a.id, label: a.name }))];
-  const departmentOptions = [{ value: "", label: "All departments" }, ...departments.map((d) => ({ value: d.id, label: d.name }))];
+  // Platform: the department list follows the tenant filter. With no tenant
+  // picked, every department shows with its tenant as a subtitle (names repeat
+  // across tenants), and the tenant name is searchable.
+  const tenantNameById = new Map(tenants.map((t) => [t.id, t.name]));
+  const visibleDepartments = isPlatform && tenantId
+    ? departments.filter((d) => d.tenantId === tenantId)
+    : departments;
+  const departmentOptions = [
+    { value: "", label: "All departments" },
+    ...visibleDepartments.map((d) => {
+      const tenantName = isPlatform && !tenantId && d.tenantId ? tenantNameById.get(d.tenantId) : undefined;
+      return { value: d.id, label: d.name, description: tenantName, keywords: tenantName ? [tenantName] : undefined };
+    }),
+  ];
   const tenantOptions = [{ value: "", label: "All tenants" }, ...tenants.map((t) => ({ value: t.id, label: t.name }))];
+  // Distinguish from the source ("type") filter, which used to read "All actions" too.
+  const actionOptions = ACTION_FILTER_OPTIONS.map((o) => (o.value === "" ? { ...o, label: "All ticket actions" } : o));
+
+  function selectTenant(next: string) {
+    setTenantId(next);
+    // Drop a department that doesn't belong to the newly selected tenant.
+    if (next && departmentId && departments.find((d) => d.id === departmentId)?.tenantId !== next) {
+      setDepartmentId("");
+    }
+  }
+
+  // Filter menus size to their longest option instead of the (narrow) trigger,
+  // so labels aren't truncated.
+  const filterMenuClass = "w-max min-w-[220px] max-w-[min(100vw-2rem,360px)]";
 
   return (
     <div className="h-full overflow-y-auto px-5 py-6 sm:px-8 lg:px-12">
@@ -440,20 +468,22 @@ export function AuditLog({
             searchPlaceholder="Search types…"
             size="sm"
             highlightWhenSet
-            className="max-w-[200px] w-auto"
+            className="max-w-[220px] w-auto"
+            contentClassName={filterMenuClass}
           />
 
           {isPlatform && (
             <SearchableSelect
               aria-label="Filter by tenant"
               value={tenantId}
-              onChange={setTenantId}
+              onChange={selectTenant}
               options={tenantOptions}
               icon={Building2}
               searchPlaceholder="Search tenants…"
               size="sm"
               highlightWhenSet
-              className="max-w-[200px] w-auto"
+              className="max-w-[220px] w-auto"
+              contentClassName={filterMenuClass}
             />
           )}
 
@@ -465,9 +495,11 @@ export function AuditLog({
               options={departmentOptions}
               icon={Layers}
               searchPlaceholder="Search departments…"
+              emptyLabel={tenantId ? "No departments in this tenant" : "No matches"}
               size="sm"
               highlightWhenSet
-              className="max-w-[200px] w-auto"
+              className="max-w-[220px] w-auto"
+              contentClassName={filterMenuClass}
             />
           )}
 
@@ -481,7 +513,8 @@ export function AuditLog({
               searchPlaceholder="Search people…"
               size="sm"
               highlightWhenSet
-              className="max-w-[200px] w-auto"
+              className="max-w-[220px] w-auto"
+              contentClassName={filterMenuClass}
             />
           )}
 
@@ -489,12 +522,13 @@ export function AuditLog({
             aria-label="Filter by ticket action"
             value={action}
             onChange={setAction}
-            options={ACTION_FILTER_OPTIONS}
+            options={actionOptions}
             icon={Folder}
             searchPlaceholder="Search actions…"
             size="sm"
             highlightWhenSet
-            className="max-w-[200px] w-auto"
+            className="max-w-[220px] w-auto"
+            contentClassName={filterMenuClass}
           />
 
           <div className="relative">

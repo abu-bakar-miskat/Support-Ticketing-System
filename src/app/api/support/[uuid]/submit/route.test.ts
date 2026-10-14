@@ -26,7 +26,6 @@ vi.mock("@/lib/email", () => ({
 }))
 vi.mock("@/lib/notify", () => ({ createNotification: vi.fn() }))
 vi.mock("@/lib/email-config", () => ({
-  RESEND_RECEIVING_ENABLED: true,
   getEmailConfig: vi.fn().mockResolvedValue({
     fromName: "Global Support Portal",
     fromEmail: "support@pengroup.com",
@@ -127,7 +126,7 @@ beforeEach(() => {
   } as never)
   mockCreateMessage.mockResolvedValue({ id: "msg-1" } as never)
   // Confirmation email is available by default: submissions become pending, not tickets.
-  mockSendVerification.mockResolvedValue({ ok: true, skipped: false } as never)
+  mockSendVerification.mockResolvedValue({ ok: true } as never)
   mockPendingCreate.mockResolvedValue({ id: "pending-1", token: "b".repeat(48) } as never)
   vi.mocked(prisma.pendingIntake.delete).mockResolvedValue(undefined as never)
   mockFindSubDept.mockResolvedValue({ prefix: "IT", tenantId: "t1" } as never)
@@ -155,11 +154,21 @@ describe("POST /api/support/[uuid]/submit — email confirmation gate", () => {
   })
 
   it("does not create a ticket if the confirmation email is rejected", async () => {
-    mockSendVerification.mockResolvedValue({ ok: false, skipped: false } as never)
+    mockSendVerification.mockResolvedValue({ ok: false, reason: "rejected" } as never)
     const res = await POST(makeRequest(validBody), { params })
 
     expect(res.status).toBe(400)
     expect(mockRun).not.toHaveBeenCalled()
+    expect(prisma.pendingIntake.delete).toHaveBeenCalled()
+  })
+
+  it("never creates an unverified ticket when confirmation email is unavailable", async () => {
+    mockSendVerification.mockResolvedValue({ ok: false, reason: "unavailable" } as never)
+    const res = await POST(makeRequest(validBody), { params })
+
+    expect(res.status).toBe(503)
+    expect(mockRun).not.toHaveBeenCalled()
+    expect(mockSendConfirmation).not.toHaveBeenCalled()
     expect(prisma.pendingIntake.delete).toHaveBeenCalled()
   })
 })
@@ -193,53 +202,30 @@ describe("POST /api/support/[uuid]/submit — trusted submitters", () => {
   })
 })
 
-describe("POST /api/support/[uuid]/submit — thread bootstrap (issue 010)", () => {
-  // These cover the direct-creation path taken when confirmation email is
-  // unavailable/disabled for the department (nothing to confirm), where the
-  // ticket is created inline and its confirmation thread is bootstrapped.
+describe("POST /api/support/[uuid]/submit — customer confirmation", () => {
+  // These cover the direct-creation path taken for a trusted submitter, where
+  // the ticket is created inline and its confirmation email is sent.
   beforeEach(() => {
-    mockSendVerification.mockResolvedValue({ ok: false, skipped: true } as never)
+    mockFindAccount.mockResolvedValue({ id: "profile-1" } as never)
   })
 
-  it("sends the confirmation with the reply token when receiving is enabled", async () => {
+  it("sends the confirmation to the submitter", async () => {
     const res = await POST(makeRequest(validBody), { params })
     expect(res.status).toBe(201)
 
     expect(mockSendConfirmation).toHaveBeenCalledWith(
-      expect.objectContaining({
-        to: "jane@example.com",
-        replyToken: "a".repeat(48),
-      }),
+      expect.objectContaining({ to: "jane@example.com" }),
     )
   })
 
-  it("persists the confirmation as an outbound TicketMessage when providerMessageId is returned", async () => {
+  it("does not add the automatic confirmation email to the ticket conversation", async () => {
     await POST(makeRequest(validBody), { params })
 
-    expect(mockCreateMessage).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          ticketId: "ticket-1",
-          direction: "outbound",
-          status: "trusted",
-          authorProfileId: null,
-          providerMessageId: "provider-confirm-id",
-          bodyHtml: "Hi Jane, we got your request.",
-        }),
-      }),
-    )
+    expect(mockSendConfirmation).toHaveBeenCalledOnce()
+    expect(mockCreateMessage).not.toHaveBeenCalled()
   })
 
-  it("omits the token when form disallows customer replies", async () => {
-    mockFindForm.mockResolvedValue({ ...form, allowCustomerReplies: false } as never)
-    await POST(makeRequest(validBody), { params })
-
-    expect(mockSendConfirmation).toHaveBeenCalledWith(
-      expect.objectContaining({ replyToken: null }),
-    )
-  })
-
-  it("does not create a TicketMessage when the send returns no providerMessageId", async () => {
+  it("does not add an unsent confirmation to the ticket conversation", async () => {
     mockSendConfirmation.mockResolvedValue({
       providerMessageId: null,
       providerEmailId: null,

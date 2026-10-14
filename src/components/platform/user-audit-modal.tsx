@@ -1,5 +1,6 @@
 "use client";
 
+import { Tip } from "@/components/ui/tooltip";
 import { X } from "lucide-react";
 import { PlatformActivityLog } from "@/components/platform/platform-activity-log";
 
@@ -30,13 +31,16 @@ export function UserAuditModal({
             <h2 className="sts-text-modal-title">Audit log</h2>
             <p className="mt-0.5 font-sans text-[12px] text-sts-muted">{userName}</p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full border border-sts-card-border p-1.5 text-sts-subtle hover:text-sts-foreground"
-          >
-            <X className="size-3.5" />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              type="button"
+              onClick={onClose}
+              className="rounded-full border border-sts-card-border p-1.5 text-sts-subtle hover:text-sts-foreground"
+            >
+              <X className="size-3.5" />
+            </button>
+          </Tip>
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
           <PlatformActivityLog

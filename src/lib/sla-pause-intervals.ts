@@ -18,7 +18,7 @@ export function waitingForCustomerPauseIntervals(
   until: Date,
 ): SlaPauseInterval[] {
   const publicMsgs = messages
-    .filter((m) => m.status !== "system")
+    .filter((m) => m.status !== "system" && m.status !== "quarantined")
     .slice()
     .sort((a, b) => ts(a.createdAt) - ts(b.createdAt));
 

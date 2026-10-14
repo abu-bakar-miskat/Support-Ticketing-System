@@ -11,6 +11,8 @@ import { ProjectProfilePage } from "@/components/projects/project-profile-page";
 import { ProjectAccessDenied } from "@/components/projects/project-access-denied";
 import { ProjectDetailSkeleton } from "@/components/skeletons/page-skeletons";
 
+export const metadata = { title: "Project — Global Support Portal" };
+
 type Props = { params: Promise<{ id: string }> };
 
 async function ProjectDetailData({ params }: Props) {

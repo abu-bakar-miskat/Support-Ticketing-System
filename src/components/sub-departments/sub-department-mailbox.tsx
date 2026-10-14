@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Tip } from "@/components/ui/tooltip";
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   Check,
   Copy,
   Loader2,
+  LogIn,
   Mail,
   Pencil,
   Plus,
@@ -15,6 +17,14 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  ListSearchInput,
+  SortDropdown,
+  useListControls,
+  byText,
+  byDateAsc,
+  byDateDesc,
+} from "@/components/ui/list-controls";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Select,
@@ -25,12 +35,17 @@ import {
 } from "@/components/ui/select";
 import { SubDepartmentReceivedMail } from "@/components/sub-departments/sub-department-received-mail";
 import {
-  DomainRequestForm,
-  type ScopeRequestStatus,
-} from "@/components/email/domain-request-form";
+  ExternalMailboxConnectForm,
+  MAILBOX_PROVIDER_META,
+  isOAuthProvider,
+  isPullProvider,
+  reconnectMailbox,
+  useMailboxOAuthResult,
+  scopeReplyMailbox,
+  ReplyMailboxNotice,
+} from "@/components/mailbox/mailbox-provider-connect";
 import {
   getSubDepartmentMailboxConnections,
-  createSubDepartmentMailboxConnection,
   updateMailboxConnection,
   deleteMailboxConnection,
   recheckMailboxConnection,
@@ -42,6 +57,10 @@ type StatusMeta = {
   dot: string;
   chip: string;
 };
+
+/** Department / sub-department mailboxes always file into a sub-department. */
+type DeptMailbox = MailboxConnection & { subDepartmentId: string };
+const asDeptMailbox = (c: MailboxConnection) => c as DeptMailbox;
 
 const STATUS: Record<MailboxConnection["status"], StatusMeta> = {
   ACTIVE: {
@@ -76,10 +95,6 @@ function relativeTime(iso: string | null): string {
   return new Date(iso).toLocaleDateString();
 }
 
-function isValidEmail(value: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-}
-
 type AssignmentMethod = "RULE_BASED" | "ROUND_ROBIN" | "WORKLOAD_BASED" | "MANUAL" | "MANUAL_SELECT";
 
 const ASSIGNMENT_METHOD_LABEL: Record<AssignmentMethod, string> = {
@@ -100,35 +115,24 @@ export function SubDepartmentMailboxManager({
   subDepartmentId,
   subDepartmentName,
   prefix,
-  departmentId,
   assignmentMethod,
   canManage,
-  canRequestDomain = false,
-  domainRequests = [],
+  departmentMailbox = null,
 }: {
   subDepartmentId: string;
   subDepartmentName: string;
   prefix: string;
-  departmentId: string;
   /** The sub-department's resolved default method — shown as the "inherited"
    *  value for any mailbox that has no per-mailbox override of its own. */
   assignmentMethod: AssignmentMethod;
   canManage: boolean;
-  /** Managers can request a sending domain for this sub-department. */
-  canRequestDomain?: boolean;
-  /** Existing domain requests for this sub-department, shown with their status. */
-  domainRequests?: ScopeRequestStatus[];
+  /** Address of the parent department's mailbox, used when this sub-department has none of its own. */
+  departmentMailbox?: string | null;
 }) {
-  const [connections, setConnections] = useState<MailboxConnection[] | null>(null);
+  const [connections, setConnections] = useState<DeptMailbox[] | null>(null);
   const [loadError, setLoadError] = useState(false);
 
   const [showConnect, setShowConnect] = useState(false);
-  const [address, setAddress] = useState("");
-  const addressRef = useRef<HTMLInputElement>(null);
-  const [saving, setSaving] = useState(false);
-  const [checkingVerification, setCheckingVerification] = useState(false);
-  const [verifiedAddress, setVerifiedAddress] = useState<string | null>(null);
-  const [formError, setFormError] = useState<string | null>(null);
 
   // Assignment method is now per-mailbox (per MailboxConnection). Editing state is
   // keyed by the connection id so changing one inbox never touches another. A
@@ -141,22 +145,26 @@ export function SubDepartmentMailboxManager({
   const [assignmentError, setAssignmentError] = useState<string | null>(null);
   const [members, setMembers] = useState<SubDepartmentMember[] | null>(null);
 
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editAddress, setEditAddress] = useState("");
   const [rechecking, setRechecking] = useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<Record<string, boolean>>({});
-  const [confirmDisable, setConfirmDisable] = useState<MailboxConnection | null>(null);
-  const [confirmDisconnect, setConfirmDisconnect] = useState<MailboxConnection | null>(null);
+  const [confirmDisable, setConfirmDisable] = useState<DeptMailbox | null>(null);
+  const [confirmDisconnect, setConfirmDisconnect] = useState<DeptMailbox | null>(null);
 
-  useEffect(() => {
+  function loadConnections() {
     getSubDepartmentMailboxConnections(subDepartmentId)
-      .then(setConnections)
+      .then((rows) => { setConnections(rows.filter((c) => c.subDepartmentId).map(asDeptMailbox)); setLoadError(false); })
       .catch(() => {
         setConnections([]);
         setLoadError(true);
       });
-  }, [subDepartmentId]);
+  }
+
+  useEffect(loadConnections, [subDepartmentId]);
+
+  // Back from a Microsoft sign-in: toast the outcome and refresh.
+  useMailboxOAuthResult(loadConnections);
+
 
   // Load the member roster the first time the admin opens the picker for the
   // "Manual user" method — kept lazy so the mailbox view stays cheap otherwise.
@@ -170,73 +178,29 @@ export function SubDepartmentMailboxManager({
 
   const list = connections ?? [];
   const loading = connections === null;
+  const ownMailbox = scopeReplyMailbox(list, { scopeType: "SUB_DEPARTMENT", subDepartmentId });
+  const mailboxList = useListControls(list, {
+    searchText: (c) => [c.address, STATUS[c.status].label, c.isActive ? "" : "disabled"].join(" "),
+    sortOptions: [
+      { id: "address", label: "Address (A–Z)", compare: byText((c) => c.address) },
+      { id: "newest", label: "Newest first", compare: byDateDesc((c) => c.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((c) => c.createdAt) },
+      {
+        id: "status",
+        label: "Problems first",
+        compare: (a, b) => Number(a.status === "ACTIVE") - Number(b.status === "ACTIVE"),
+      },
+    ],
+  });
 
-  async function connect() {
-    const value = address.trim();
-    if (!isValidEmail(value)) {
-      setFormError("Enter a valid email address.");
-      return;
-    }
-    if (list.some((c) => c.address.toLowerCase() === value.toLowerCase())) {
-      setFormError("That address is already connected.");
-      return;
-    }
-    if (verifiedAddress !== value.toLowerCase()) {
-      setFormError("Check that this email domain is verified in Resend before saving.");
-      return;
-    }
-    setSaving(true);
-    setFormError(null);
-    try {
-      const created = await createSubDepartmentMailboxConnection(subDepartmentId, { address: value });
-      setConnections((prev) => [...(prev ?? []), created]);
-      setAddress("");
-      setShowConnect(false);
-    } catch (e) {
-      setFormError(e instanceof Error ? e.message : "Couldn't connect that mailbox.");
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  async function checkVerification() {
-    const value = address.trim();
-    if (!isValidEmail(value)) {
-      setFormError("Enter a valid email address.");
-      return;
-    }
-    if (list.some((c) => c.address.toLowerCase() === value.toLowerCase())) {
-      setFormError("That address is already connected.");
-      return;
-    }
-    setCheckingVerification(true);
-    setFormError(null);
-    try {
-      const res = await fetch(`/api/admin/email-identity/domain-status?email=${encodeURIComponent(value)}`);
-      const data = await res.json().catch(() => ({})) as { domain?: string | null; status?: string; error?: string };
-      if (!res.ok) throw new Error(data.error ?? "Couldn't check Resend verification.");
-      if (data.status !== "verified") {
-        setVerifiedAddress(null);
-        setFormError(`The ${data.domain ?? "email"} domain is not verified in Resend. Contact the Resend manager to add and verify it.`);
-        return;
-      }
-      setVerifiedAddress(value.toLowerCase());
-    } catch (e) {
-      setVerifiedAddress(null);
-      setFormError(e instanceof Error ? e.message : "Couldn't check Resend verification.");
-    } finally {
-      setCheckingVerification(false);
-    }
-  }
-
-  function startEditAssignment(c: MailboxConnection) {
+  function startEditAssignment(c: DeptMailbox) {
     setEditingAssignmentId(c.id);
     setDraftAssignmentMethod(c.assignmentMethod ?? "INHERIT");
     setDraftMemberIds(c.manualAssigneeIds);
     setAssignmentError(null);
   }
 
-  async function saveAssignmentMethod(c: MailboxConnection) {
+  async function saveAssignmentMethod(c: DeptMailbox) {
     const method = draftAssignmentMethod === "INHERIT" ? null : draftAssignmentMethod;
     if (method === "MANUAL_SELECT" && draftMemberIds.length === 0) {
       setAssignmentError("Select at least one member for the Manual user method.");
@@ -249,7 +213,7 @@ export function SubDepartmentMailboxManager({
         assignmentMethod: method,
         manualAssigneeIds: method === "MANUAL_SELECT" ? draftMemberIds : [],
       });
-      setConnections((prev) => (prev ?? []).map((x) => (x.id === c.id ? updated : x)));
+      setConnections((prev) => (prev ?? []).map((x) => (x.id === c.id ? asDeptMailbox(updated) : x)));
       setEditingAssignmentId(null);
     } catch (e) {
       setAssignmentError(e instanceof Error ? e.message : "Couldn't update the assignment method.");
@@ -264,26 +228,11 @@ export function SubDepartmentMailboxManager({
     );
   }
 
-  async function saveEdit(id: string) {
-    const value = editAddress.trim();
-    if (!isValidEmail(value)) return;
-    setSaving(true);
-    try {
-      const updated = await updateMailboxConnection(id, { address: value });
-      setConnections((prev) => (prev ?? []).map((c) => (c.id === id ? updated : c)));
-      setEditingId(null);
-    } catch {
-      // keep the row in edit mode so the admin can retry
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function recheck(id: string) {
     setRechecking((prev) => ({ ...prev, [id]: true }));
     try {
       const updated = await recheckMailboxConnection(id);
-      setConnections((prev) => (prev ?? []).map((c) => (c.id === id ? updated : c)));
+      setConnections((prev) => (prev ?? []).map((c) => (c.id === id ? asDeptMailbox(updated) : c)));
     } catch {
       // leave the previous status in place on a failed check
     } finally {
@@ -300,11 +249,11 @@ export function SubDepartmentMailboxManager({
   // Manual on/off switch. Turning a mailbox off stops new tickets being opened
   // from it (the inbound router skips inactive mailboxes) without touching any
   // existing tickets.
-  async function toggleActive(c: MailboxConnection) {
+  async function toggleActive(c: DeptMailbox) {
     setTogglingId((prev) => ({ ...prev, [c.id]: true }));
     try {
       const updated = await updateMailboxConnection(c.id, { isActive: !c.isActive });
-      setConnections((prev) => (prev ?? []).map((x) => (x.id === c.id ? updated : x)));
+      setConnections((prev) => (prev ?? []).map((x) => (x.id === c.id ? asDeptMailbox(updated) : x)));
     } catch {
       // leave the current state in place on a failed toggle
     } finally {
@@ -312,7 +261,7 @@ export function SubDepartmentMailboxManager({
     }
   }
 
-  async function copyAddress(c: MailboxConnection) {
+  async function copyAddress(c: DeptMailbox) {
     try {
       await navigator.clipboard.writeText(c.address);
       setCopiedId(c.id);
@@ -353,96 +302,58 @@ export function SubDepartmentMailboxManager({
       />
 
       {/* ── Header ── */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h1 className="sts-text-admin-title">Mailbox</h1>
           <p className="mt-[3px] font-sans text-[13px] text-sts-muted">
             Connect the shared inboxes that open tickets for {subDepartmentName}.
           </p>
         </div>
+        <div className="flex flex-wrap items-center gap-2">
+          {canManage && !ownMailbox && (
+            <button
+              type="button"
+              onClick={() => setShowConnect(true)}
+              className="flex h-8 items-center gap-1.5 rounded-full bg-sts-blue px-3.5 font-sans text-[12.5px] font-medium text-white dark:text-gray-900"
+            >
+              <Plus className="size-3.5" />
+              Connect inbox
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* ── Request a sending domain (managers) ── */}
-      {canRequestDomain && (
-        <DomainRequestForm
-          departmentId={departmentId}
-          fixedSubDepartment={{ id: subDepartmentId, name: subDepartmentName }}
-          existingRequests={domainRequests}
-          onConnectMailbox={
-            canManage
-              ? (domain) => {
-                  setAddress(`@${domain}`);
-                  setVerifiedAddress(null);
-                  setShowConnect(true);
-                  setTimeout(() => {
-                    const el = addressRef.current;
-                    if (el) {
-                      el.focus();
-                      // setSelectionRange throws on type="email"/"number" inputs,
-                      // which don't support text selection. Guard against it.
-                      if (/^(text|search|url|tel|password)$/.test(el.type)) {
-                        el.setSelectionRange(0, 0);
-                      }
-                    }
-                  }, 50);
-                }
-              : undefined
-          }
-        />
+      {!loading && (
+        <ReplyMailboxNotice>
+          {ownMailbox ? (
+            <>
+              Customers of {subDepartmentName} email and hear back from{" "}
+              <span className="font-medium">{ownMailbox.address}</span>.
+            </>
+          ) : departmentMailbox ? (
+            <>
+              Customer email for {subDepartmentName} uses the department mailbox{" "}
+              <span className="font-medium">{departmentMailbox}</span>. Optionally connect this sub-department&rsquo;s
+              own mailbox to use its own address instead.
+            </>
+          ) : (
+            <>
+              No department mailbox is connected yet. Connect one on the department&rsquo;s Mailboxes page, or connect
+              an inbox for {subDepartmentName} here.
+            </>
+          )}
+        </ReplyMailboxNotice>
       )}
 
       {/* ── Connect form ── */}
       {canManage && showConnect && (
-        <div className="flex flex-col gap-2 rounded-xl border border-sts-card-border bg-sts-card p-4">
-          <label className="font-sans text-[11.5px] font-medium text-sts-muted">Mailbox address</label>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <input
-              ref={addressRef}
-              autoFocus
-              type="text"
-              inputMode="email"
-              value={address}
-              onChange={(e) => { setAddress(e.target.value); setFormError(null); setVerifiedAddress(null); }}
-              onKeyDown={(e) => { if (e.key === "Enter") { if (verifiedAddress === address.trim().toLowerCase()) connect(); else checkVerification(); } if (e.key === "Escape") setShowConnect(false); }}
-              placeholder="support@yourcompany.com"
-              className="h-9 flex-1 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-blue/50"
-            />
-            <div className="flex items-center gap-2">
-              {verifiedAddress === address.trim().toLowerCase() ? (
-                <button
-                  type="button"
-                  onClick={connect}
-                  disabled={saving}
-                  className="flex h-9 items-center gap-1.5 rounded-full bg-sts-blue px-3.5 font-sans text-[12.5px] font-medium text-white disabled:opacity-50 dark:text-gray-900"
-                >
-                  {saving && <Loader2 className="size-3.5 animate-spin" />}
-                  Save
-                </button>
-              ) : isValidEmail(address) ? (
-                <button
-                  type="button"
-                  onClick={checkVerification}
-                  disabled={checkingVerification}
-                  className="flex h-9 items-center gap-1.5 rounded-full bg-sts-blue px-3.5 font-sans text-[12.5px] font-medium text-white disabled:opacity-50 dark:text-gray-900"
-                >
-                  {checkingVerification ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
-                  Check
-                </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={() => { setShowConnect(false); setFormError(null); setVerifiedAddress(null); }}
-                className="h-9 rounded-full px-3 font-sans text-[12.5px] font-medium text-sts-muted hover:text-sts-foreground"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-          {formError && <p className="font-sans text-[11.5px] text-red-500">{formError}</p>}
-          <p className="font-sans text-[11px] text-sts-subtle">
-            Forward or deliver mail to this address and each new email opens a{" "}
-            <span className="font-mono text-sts-muted">{prefix}-###</span> ticket for the sub-department.
-          </p>
+        <div className="flex flex-col gap-3 rounded-xl border border-sts-card-border bg-sts-card p-4">
+          <ExternalMailboxConnectForm
+            teamId={subDepartmentId}
+            scopeType="SUB_DEPARTMENT"
+            existingAddresses={list.map((c) => c.address)}
+            onCancel={() => setShowConnect(false)}
+          />
         </div>
       )}
 
@@ -463,8 +374,18 @@ export function SubDepartmentMailboxManager({
           </p>
         </div>
       ) : (
+        <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-2">
+          <ListSearchInput value={mailboxList.query} onChange={mailboxList.setQuery} placeholder="Search mailboxes…" />
+          <SortDropdown value={mailboxList.sortKey} onChange={mailboxList.setSortKey} options={mailboxList.sortDropdownOptions} />
+        </div>
+        {mailboxList.visible.length === 0 && (
+          <p className="rounded-2xl border border-dashed border-sts-card-border bg-sts-card px-4 py-8 text-center font-sans text-[12.5px] text-sts-muted">
+            No mailboxes match &ldquo;{mailboxList.query.trim()}&rdquo;
+          </p>
+        )}
         <ul className="flex flex-col gap-3">
-          {list.map((c) => {
+          {mailboxList.visible.map((c) => {
             const meta = STATUS[c.status];
             const busy = !!rechecking[c.id];
             return (
@@ -475,42 +396,32 @@ export function SubDepartmentMailboxManager({
                   </span>
 
                   <div className="min-w-0 flex-1">
-                    {editingId === c.id ? (
-                      <div className="flex items-center gap-2">
-                        <input
-                          autoFocus
-                          value={editAddress}
-                          onChange={(e) => setEditAddress(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === "Enter") saveEdit(c.id); if (e.key === "Escape") setEditingId(null); }}
-                          className="min-w-0 flex-1 rounded-md border border-sts-blue/50 bg-sts-surface px-2 py-1 font-sans text-[13px] text-sts-foreground outline-none"
-                        />
-                        <button type="button" onClick={() => saveEdit(c.id)} disabled={saving} title="Save" className="rounded-full p-1 text-sts-green hover:bg-sts-green/10">
-                          <Check className="size-4" />
-                        </button>
-                        <button type="button" onClick={() => setEditingId(null)} title="Cancel" className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground">
-                          <X className="size-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="min-w-0 truncate font-sans text-[13.5px] font-medium text-sts-foreground">
-                          {c.address}
-                        </span>
+                    <div className="flex items-center gap-2">
+                      <span className="min-w-0 truncate font-sans text-[13.5px] font-medium text-sts-foreground">
+                        {c.address}
+                      </span>
+                      <Tip label={copiedId === c.id ? "Copied" : "Copy address"}>
                         <button
+                          aria-label="Copy address"
                           type="button"
                           onClick={() => copyAddress(c)}
-                          title="Copy address"
                           className="shrink-0 rounded-full p-1 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
                         >
                           {copiedId === c.id ? <Check className="size-3.5 text-sts-green" /> : <Copy className="size-3.5" />}
                         </button>
-                      </div>
-                    )}
+                      </Tip>
+                    </div>
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[11px] text-sts-subtle">
-                      <span className="rounded bg-sts-surface px-1.5 py-0.5 font-mono text-[9.5px] text-sts-muted">
-                        {c.authType}
+                      <span className="rounded bg-sts-surface px-1.5 py-0.5 font-sans text-[10px] font-medium text-sts-muted">
+                        {MAILBOX_PROVIDER_META[c.authType].short}
                       </span>
+                      {c.authType === "OAUTH_M365" && c.scopeType === "SUB_DEPARTMENT" && (
+                        <span className="rounded bg-sts-green/10 px-1.5 py-0.5 font-medium text-sts-green">
+                          Sends customer email
+                        </span>
+                      )}
                       <span>Checked {relativeTime(c.lastCheckedAt)}</span>
+                      {isPullProvider(c.authType) && <span>Synced {relativeTime(c.lastSyncedAt)}</span>}
                       {c.failureCount > 0 && (
                         <span className="text-amber-600 dark:text-amber-400">
                           {c.failureCount} failed check{c.failureCount === 1 ? "" : "s"}
@@ -531,14 +442,16 @@ export function SubDepartmentMailboxManager({
                           )
                         )}
                         {canManage && editingAssignmentId !== c.id && (
-                          <button
-                            type="button"
-                            onClick={() => startEditAssignment(c)}
-                            title="Edit assignment method"
-                            className="rounded-full p-0.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-                          >
-                            <Pencil className="size-3" />
-                          </button>
+                          <Tip label="Edit assignment method">
+                            <button
+                              aria-label="Edit assignment method"
+                              type="button"
+                              onClick={() => startEditAssignment(c)}
+                              className="rounded-full p-0.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+                            >
+                              <Pencil className="size-3" />
+                            </button>
+                          </Tip>
                         )}
                       </span>
                     </div>
@@ -556,46 +469,58 @@ export function SubDepartmentMailboxManager({
                         Off
                       </span>
                     )}
-                    {canManage && editingId !== c.id && (
+                    {canManage && (
                       <div className="flex items-center gap-0.5">
-                        <button
-                          type="button"
-                          onClick={() => (c.isActive ? setConfirmDisable(c) : toggleActive(c))}
-                          disabled={!!togglingId[c.id]}
-                          title={c.isActive ? "Turn off — stop opening new tickets" : "Turn on — resume opening tickets"}
-                          className={cn(
-                            "flex items-center gap-1 rounded-full px-2 py-1 font-sans text-[11px] font-medium hover:bg-sts-surface disabled:opacity-50",
-                            c.isActive ? "text-sts-green hover:text-sts-green" : "text-sts-subtle hover:text-sts-foreground",
-                          )}
-                        >
-                          {togglingId[c.id] ? <Loader2 className="size-3.5 animate-spin" /> : <Power className="size-3.5" />}
-                          {c.isActive ? "On" : "Off"}
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => recheck(c.id)}
-                          disabled={busy}
-                          title="Test connection"
-                          className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
-                        >
-                          <RefreshCw className={cn("size-3.5", busy && "animate-spin")} />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => { setEditingId(c.id); setEditAddress(c.address); }}
-                          title="Edit address"
-                          className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-                        >
-                          <Pencil className="size-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setConfirmDisconnect(c)}
-                          title="Disconnect"
-                          className="rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
+                        <Tip label={c.isActive ? "Turn off — stop opening new tickets" : "Turn on — resume opening tickets"}>
+                          <button
+                            type="button"
+                            onClick={() => (c.isActive ? setConfirmDisable(c) : toggleActive(c))}
+                            disabled={!!togglingId[c.id]}
+                            className={cn(
+                              "flex items-center gap-1 rounded-full px-2 py-1 font-sans text-[11px] font-medium hover:bg-sts-surface disabled:opacity-50",
+                              c.isActive ? "text-sts-green hover:text-sts-green" : "text-sts-subtle hover:text-sts-foreground",
+                            )}
+                          >
+                            {togglingId[c.id] ? <Loader2 className="size-3.5 animate-spin" /> : <Power className="size-3.5" />}
+                            {c.isActive ? "On" : "Off"}
+                          </button>
+                        </Tip>
+                        {isOAuthProvider(c.authType) && (
+                          <Tip label={`Reconnect — sign in with ${MAILBOX_PROVIDER_META[c.authType].label} again`}>
+                            <button
+                              aria-label="Reconnect mailbox"
+                              type="button"
+                              onClick={() => reconnectMailbox(c)}
+                              className={cn(
+                                "rounded-full p-1.5 hover:bg-sts-surface hover:text-sts-foreground",
+                                c.status === "ACTIVE" ? "text-sts-subtle" : "text-red-500",
+                              )}
+                            >
+                              <LogIn className="size-3.5" />
+                            </button>
+                          </Tip>
+                        )}
+                        <Tip label={isPullProvider(c.authType) ? "Test connection & check for new mail" : "Test connection"}>
+                          <button
+                            aria-label="Test connection"
+                            type="button"
+                            onClick={() => recheck(c.id)}
+                            disabled={busy}
+                            className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+                          >
+                            <RefreshCw className={cn("size-3.5", busy && "animate-spin")} />
+                          </button>
+                        </Tip>
+                        <Tip label="Disconnect">
+                          <button
+                            aria-label="Disconnect"
+                            type="button"
+                            onClick={() => setConfirmDisconnect(c)}
+                            className="rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </Tip>
                       </div>
                     )}
                   </div>
@@ -628,24 +553,28 @@ export function SubDepartmentMailboxManager({
                           ))}
                         </SelectContent>
                       </Select>
-                      <button
-                        type="button"
-                        onClick={() => saveAssignmentMethod(c)}
-                        disabled={savingAssignment}
-                        title="Save assignment method"
-                        className="rounded-full p-1 text-sts-green hover:bg-sts-green/10 disabled:opacity-50"
-                      >
-                        {savingAssignment ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setEditingAssignmentId(null); setAssignmentError(null); }}
-                        disabled={savingAssignment}
-                        title="Cancel"
-                        className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground disabled:opacity-50"
-                      >
-                        <X className="size-3.5" />
-                      </button>
+                      <Tip label="Save assignment method">
+                        <button
+                          aria-label="Save assignment method"
+                          type="button"
+                          onClick={() => saveAssignmentMethod(c)}
+                          disabled={savingAssignment}
+                          className="rounded-full p-1 text-sts-green hover:bg-sts-green/10 disabled:opacity-50"
+                        >
+                          {savingAssignment ? <Loader2 className="size-3.5 animate-spin" /> : <Check className="size-3.5" />}
+                        </button>
+                      </Tip>
+                      <Tip label="Cancel">
+                        <button
+                          aria-label="Cancel"
+                          type="button"
+                          onClick={() => { setEditingAssignmentId(null); setAssignmentError(null); }}
+                          disabled={savingAssignment}
+                          className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground disabled:opacity-50"
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      </Tip>
                     </div>
 
                     {/* Member picker — only for the "Manual user" method. One picked
@@ -702,6 +631,7 @@ export function SubDepartmentMailboxManager({
             );
           })}
         </ul>
+        </div>
       )}
 
       {/* ── Received mail (only once a mailbox is connected) ── */}
@@ -717,6 +647,7 @@ export function SubDepartmentMailboxManager({
         <ul className="mt-2 flex flex-col gap-1.5 font-sans text-[12px] text-sts-muted">
           <li>• Mail delivered to a connected address opens a new ticket for {subDepartmentName}.</li>
           <li>• Tickets are keyed <span className="font-mono text-sts-foreground">{prefix}-###</span>, and replies thread onto the same ticket.</li>
+          <li>• Microsoft 365 inboxes are checked for new mail every couple of minutes; mail is only read, never moved or deleted.</li>
           <li>• We check each connection automatically; use <span className="text-sts-foreground">Test connection</span> to verify one right now.</li>
         </ul>
       </div>

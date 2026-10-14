@@ -3,23 +3,19 @@ import { getProfile } from "@/lib/profile"
 import { prisma } from "@/lib/db"
 import { getPlatformSettings } from "@/lib/platform-settings"
 import { getMailpitUiBase } from "@/lib/email-transport"
-import { OTP_DEFAULT } from "@/lib/email-templates/otp"
 import { PlatformSettingsAdmin } from "@/components/platform/platform-settings-admin"
 
 export const dynamic = "force-dynamic"
+
+export const metadata = { title: "Platform settings — Global Support Portal" }
 
 export default async function PlatformSettingsPage() {
   const profile = await getProfile()
   if (!profile) redirect("/login")
   if (!profile.isSuperAdmin) redirect("/")
 
-  const [tenants, settings, tenantCount, suspendedCount, superAdminCount, templateCount, flagOverrides] =
+  const [settings, tenantCount, suspendedCount, superAdminCount, templateCount, flagOverrides] =
     await Promise.all([
-      prisma.tenant.findMany({
-        where: { deletedAt: null },
-        orderBy: { name: "asc" },
-        select: { id: true, name: true, slug: true, status: true },
-      }),
       getPlatformSettings(),
       prisma.tenant.count({ where: { deletedAt: null } }),
       prisma.tenant.count({ where: { deletedAt: null, status: "suspended" } }),
@@ -38,12 +34,9 @@ export default async function PlatformSettingsPage() {
 
   return (
     <PlatformSettingsAdmin
-      tenants={tenants}
       settings={settings}
       overview={overview}
       mailpitUiBase={getMailpitUiBase()}
-      otpTemplate={settings.otpEmailTemplate}
-      otpDefault={OTP_DEFAULT}
     />
   )
 }

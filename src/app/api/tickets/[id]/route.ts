@@ -1,3 +1,6 @@
+import type { StatusCategory } from "@/lib/status-category"
+import { syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
+import { checkAndNotifyEstimateOverrun } from "@/lib/time-estimate-notify"
 import { NextRequest, NextResponse, after } from "next/server"
 import { requireAuth, assertTicketAccess, assertTicketEditAccess } from "@/lib/auth"
 import { prisma } from "@/lib/db"
@@ -16,6 +19,7 @@ import { labelsAfterDeEscalation } from "@/lib/ticket-escalation"
 import { startTimerOnStatusChange } from "@/lib/timer-autostart"
 import { stopRunningTimersOnStatusChange } from "@/lib/timer-autostop"
 import { runWithScope, uniqueTicketReadScope } from "@/lib/request-scope"
+import { AGENT_UNAVAILABLE_LABEL, clearAgentUnavailableLabel } from "@/lib/agent-unavailable"
 const VALID_PRIORITIES = ["Low", "Medium", "High", "Critical", "Urgent"] as const
 type TicketPriority = (typeof VALID_PRIORITIES)[number]
 
@@ -117,6 +121,7 @@ export async function PATCH(
     )
   }
 
+  let nextStatusCategory: StatusCategory | undefined
   const updateData: {
     title?: string
     assigneeId?: string | null
@@ -169,9 +174,11 @@ export async function PATCH(
     updateData.status = status.trim()
     const subDepartmentStatus = await prisma.subDepartmentStatus.findFirst({
       where: { subDepartmentId: ticket.subDepartmentId, label: updateData.status },
-      select: { isComplete: true },
+      select: { category: true, isComplete: true },
     })
-    const isCompletion = !!subDepartmentStatus?.isComplete
+    if (!subDepartmentStatus) return NextResponse.json({ error: "Invalid status for this sub-department" }, { status: 400 })
+    nextStatusCategory = subDepartmentStatus.category
+    const isCompletion = subDepartmentStatus.category === "COMPLETE"
     updateData.closedAt = isCompletion ? (ticket.closedAt ?? new Date()) : null
 
     // Start the resolution timer on entry to "In Progress"; stop it + record the
@@ -181,6 +188,7 @@ export async function PATCH(
       updateData,
       resolutionUpdateOnStatusChange({
         toStatus: updateData.status,
+        category: subDepartmentStatus.category,
         isCompletion,
         newClosedAt: updateData.closedAt,
         currentInProgressStartedAt: ticket.inProgressStartedAt,
@@ -362,9 +370,18 @@ export async function PATCH(
     // Starting active work de-escalates: drop the "Escalated" label on entry to
     // In Progress, matching /status and /move.
     const base = updateData.labels ?? ticket.labels
-    const deEscalated = labelsAfterDeEscalation(base, updateData.status as string)
+    const deEscalated = labelsAfterDeEscalation(base, updateData.status as string, nextStatusCategory)
     if (deEscalated.length !== base.length) {
       updateData.labels = deEscalated
+    }
+  }
+
+  // A closed ticket isn't waiting on anyone — and the availability sweep only
+  // revisits open tickets, so the flag would otherwise stick forever.
+  if (updateData.closedAt) {
+    const base = updateData.labels ?? ticket.labels
+    if (base.includes(AGENT_UNAVAILABLE_LABEL)) {
+      updateData.labels = clearAgentUnavailableLabel(base)
     }
   }
 
@@ -444,6 +461,7 @@ export async function PATCH(
   }
 
   if (hasEstimatedTime && updateData.estimatedTime !== ticket.estimatedTime) {
+    await checkAndNotifyEstimateOverrun(id)
     events.push(appendTicketEvent(id, profile.id, "ESTIMATED_TIME_CHANGED", {
       from: ticket.estimatedTime ?? null,
       to:   updateData.estimatedTime ?? null,
@@ -623,12 +641,13 @@ export async function PATCH(
   // auto-stop/-start the assignee's timer and cascade completion to sub-tickets.
   if (hasStatus && updated.status !== ticket.status) {
     after(() => runWithScope(uniqueTicketReadScope(profile, id), async () => {
-      await stopRunningTimersOnStatusChange(id, updated.status).catch(() => undefined)
+      if (ticket.closedAt !== updateData.closedAt) await syncResolutionTimerOnClosedAtChange(id, updateData.closedAt ?? null).catch(() => undefined)
+      await stopRunningTimersOnStatusChange(id, updated.status, nextStatusCategory).catch(() => undefined)
       await startTimerOnStatusChange(id, updated.status, {
         id: profile.id,
         name: profile.name,
         avatarUrl: profile.avatarUrl,
-      }).catch(() => undefined)
+      }, nextStatusCategory).catch(() => undefined)
     }))
     if (updateData.closedAt) {
       cascadeCompleteToSubtickets(id).catch(() => undefined)

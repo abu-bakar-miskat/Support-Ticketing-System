@@ -20,8 +20,19 @@ import { formatDateTime } from "@/lib/format";
 import { usePersistedView, VIEW_KEYS } from "@/hooks/use-persisted-view";
 import { useDashboardContext } from "@/components/dashboard/dashboard-context";
 import { usePinnedProjects } from "@/hooks/use-pinned-projects";
+import { Tip } from "@/components/ui/tooltip";
+import { SortDropdown, byDateAsc, byDateDesc, byNumberDesc, byText } from "@/components/ui/list-controls";
 
 type ProjectRow = ProjectListRow;
+
+const PROJECT_SORTS: { id: string; label: string; compare: (a: ProjectRow, b: ProjectRow) => number }[] = [
+  { id: "name", label: "Name (A–Z)", compare: byText((p) => p.name) },
+  { id: "name_desc", label: "Name (Z–A)", compare: (a, b) => byText<ProjectRow>((p) => p.name)(b, a) },
+  { id: "newest", label: "Newest first", compare: byDateDesc((p) => p.createdAt) },
+  { id: "oldest", label: "Oldest first", compare: byDateAsc((p) => p.createdAt) },
+  { id: "tickets", label: "Most tickets", compare: byNumberDesc((p) => p.ticketCount) },
+  { id: "members", label: "Most members", compare: byNumberDesc((p) => p.members.length) },
+];
 
 const PROJECT_STATUS: Record<string, { label: string; shortLabel: string; color: string }> = {
   live:           { label: "Live",           shortLabel: "Live",     color: "#059669" },
@@ -243,20 +254,24 @@ function ProjectMenu({
 
   return (
     <div className="relative shrink-0">
-      <button
-        ref={btnRef}
-        type="button"
-        onClick={openMenu}
-        className={cn(
-          "flex size-7 items-center justify-center rounded-full transition-colors",
-          open
-            ? "bg-sts-surface text-sts-foreground"
-            : "text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground",
-        )}
-        title="Quick actions"
-      >
-        <MoreHorizontal className="size-4" />
-      </button>
+      <Tip label="Quick actions">
+        <button
+          aria-label="Quick actions"
+          aria-haspopup="menu"
+          aria-expanded={open}
+          ref={btnRef}
+          type="button"
+          onClick={openMenu}
+          className={cn(
+            "flex size-7 items-center justify-center rounded-full transition-colors",
+            open
+              ? "bg-sts-surface text-sts-foreground"
+              : "text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground",
+          )}
+        >
+          <MoreHorizontal className="size-4" />
+        </button>
+      </Tip>
       {typeof window !== "undefined" && createPortal(dropdown, document.body)}
     </div>
   );
@@ -431,14 +446,16 @@ function ProjectListRow({
               <span className="font-sans text-[11.5px] text-sts-subtle">—</span>
             )}
           </div>
-          <button
-            type="button"
-            onClick={(e) => { e.preventDefault(); onManageMembers(); }}
-            title="Add members"
-            className="flex size-6 shrink-0 items-center justify-center rounded-full border border-dashed border-sts-card-border text-sts-subtle transition-colors hover:border-sts-id hover:text-sts-id"
-          >
-            <UserPlus className="size-3" />
-          </button>
+          <Tip label="Add members">
+            <button
+              aria-label="Add members"
+              type="button"
+              onClick={(e) => { e.preventDefault(); onManageMembers(); }}
+              className="flex size-6 shrink-0 items-center justify-center rounded-full border border-dashed border-sts-card-border text-sts-subtle transition-colors hover:border-sts-id hover:text-sts-id"
+            >
+              <UserPlus className="size-3" />
+            </button>
+          </Tip>
         </div>
       </td>
 
@@ -468,31 +485,35 @@ function ProjectListRow({
       </td>
 
       <td className="hidden py-2.5 2xl:table-cell">
-        <button
-          type="button"
-          title="Click to copy"
-          onClick={(e) => { e.preventDefault(); navigator.clipboard.writeText(project.id).then(() => toast.success("Project ID copied")); }}
-          className="max-w-[100px] truncate rounded bg-sts-surface px-1.5 py-0.5 font-mono text-[10.5px] text-sts-muted transition-colors hover:bg-sts-card-border hover:text-sts-foreground"
-        >
-          {project.id}
-        </button>
+        <Tip label="Copy project ID">
+          <button
+            type="button"
+            onClick={(e) => { e.preventDefault(); navigator.clipboard.writeText(project.id).then(() => toast.success("Project ID copied")); }}
+            className="max-w-[100px] truncate rounded bg-sts-surface px-1.5 py-0.5 font-mono text-[10.5px] text-sts-muted transition-colors hover:bg-sts-card-border hover:text-sts-foreground"
+          >
+            {project.id}
+          </button>
+        </Tip>
       </td>
 
       <td className="py-2.5 pr-4">
         <div className="flex items-center justify-end gap-0.5">
-          <button
-            type="button"
-            onClick={onTogglePin}
-            title={isPinned ? "Unpin project" : "Pin project"}
-            className={cn(
-              "flex size-7 items-center justify-center rounded-full transition-colors",
-              isPinned
-                ? "text-sts-blue hover:bg-sts-blue/10"
-                : "text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground",
-            )}
-          >
-            {isPinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
-          </button>
+          <Tip label={isPinned ? "Unpin project" : "Pin project"}>
+            <button
+              aria-label={isPinned ? "Unpin project" : "Pin project"}
+              aria-pressed={isPinned}
+              type="button"
+              onClick={onTogglePin}
+              className={cn(
+                "flex size-7 items-center justify-center rounded-full transition-colors",
+                isPinned
+                  ? "text-sts-blue hover:bg-sts-blue/10"
+                  : "text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground",
+              )}
+            >
+              {isPinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
+            </button>
+          </Tip>
           <ProjectMenu
             project={{ ...project, projectStatus: rawStatus }}
             onStatusChange={onStatusChange}
@@ -563,19 +584,22 @@ function ProjectCard({
         </Link>
 
         <div className="flex shrink-0 items-center gap-0.5">
-          <button
-            type="button"
-            onClick={onTogglePin}
-            title={isPinned ? "Unpin project" : "Pin project"}
-            className={cn(
-              "flex size-7 items-center justify-center rounded-full transition-colors",
-              isPinned
-                ? "text-sts-blue hover:bg-sts-blue/10"
-                : "text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground",
-            )}
-          >
-            {isPinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
-          </button>
+          <Tip label={isPinned ? "Unpin project" : "Pin project"}>
+            <button
+              aria-label={isPinned ? "Unpin project" : "Pin project"}
+              aria-pressed={isPinned}
+              type="button"
+              onClick={onTogglePin}
+              className={cn(
+                "flex size-7 items-center justify-center rounded-full transition-colors",
+                isPinned
+                  ? "text-sts-blue hover:bg-sts-blue/10"
+                  : "text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground",
+              )}
+            >
+              {isPinned ? <PinOff className="size-3.5" /> : <Pin className="size-3.5" />}
+            </button>
+          </Tip>
           <ProjectMenu
             project={{ ...project, projectStatus: rawStatus }}
             onStatusChange={onStatusChange}
@@ -651,31 +675,34 @@ function ProjectCard({
               <span className="font-sans text-[11.5px] text-sts-subtle">No members</span>
             )}
           </div>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              onManageMembers();
-            }}
-            title="Add members"
-            className="flex size-6 shrink-0 items-center justify-center rounded-full border border-dashed border-sts-card-border text-sts-subtle transition-colors hover:border-sts-id hover:text-sts-id"
-          >
-            <UserPlus className="size-3" />
-          </button>
+          <Tip label="Add members">
+            <button
+              aria-label="Add members"
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                onManageMembers();
+              }}
+              className="flex size-6 shrink-0 items-center justify-center rounded-full border border-dashed border-sts-card-border text-sts-subtle transition-colors hover:border-sts-id hover:text-sts-id"
+            >
+              <UserPlus className="size-3" />
+            </button>
+          </Tip>
         </div>
 
-        <button
-          type="button"
-          title="Click to copy project ID"
-          onClick={() =>
-            navigator.clipboard
-              .writeText(project.id)
-              .then(() => toast.success("Project ID copied"))
-          }
-          className="max-w-[120px] truncate rounded bg-sts-surface px-1.5 py-0.5 font-mono text-[10px] text-sts-muted transition-colors hover:bg-sts-card-border hover:text-sts-foreground"
-        >
-          {project.id}
-        </button>
+        <Tip label="Copy project ID">
+          <button
+            type="button"
+            onClick={() =>
+              navigator.clipboard
+                .writeText(project.id)
+                .then(() => toast.success("Project ID copied"))
+            }
+            className="max-w-[120px] truncate rounded bg-sts-surface px-1.5 py-0.5 font-mono text-[10px] text-sts-muted transition-colors hover:bg-sts-card-border hover:text-sts-foreground"
+          >
+            {project.id}
+          </button>
+        </Tip>
       </div>
     </article>
   );
@@ -714,6 +741,8 @@ export function ProjectsListPage({
   const [layout, setLayout] = usePersistedView(VIEW_KEYS.projectsLayout, "cards", ["list", "cards"] as const);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  // "default" keeps the server order (pinned projects always stay on top).
+  const [sortKey, setSortKey] = useState("default");
   const [membersModal, setMembersModal] = useState<{ id: string; name: string } | null>(null);
   const [editProject, setEditProject] = useState<ProjectRow | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
@@ -733,6 +762,9 @@ export function ProjectsListPage({
       filterStatus === "all" || effectiveStatus === filterStatus;
     return matchSearch && matchStatus;
   });
+
+  const compare = PROJECT_SORTS.find((o) => o.id === sortKey)?.compare;
+  if (compare) filtered.sort(compare);
 
   const pinned = filtered.filter((p) => pins.has(p.id));
   const unpinned = filtered.filter((p) => !pins.has(p.id));
@@ -856,10 +888,18 @@ export function ProjectsListPage({
                 </Button>
               )}
 
-              <div className={cn(
-                "flex h-8 shrink-0 overflow-hidden rounded-full border border-sts-card-border bg-sts-card",
-                isCrossAccess && "ml-auto",
-              )}>
+              <div className={cn("shrink-0", isCrossAccess && "ml-auto")}>
+                <SortDropdown
+                  value={sortKey}
+                  onChange={setSortKey}
+                  options={[
+                    { id: "default", label: "Default order" },
+                    ...PROJECT_SORTS.map(({ id, label }) => ({ id, label })),
+                  ]}
+                />
+              </div>
+
+              <div className="flex h-8 shrink-0 overflow-hidden rounded-full border border-sts-card-border bg-sts-card">
                 <button
                   type="button"
                   onClick={() => setLayout("list")}

@@ -1,3 +1,4 @@
+import { loadMailboxOrigins } from "@/lib/mailbox-ticket-origin"
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdminOrManager } from "@/lib/auth";
@@ -42,10 +43,10 @@ async function loadMailboxMail(departmentId: string) {
     select: { id: true, address: true, status: true },
   });
 
-  const [messages, suppressed] = await Promise.all([
+  const [messages, suppressed, origins] = await Promise.all([
     prisma.ticketMessage.findMany({
       where: {
-        direction: "inbound",
+        direction: "inbound", status: { not: "system" },
         ticket: { subDepartment: { departmentId } },
       },
       orderBy: { createdAt: "desc" },
@@ -77,11 +78,12 @@ async function loadMailboxMail(departmentId: string) {
           take: 200,
         })
       : Promise.resolve([]),
+    loadMailboxOrigins({ departmentId }),
   ]);
 
   return NextResponse.json({
     connections,
-    messages: messages.map((m) => ({
+    messages: [...messages, ...origins].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime()).slice(0, 200).map((m) => ({
       id: m.id,
       status: m.status,
       fromName: m.fromName,

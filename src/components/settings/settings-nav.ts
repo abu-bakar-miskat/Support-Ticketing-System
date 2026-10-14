@@ -15,6 +15,8 @@ export type SettingsNavItem = {
   departmentAdmin?: true;
   /** Admins and managers see this item; staff do not */
   managerOnly?: true;
+  /** Hidden from sub-managers even when otherwise visible (e.g. managerOnly items) */
+  hideForSubManager?: true;
   /** Hidden for cross-department-access outsiders — department-specific management only */
   deptSpecific?: true;
   /** Tenant-level setting — shown only in tenant view (no active department), hidden inside a department */
@@ -67,15 +69,11 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         templateFeatureKey: "branding",
       },
       {
-        label: "Email domains",
-        href: "/settings/email-domains",
-        adminOnly: true,
+        label: "Feature marketplace",
+        href: "/settings/features",
+        managerOnly: true,
         tenantScoped: true,
-      },
-      {
-        label: "Template Marketplace",
-        href: "/settings/templates-catalogue",
-        adminOnly: true,
+        hideForSubManager: true,
       },
     ],
   },
@@ -102,6 +100,7 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         managerOnly: true,
         deptSpecific: true,
         templateFeatureKey: "ticketTemplates",
+        hideForSubManager: true,
       },
       {
         label: "Workflows & statuses",
@@ -120,7 +119,10 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
       {
         label: "SLA policies",
         href: "/settings/sla",
-        departmentAdmin: true,
+        // Managers see it for the shared-mailbox SLA; form policies and
+        // working hours are read-only for them.
+        managerOnly: true,
+        hideForSubManager: true,
         deptSpecific: true,
         templateFeatureKey: "slaPolicies",
       },
@@ -146,6 +148,7 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         managerOnly: true,
         deptSpecific: true,
         templateFeatureKey: "assignmentMethods",
+        hideForSubManager: true,
       },
     ],
   },
@@ -213,6 +216,7 @@ export function getFilteredNav(
         if (item.managerOnly) return isAdmin || isManager || isLead;
         return true;
       })
+      .filter((item) => !(isLead && item.hideForSubManager))
       .filter((item) => {
         // Cross-access outsiders only see personal settings, not department-specific ones
         if (isCrossAccess && item.deptSpecific) return false;

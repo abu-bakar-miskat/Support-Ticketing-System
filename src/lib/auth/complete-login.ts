@@ -12,6 +12,7 @@ import {
   tenantInviteLandingCookies,
   tenantInviteLandingPath,
 } from "@/lib/invites/accept-tenant-invite";
+import { acceptSuperAdminInvite } from "@/lib/invites/accept-super-admin-invite";
 import {
   ACTIVE_TENANT_COOKIE,
   TENANT_COOKIE_MAX_AGE,
@@ -46,6 +47,12 @@ export type CompleteLoginResult = {
 
 const clearNextCookie: LoginCookie = {
   name: AUTH_NEXT_COOKIE,
+  value: "",
+  options: { path: "/", maxAge: 0 },
+};
+
+const clearDeptCookie: LoginCookie = {
+  name: "pen_active_dept",
   value: "",
   options: { path: "/", maxAge: 0 },
 };
@@ -118,6 +125,11 @@ function tenantInviteTokenFromNext(next: string): string | null {
   return match?.[1] ? decodeURIComponent(match[1]) : null;
 }
 
+function superAdminInviteTokenFromNext(next: string): string | null {
+  const match = /^\/super-admin-invite\/([^/?#]+)/.exec(next);
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+}
+
 /**
  * Shared post-verification login flow used by the OAuth and magic-link
  * callback round-trips. Reconciles the profile, rejects
@@ -136,13 +148,17 @@ export async function completeLogin(args: {
   const t0 = Date.now();
   const tenantInviteToken = tenantInviteTokenFromNext(next);
   const inviteToken = inviteTokenFromNext(next);
+  const superAdminInviteToken = superAdminInviteTokenFromNext(next);
+  const isInviteLogin = Boolean(tenantInviteToken || inviteToken || superAdminInviteToken);
 
   const { reconcileProfileOnLogin } =
     await import("@/lib/reconcile-profile-on-login");
   await reconcileProfileOnLogin(user, {
     // Invite signup attaches the real tenant; seeding "pen" first just adds
-    // extra scoped writes that used to hang verify.
-    skipDefaultTenant: Boolean(tenantInviteToken || inviteToken),
+    // extra scoped writes that used to hang verify. Super-admin invites have
+    // no tenant at all — the account is this sign-in, and the role is granted
+    // by accepting the invite below.
+    skipDefaultTenant: isInviteLogin,
   }).catch((err) => {
     console.error("[completeLogin] profile reconcile failed:", err);
   });
@@ -151,7 +167,7 @@ export async function completeLogin(args: {
   // Prefer DB profile email (source of truth after reconcile) for invite matching.
   // Invite logins use the dedicated auth pool so this lookup cannot queue behind
   // a 15s /departments render on the shared dashboard pool.
-  const profileDb = tenantInviteToken || inviteToken ? getUnscopedPrisma() : prisma;
+  const profileDb = isInviteLogin ? getUnscopedPrisma() : prisma;
   const profile = await profileDb.profile.findUnique({
     where: { id: user.id },
     select: { id: true, email: true, isSuperAdmin: true },
@@ -194,6 +210,23 @@ export async function completeLogin(args: {
     };
   }
 
+  if (superAdminInviteToken) {
+    const result = await acceptSuperAdminInvite(superAdminInviteToken, {
+      id: profile.id,
+      email: profile.email,
+    });
+    if (!result.ok) {
+      return {
+        redirectPath: `/super-admin-invite/${encodeURIComponent(superAdminInviteToken)}?error=${encodeURIComponent(result.code)}`,
+        cookies: [clearNextCookie],
+      };
+    }
+    return {
+      redirectPath: "/platform",
+      cookies: [clearNextCookie, clearDeptCookie],
+    };
+  }
+
   if (inviteToken) {
     const result = await acceptDepartmentInvite(inviteToken, {
       id: profile.id,
@@ -231,7 +264,7 @@ export async function completeLogin(args: {
   // signed in — typing their email directly, an already-open session, or a mail
   // gateway (Safe Links) that mangled the invite link. Without this they land on
   // /onboarding despite holding a valid invite.
-  if (!inviteToken && !tenantInviteToken) {
+  if (!inviteToken && !tenantInviteToken && !superAdminInviteToken) {
     const pendingDb = getUnscopedPrisma();
     const pendingTenant = await pendingDb.tenantInvite.findFirst({
       where: {
@@ -272,6 +305,35 @@ export async function completeLogin(args: {
       orderBy: { createdAt: "desc" },
       select: { token: true },
     });
+    const pendingSuperAdmin = await pendingDb.superAdminInvite.findFirst({
+      where: {
+        email: { equals: profile.email, mode: "insensitive" },
+        acceptedAt: null,
+        revokedAt: null,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: "desc" },
+      select: { token: true },
+    });
+    if (pendingSuperAdmin) {
+      const result = await acceptSuperAdminInvite(pendingSuperAdmin.token, {
+        id: profile.id,
+        email: profile.email,
+      }).catch((err) => {
+        console.error(
+          "[completeLogin] pending super-admin invite auto-accept failed:",
+          err,
+        );
+        return null;
+      });
+      if (result?.ok) {
+        return {
+          redirectPath: "/platform",
+          cookies: [clearNextCookie, clearDeptCookie],
+        };
+      }
+    }
+
     if (pending) {
       const result = await acceptDepartmentInvite(pending.token, {
         id: profile.id,

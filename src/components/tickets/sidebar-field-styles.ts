@@ -20,7 +20,7 @@ export function coloredTriggerStyles(accent: string): CSSProperties {
 
 export const coloredSelectTriggerClass = cn(
   "h-9 w-full rounded-full border px-2.5 shadow-none",
-  "font-sans text-[12px] font-semibold text-sts-foreground",
+  "font-sans text-[12.5px] font-semibold text-sts-foreground antialiased",
   "bg-transparent transition-[filter,box-shadow,border-color]",
   "hover:brightness-105 dark:bg-transparent dark:hover:bg-transparent",
   "focus-visible:ring-2 focus-visible:ring-offset-0",
@@ -53,7 +53,7 @@ export const sidebarDropdownPanelClass = cn(
 )
 
 export const sidebarSelectItemClass = cn(
-  "sts-field-dropdown-item font-sans text-[12px]",
+  "sts-field-dropdown-item min-h-8 py-1.5 pl-2.5 font-sans text-[12.5px] font-medium leading-none tracking-[-0.005em] text-sts-foreground antialiased",
 )
 
 export const sidebarDateInputClass = cn(

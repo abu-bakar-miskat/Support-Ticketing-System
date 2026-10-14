@@ -1,5 +1,6 @@
 "use client";
 
+import { Tip } from "@/components/ui/tooltip";
 import { ZoomIn, ZoomOut } from "lucide-react";
 import { useFontSize } from "@/components/font-size/font-size-provider";
 import { canStepFontSize, stepFontSize } from "@/lib/font-size";
@@ -25,27 +26,29 @@ export function FontSizeZoomControls({ className }: Props) {
         className,
       )}
     >
-      <button
-        type="button"
-        onClick={() => setFontSize(stepFontSize(fontSize, "out"))}
-        disabled={!canZoomOut}
-        className="flex size-7 items-center justify-center text-sts-subtle transition-colors hover:text-sts-foreground disabled:cursor-not-allowed disabled:opacity-40"
-        aria-label="Decrease font size"
-        title="Decrease font size"
-      >
-        <ZoomOut className="size-3.5 shrink-0" />
-      </button>
+      <Tip label="Decrease font size">
+        <button
+          type="button"
+          onClick={() => setFontSize(stepFontSize(fontSize, "out"))}
+          disabled={!canZoomOut}
+          className="flex size-7 items-center justify-center text-sts-subtle transition-colors hover:text-sts-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          aria-label="Decrease font size"
+        >
+          <ZoomOut className="size-3.5 shrink-0" />
+        </button>
+      </Tip>
       <span className="w-px self-stretch bg-sts-card-border dark:bg-white/10" />
-      <button
-        type="button"
-        onClick={() => setFontSize(stepFontSize(fontSize, "in"))}
-        disabled={!canZoomIn}
-        className="flex size-7 items-center justify-center text-sts-subtle transition-colors hover:text-sts-foreground disabled:cursor-not-allowed disabled:opacity-40"
-        aria-label="Increase font size"
-        title="Increase font size"
-      >
-        <ZoomIn className="size-3.5 shrink-0" />
-      </button>
+      <Tip label="Increase font size">
+        <button
+          type="button"
+          onClick={() => setFontSize(stepFontSize(fontSize, "in"))}
+          disabled={!canZoomIn}
+          className="flex size-7 items-center justify-center text-sts-subtle transition-colors hover:text-sts-foreground disabled:cursor-not-allowed disabled:opacity-40"
+          aria-label="Increase font size"
+        >
+          <ZoomIn className="size-3.5 shrink-0" />
+        </button>
+      </Tip>
     </div>
   );
 }

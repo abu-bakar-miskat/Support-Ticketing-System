@@ -22,6 +22,7 @@ import {
   sidebarDropdownPanelClass,
 } from "@/components/tickets/sidebar-field-styles"
 import { updateTicket } from "@/lib/api/tickets"
+import { toastError } from "@/lib/toast-error"
 
 export type SubDepartmentMemberOption = UserListPerson
 
@@ -85,7 +86,8 @@ export function AssigneeSelect({
     // Optimistic — other viewers get the same via ticket-activity broadcast
     onAssigneeChange?.(member)
     setOpen(false)
-    void updateTicket(ticketId, { assigneeId: nextId }).catch(() => {
+    void updateTicket(ticketId, { assigneeId: nextId }).catch((err: unknown) => {
+      toastError("Couldn't update assignee", err)
       const prev = assigneeId
         ? (subDepartmentMembers.find((m) => m.id === assigneeId) ?? null)
         : null

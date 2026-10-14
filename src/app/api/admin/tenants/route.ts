@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireSuperAdmin } from "@/lib/auth"
 import { badRequest } from "@/lib/api-response"
 import { isValidTenantType, DEFAULT_TENANT_TYPE } from "@/lib/tenant-types"
-import { newTenantDisabledFeatureKeys } from "@/lib/platform-settings"
+import { defaultDepartmentFeatureKeys } from "@/lib/platform-settings"
 import { SUPPORT_TEMPLATE } from "@/lib/system-templates"
 import { provisionDepartmentSupportTemplate } from "@/lib/support-template"
 import { isAgreementEnforcementEnabled } from "@/lib/tenant-agreement-access"
@@ -67,20 +67,22 @@ export async function POST(request: Request) {
   const existing = await prisma.tenant.findUnique({ where: { slug }, select: { id: true } })
   if (existing) return NextResponse.json({ error: "A tenant with that slug already exists" }, { status: 409 })
 
+  const featureKeys = await defaultDepartmentFeatureKeys()
+
   const tenant = await prisma.tenant.create({
     data: {
       slug,
       name,
       type,
-      // Bootstrap a Support department, defined by the Support system template:
-      // its type + feature allowlist come straight from that template.
+      // Bootstrap a Support department. Marketplace features follow the
+      // super-admin defaults for new departments.
       departments: {
         create: {
           name: SUPPORT_TEMPLATE.name,
           slug: SUPPORT_TEMPLATE.slug,
           type: SUPPORT_TEMPLATE.departmentType,
           templateSlug: SUPPORT_TEMPLATE.slug,
-          featureKeys: SUPPORT_TEMPLATE.featureKeys,
+          featureKeys,
           setupCompletedAt: new Date(),
         },
       },
@@ -103,22 +105,6 @@ export async function POST(request: Request) {
     await provisionDepartmentSupportTemplate(bootstrapDept.id).catch((e) =>
       console.error("[POST /api/admin/tenants] support template provisioning failed:", e),
     )
-  }
-
-  // Apply platform-wide new-tenant feature defaults: seed a disabled FeatureFlag
-  // row for any feature the platform admin has defaulted off. Flags are fail-open,
-  // so features left at their default (on) need no row.
-  const disabledKeys = await newTenantDisabledFeatureKeys()
-  if (disabledKeys.length > 0) {
-    await prisma.featureFlag.createMany({
-      data: disabledKeys.map((key) => ({
-        tenantId: tenant.id,
-        key,
-        enabled: false,
-        updatedById: profile!.id,
-      })),
-      skipDuplicates: true,
-    })
   }
 
   // SA-02: a brand-new tenant has no Agreement yet. When agreement enforcement

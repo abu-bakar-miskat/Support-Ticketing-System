@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { requireSuperAdmin } from "@/lib/auth"
+import { isHexColor, PLATFORM_SIDEBAR_GROUP_KEYS } from "@/lib/sidebar-colors"
 import { getPlatformSettings, setPlatformSettings, type PlatformSettings } from "@/lib/platform-settings"
 
 // Platform-wide global settings (super-admin only). GET returns the effective
@@ -45,12 +46,11 @@ export async function PUT(request: Request) {
     patch.devMode = body.devMode
   }
 
-  if (body.newTenantFeatureDefaults !== undefined) {
-    if (typeof body.newTenantFeatureDefaults !== "object" || body.newTenantFeatureDefaults === null) {
-      return NextResponse.json({ error: "newTenantFeatureDefaults must be an object" }, { status: 400 })
+  if (body.newDepartmentFeatureDefaults !== undefined) {
+    if (typeof body.newDepartmentFeatureDefaults !== "object" || body.newDepartmentFeatureDefaults === null) {
+      return NextResponse.json({ error: "newDepartmentFeatureDefaults must be an object" }, { status: 400 })
     }
-    // parseFeatureDefaults in the lib validates/whitelists keys — pass through.
-    patch.newTenantFeatureDefaults = body.newTenantFeatureDefaults
+    patch.newDepartmentFeatureDefaults = body.newDepartmentFeatureDefaults
   }
 
   if (body.templateEnablementRequiresApproval !== undefined) {
@@ -71,6 +71,17 @@ export async function PUT(request: Request) {
       )
     }
     patch.enforceTenantAgreements = body.enforceTenantAgreements
+  }
+
+  if (body.sidebarGroupColors !== undefined) {
+    const colors = body.sidebarGroupColors
+    if (typeof colors !== "object" || colors === null || Array.isArray(colors)) {
+      return NextResponse.json({ error: "sidebarGroupColors must be an object" }, { status: 400 })
+    }
+    if (!PLATFORM_SIDEBAR_GROUP_KEYS.every((key) => colors[key] === undefined || isHexColor(colors[key]))) {
+      return NextResponse.json({ error: "Sidebar colours must be hex values like #3b82f6" }, { status: 400 })
+    }
+    patch.sidebarGroupColors = colors
   }
 
   if (body.otpEmailTemplate !== undefined) {

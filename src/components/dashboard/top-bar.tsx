@@ -15,6 +15,7 @@ import { useDashboardContext } from "@/components/dashboard/dashboard-context";
 import { useProjectTabSync } from "@/components/projects/project-tab-sync";
 import { buildBreadcrumbs, parentCrumb } from "@/lib/breadcrumbs";
 import { cn } from "@/lib/utils";
+import { Tip } from "@/components/ui/tooltip";
 
 type TopBarProps = {
   onMenuClick: () => void;
@@ -96,7 +97,7 @@ export function TopBar({
     <header className="sts-glass-panel flex h-12 shrink-0 items-center gap-2 border-b px-3 sm:gap-3 sm:px-4 lg:px-5">
       <button
         type="button"
-        className="rounded p-1.5 text-sts-subtle hover:text-sts-foreground lg:hidden"
+        className="-ml-1 rounded p-2.5 text-sts-subtle hover:text-sts-foreground lg:hidden"
         onClick={onMenuClick}
         aria-label="Open navigation"
       >
@@ -104,19 +105,20 @@ export function TopBar({
       </button>
 
       {sidebarCollapsed && (
-        <button
-          type="button"
-          className="hidden rounded p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground lg:inline-flex"
-          onClick={toggleSidebar}
-          aria-label="Expand sidebar"
-          title="Expand sidebar"
-        >
-          <PanelLeft className="size-4" />
-        </button>
+        <Tip label="Expand sidebar">
+          <button
+            type="button"
+            className="hidden rounded p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground lg:inline-flex"
+            onClick={toggleSidebar}
+            aria-label="Expand sidebar"
+          >
+            <PanelLeft className="size-4" />
+          </button>
+        </Tip>
       )}
 
       <nav
-        className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto"
+        className="scrollbar-none flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto"
         aria-label="Breadcrumb"
       >
         {backTarget && (
@@ -131,7 +133,7 @@ export function TopBar({
           </Link>
         )}
 
-        <span className="hidden min-w-0 flex-1 items-center gap-1.5 overflow-x-auto sm:flex">
+        <span className="scrollbar-none hidden min-w-0 flex-1 items-center gap-1.5 overflow-x-auto sm:flex">
           {backTarget && trailCrumbs.length > 0 && (
             <span className="font-sans text-[11.5px] leading-none text-sts-subtle">/</span>
           )}
@@ -194,7 +196,7 @@ export function TopBar({
         <button
           type="button"
           onClick={onOpenSearch}
-          className="flex size-7 items-center justify-center rounded-full border border-sts-card-border bg-sts-surface text-sts-subtle transition-colors hover:text-sts-foreground sm:hidden dark:border-white/10 dark:bg-white/5"
+          className="flex size-9 items-center justify-center rounded-full border border-sts-card-border bg-sts-surface text-sts-subtle transition-colors hover:text-sts-foreground sm:hidden dark:border-white/10 dark:bg-white/5"
           aria-label="Open command palette"
         >
           <Search className="size-3.5" />
@@ -215,13 +217,17 @@ export function TopBar({
 
         <FontSizeZoomControls />
 
-        <ThemeToggle className="size-7 rounded-full" />
+        <ThemeToggle className="size-9 rounded-full sm:size-7" />
         <GlobalTimerIndicator />
         <button
           type="button"
           onClick={onNotifClick}
-          className="relative flex size-7 items-center justify-center rounded-full text-sts-muted transition-colors hover:bg-sts-bg hover:text-sts-foreground"
-          aria-label="Notifications"
+          className="relative flex size-9 items-center justify-center rounded-full text-sts-muted transition-colors hover:bg-sts-bg hover:text-sts-foreground sm:size-7"
+          aria-label={
+            badgeCount > 0
+              ? `Notifications, ${badgeCount} unread`
+              : "Notifications"
+          }
         >
           <Bell className="size-4" />
           {badgeCount > 0 && (

@@ -7,7 +7,6 @@ import {
   Users,
   UserPlus,
   Shield,
-  FolderKanban,
   Plus,
   X,
   Check,
@@ -46,7 +45,6 @@ import {
   type MemberConfigTarget,
 } from "@/components/settings/member-config-panel";
 import {
-  assignDepartmentManager,
   removeDepartmentManager,
   removeDepartmentMember,
   updateAdminUser,
@@ -57,11 +55,12 @@ import {
   type DepartmentInviteRow,
 } from "@/lib/api/admin";
 import { InviteByEmailModal } from "@/components/invites/invite-by-email-modal";
+import { DepartmentFeaturesPanel } from "@/components/settings/department-features-panel";
+import { Tip } from "@/components/ui/tooltip";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-type DeptRole = "admin" | "manager";
-type ManagerRow = { id: string; userId: string; name: string; email: string; avatarUrl: string | null; color: string; deptRole?: DeptRole; location?: string | null; timezone?: string | null; subDepartmentMemberships?: { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean; accepted?: boolean }[] };
+type ManagerRow = { id: string; userId: string; name: string; email: string; avatarUrl: string | null; color: string; location?: string | null; timezone?: string | null; subDepartmentMemberships?: { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean; accepted?: boolean }[] };
 
 type MemberRow = {
   userId: string;
@@ -96,11 +95,14 @@ export type DepartmentDetailData = {
   name: string;
   isHub: boolean;
   subDepartmentCount: number;
-  projectCount: number;
   memberCount: number;
   managerCount: number;
   isAdmin: boolean;
-  canGrantAdmin: boolean;
+  /**
+   * Viewer is a sub-manager. They see the managers list read-only (can't remove a
+   * manager) and may only remove agents — never a fellow sub-manager — from a team.
+   */
+  isSubManager: boolean;
   /** Super Admin — may grant/revoke this department's features. */
   canControlFeatures: boolean;
   availableSubDepartments: { id: string; name: string }[];
@@ -129,52 +131,6 @@ const ROLE_COLORS: Record<string, string> = {
   agent: "bg-sts-surface text-sts-subtle",
 };
 
-// Department-scoped Admin vs Manager control (role-hierarchy.md). Editable only
-// for a tenant admin / department Admin (canEdit); otherwise a static badge. An
-// Admin holds admin-only settings power for this department; a Manager is
-// operational only.
-function DeptRoleToggle({
-  role,
-  canEdit,
-  onChange,
-}: {
-  role: DeptRole;
-  canEdit: boolean;
-  onChange: (role: DeptRole) => void;
-}) {
-  if (!canEdit) {
-    return (
-      <span
-        className={cn(
-          "inline-flex rounded-md px-2 py-0.5 font-sans text-[11px] font-medium capitalize",
-          ROLE_COLORS[role] ?? ROLE_COLORS.manager,
-        )}
-      >
-        {role}
-      </span>
-    );
-  }
-  return (
-    <div className="inline-flex rounded-md border border-sts-card-border p-0.5">
-      {(["manager", "admin"] as const).map((opt) => (
-        <button
-          key={opt}
-          type="button"
-          onClick={() => onChange(opt)}
-          className={cn(
-            "rounded px-2 py-0.5 font-sans text-[11px] font-medium capitalize transition-colors",
-            role === opt
-              ? "bg-sts-id text-white"
-              : "text-sts-muted hover:text-sts-foreground",
-          )}
-        >
-          {opt}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 // ── Section shell ────────────────────────────────────────────────────────────
 
 function Section({
@@ -183,23 +139,33 @@ function Section({
   count,
   action,
   children,
+  hideTitle,
 }: {
   icon: React.ElementType;
   title: string;
   count: number;
   action?: React.ReactNode;
   children: React.ReactNode;
+  /** Drop the title/count heading (keeps any action). Used for the sub-manager's
+   *  single-team roster, where the per-team header already names the group. */
+  hideTitle?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <Icon className="size-4 text-sts-muted" />
-        <h2 className="font-sans text-[15px] font-semibold text-sts-foreground">
-          {title} <span className="font-normal text-sts-subtle">({count})</span>
-        </h2>
-        <span className="flex-1" />
-        {action}
-      </div>
+      {(!hideTitle || action) && (
+        <div className="flex items-center gap-2">
+          {!hideTitle && (
+            <>
+              <Icon className="size-4 text-sts-muted" />
+              <h2 className="font-sans text-[15px] font-semibold text-sts-foreground">
+                {title} <span className="font-normal text-sts-subtle">({count})</span>
+              </h2>
+            </>
+          )}
+          <span className="flex-1" />
+          {action}
+        </div>
+      )}
       {children}
     </div>
   );
@@ -249,6 +215,8 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
 
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [confirmRemoveMember, setConfirmRemoveMember] = useState<MemberRow | null>(null);
+  const [confirmRemoveManager, setConfirmRemoveManager] = useState<ManagerRow | null>(null);
+  const [confirmRemoveMembership, setConfirmRemoveMembership] = useState<{ member: MemberRow; subDepartmentId: string; subDepartmentName: string } | null>(null);
   const [configMember, setConfigMember] = useState<MemberConfigTarget | null>(null);
   // Per-invite in-flight action ("resend" | "delete") for spinner/disabled state.
   const [inviteAction, setInviteAction] = useState<Record<string, "resend" | "delete">>({});
@@ -362,19 +330,6 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
   }
   function refresh() {
     startTransition(() => router.refresh());
-  }
-
-  async function setManagerRole(userId: string, role: DeptRole) {
-    // Optimistic; revert on failure (e.g. a manager forbidden from granting admin).
-    const prevRole = managers.find((m) => m.userId === userId)?.deptRole ?? "manager";
-    if (prevRole === role) return;
-    setManagers((prev) => prev.map((m) => (m.userId === userId ? { ...m, deptRole: role } : m)));
-    try {
-      await assignDepartmentManager(data.id, userId, role);
-      refresh();
-    } catch {
-      setManagers((prev) => prev.map((m) => (m.userId === userId ? { ...m, deptRole: prevRole } : m)));
-    }
   }
 
   async function removeManager(userId: string) {
@@ -496,15 +451,17 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
               otherMemberships.map((s) => (
                 <span key={s.subDepartmentId} className="inline-flex items-center gap-1 rounded-full bg-sts-surface px-[7px] py-0.5 font-sans text-[11.5px] font-medium text-sts-muted">
                   {s.subDepartmentName}
-                  <button
-                    type="button"
-                    title={`Remove from ${s.subDepartmentName}`}
-                    disabled={saving === m.userId}
-                    onClick={() => handleRemoveMembership(m, s.subDepartmentId)}
-                    className="rounded text-sts-subtle hover:text-red-500 disabled:opacity-50"
-                  >
-                    <X className="size-3" />
-                  </button>
+                  <Tip label={`Remove from ${s.subDepartmentName}`}>
+                    <button
+                      aria-label={`Remove ${m.name} from ${s.subDepartmentName}`}
+                      type="button"
+                      disabled={saving === m.userId}
+                      onClick={() => setConfirmRemoveMembership({ member: m, subDepartmentId: s.subDepartmentId, subDepartmentName: s.subDepartmentName })}
+                      className="rounded text-sts-subtle hover:text-red-500 disabled:opacity-50"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </Tip>
                 </span>
               ))
             )}
@@ -513,23 +470,25 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
         <TableCell className="py-0">
           <div className="flex h-[54px] items-center">
             {(() => {
-              // Invite is "accepted" only when the member has at least one
-              // sub-department membership and every one is active (isActive).
-              // A pending (isActive: false) membership means they haven't
-              // accepted yet — this is what login/ticket-creation require.
-              const accepted = memberships.length > 0 && memberships.every((s) => s.accepted !== false);
+              if (role !== "agent") {
+                return <span className="font-sans text-[11.5px] text-sts-subtle">—</span>;
+              }
+              // Mirrors rota.ts "active in rotation": profile active AND this
+              // sub-department membership isn't flagged doNotAssign.
+              const membership = memberships.find((s) => s.subDepartmentId === currentSubId);
+              const inRotation = m.isActive !== false && !membership?.doNotAssign;
               return (
                 <span
-                  title={accepted ? "Invite accepted" : "Invite pending — member hasn't accepted yet"}
+                  title={inRotation ? "Active in rotation — receives auto-assigned tickets" : "Out of rotation — excluded from auto-assignment"}
                   className={cn(
-                    "inline-flex h-[26px] items-center gap-1.5 rounded-full px-2.5 font-sans text-[11.5px] font-medium",
-                    accepted
+                    "inline-flex h-[26px] items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 font-sans text-[11.5px] font-medium",
+                    inRotation
                       ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                      : "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+                      : "bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400",
                   )}
                 >
-                  <span className={cn("size-1.5 rounded-full", accepted ? "bg-green-500" : "bg-amber-500")} />
-                  {accepted ? "Accepted" : "Pending"}
+                  <span className={cn("size-1.5 rounded-full", inRotation ? "bg-green-500" : "bg-red-500")} />
+                  {inRotation ? "In rotation" : "Out of rotation"}
                 </span>
               );
             })()}
@@ -554,22 +513,30 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
         </TableCell>
         <TableCell className="py-0 text-right">
           <div className="flex h-[54px] items-center justify-end gap-0.5">
-            <button
-              type="button"
-              title="Configure availability"
-              onClick={() => setConfigMember(toConfigTarget(m))}
-              className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
-            >
-              <Settings2 className="size-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfirmRemoveMember(m)}
-              title="Remove from department"
-              className="rounded-full border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-            >
-              <X className="size-3.5" />
-            </button>
+            <Tip label="Configure availability">
+              <button
+                aria-label={`Configure availability for ${m.name}`}
+                type="button"
+                onClick={() => setConfigMember(toConfigTarget(m))}
+                className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
+              >
+                <Settings2 className="size-3.5" />
+              </button>
+            </Tip>
+            {/* A sub-manager may remove only agents (with confirmation) — never a
+                fellow sub-manager. Admins/managers can remove anyone. */}
+            {(!data.isSubManager || role === "agent") && (
+              <Tip label="Remove from department">
+                <button
+                  aria-label={`Remove ${m.name} from department`}
+                  type="button"
+                  onClick={() => setConfirmRemoveMember(m)}
+                  className="rounded-full border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </Tip>
+            )}
           </div>
         </TableCell>
       </TableRow>
@@ -603,9 +570,6 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
               <Users className="size-3.5 shrink-0" /> {data.subDepartmentCount} sub-department{data.subDepartmentCount !== 1 ? "s" : ""}
             </span>
             <span className="flex items-center gap-1 font-sans text-[12.5px] text-sts-muted">
-              <FolderKanban className="size-3.5 shrink-0" /> {data.projectCount} project{data.projectCount !== 1 ? "s" : ""}
-            </span>
-            <span className="flex items-center gap-1 font-sans text-[12.5px] text-sts-muted">
               <Shield className="size-3.5 shrink-0" /> {data.managerCount} manager{data.managerCount !== 1 ? "s" : ""}
             </span>
             <span className="flex items-center gap-1 font-sans text-[12.5px] text-sts-muted">
@@ -613,6 +577,23 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
             </span>
           </div>
         </div>
+        <Tip
+          wrap
+          label={
+            data.availableSubDepartments.length === 0
+              ? "Create a sub-department before inviting"
+              : "Send an email invite to someone without an account"
+          }
+        >
+          <button
+            type="button"
+            onClick={() => setShowInviteModal(true)}
+            disabled={data.availableSubDepartments.length === 0}
+            className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-sts-blue px-4 font-sans text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-sts-blue/90 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-900"
+          >
+            <Mail className="size-4" /> Invite new members
+          </button>
+        </Tip>
       </div>
 
       {/* Join requests */}
@@ -706,14 +687,13 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
               <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
                 <TableHead className="h-8 w-[45%]"><SectionLabel>Name</SectionLabel></TableHead>
                 <TableHead className="h-8"><SectionLabel>Email</SectionLabel></TableHead>
-                <TableHead className="h-8"><SectionLabel>Role</SectionLabel></TableHead>
                 <TableHead className="h-8 w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {managers.length === 0 ? (
                 <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
-                  <TableCell colSpan={4} className="py-0">
+                  <TableCell colSpan={3} className="py-0">
                     <div className="flex h-[54px] items-center">
                       <span className="font-sans text-[11.5px] text-sts-muted">No managers assigned yet</span>
                     </div>
@@ -731,32 +711,32 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                     <TableCell className="py-0">
                       <span className="font-sans text-[11.5px] text-sts-subtle">{m.email}</span>
                     </TableCell>
-                    <TableCell className="py-0">
-                      <DeptRoleToggle
-                        role={m.deptRole ?? "manager"}
-                        canEdit={data.canGrantAdmin}
-                        onChange={(r) => setManagerRole(m.userId, r)}
-                      />
-                    </TableCell>
                     <TableCell className="py-0 text-right">
-                      <div className="flex h-[54px] items-center justify-end gap-0.5">
-                        <button
-                          type="button"
-                          title="Configure availability"
-                          onClick={() => setConfigMember(toConfigTarget(m))}
-                          className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
-                        >
-                          <Settings2 className="size-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => removeManager(m.userId)}
-                          title="Remove manager"
-                          className="rounded-full border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-                        >
-                          <X className="size-3.5" />
-                        </button>
-                      </div>
+                      {/* Sub-managers see the managers list read-only — no config or remove. */}
+                      {!data.isSubManager && (
+                        <div className="flex h-[54px] items-center justify-end gap-0.5">
+                          <Tip label="Configure availability">
+                            <button
+                              aria-label={`Configure availability for ${m.name}`}
+                              type="button"
+                              onClick={() => setConfigMember(toConfigTarget(m))}
+                              className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
+                            >
+                              <Settings2 className="size-3.5" />
+                            </button>
+                          </Tip>
+                          <Tip label="Remove manager">
+                            <button
+                              aria-label={`Remove manager ${m.name}`}
+                              type="button"
+                              onClick={() => setConfirmRemoveManager(m)}
+                              className="rounded-full border border-sts-card-border p-1.5 text-sts-muted hover:border-red-200 hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          </Tip>
+                        </div>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))
@@ -771,21 +751,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
         icon={Users}
         title="Sub-department members"
         count={members.length}
-        action={
-          <button
-            type="button"
-            onClick={() => setShowInviteModal(true)}
-            disabled={data.availableSubDepartments.length === 0}
-            title={
-              data.availableSubDepartments.length === 0
-                ? "Create a sub-department before inviting"
-                : "Send an email invite to someone without an account"
-            }
-            className="flex h-7 items-center gap-1.5 rounded-full bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white transition-colors hover:bg-sts-blue/90 disabled:cursor-not-allowed disabled:opacity-40 dark:text-gray-900"
-          >
-            <Mail className="size-3" /> Invite new members
-          </button>
-        }
+        hideTitle={data.isSubManager}
       >
         {data.availableSubDepartments.length === 0 ? (
           <div className="rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] py-5">
@@ -816,7 +782,7 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                           <TableHead className="h-8 w-[20%]"><SectionLabel>Email</SectionLabel></TableHead>
                           <TableHead className="h-8 w-[14%]"><SectionLabel>Role</SectionLabel></TableHead>
                           <TableHead className="h-8"><SectionLabel>Other sub-departments</SectionLabel></TableHead>
-                          <TableHead className="h-8 w-[110px]"><SectionLabel>Invite</SectionLabel></TableHead>
+                          <TableHead className="h-8 w-[130px]"><SectionLabel>Rotation</SectionLabel></TableHead>
                           <TableHead className="h-8 w-[100px]"><SectionLabel>Status</SectionLabel></TableHead>
                           <TableHead className="h-8 w-10" />
                         </TableRow>
@@ -909,26 +875,28 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
                     </TableCell>
                     <TableCell className="py-0 text-right">
                       <div className="flex h-[54px] items-center justify-end gap-1.5">
-                        <button
-                          type="button"
-                          title="Resend invite email"
-                          disabled={!!inviteAction[inv.id]}
-                          onClick={() => resendInvite(inv)}
-                          className="inline-flex h-7 items-center gap-1.5 rounded-full border border-sts-card-border px-2.5 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:border-sts-blue/40 hover:text-sts-blue disabled:opacity-50"
-                        >
-                          {inviteAction[inv.id] === "resend" ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCw className="size-3.5" />}
-                          Resend
-                        </button>
-                        <button
-                          type="button"
-                          title="Delete invite"
-                          disabled={!!inviteAction[inv.id]}
-                          onClick={() => deleteInvite(inv)}
-                          className="inline-flex h-7 items-center gap-1.5 rounded-full border border-sts-card-border px-2.5 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:hover:bg-red-900/20"
-                        >
-                          {inviteAction[inv.id] === "delete" ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
-                          Delete
-                        </button>
+                        <Tip label="Resend invite email">
+                          <button
+                            type="button"
+                            disabled={!!inviteAction[inv.id]}
+                            onClick={() => resendInvite(inv)}
+                            className="inline-flex h-7 items-center gap-1.5 rounded-full border border-sts-card-border px-2.5 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:border-sts-blue/40 hover:text-sts-blue disabled:opacity-50"
+                          >
+                            {inviteAction[inv.id] === "resend" ? <Loader2 className="size-3.5 animate-spin" /> : <RotateCw className="size-3.5" />}
+                            Resend
+                          </button>
+                        </Tip>
+                        <Tip label="Delete invite">
+                          <button
+                            type="button"
+                            disabled={!!inviteAction[inv.id]}
+                            onClick={() => deleteInvite(inv)}
+                            className="inline-flex h-7 items-center gap-1.5 rounded-full border border-sts-card-border px-2.5 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:border-red-200 hover:bg-red-50 hover:text-red-500 disabled:opacity-50 dark:hover:bg-red-900/20"
+                          >
+                            {inviteAction[inv.id] === "delete" ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+                            Delete
+                          </button>
+                        </Tip>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -938,6 +906,20 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
           </Table>
         </div>
       </Section>
+
+      {data.canControlFeatures && (
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <Settings2 className="size-4 text-sts-muted" />
+            <h2 className="font-sans text-[15px] font-semibold text-sts-foreground">
+              Features <span className="font-normal text-sts-subtle">(super admin)</span>
+            </h2>
+          </div>
+          <div className="rounded-[6px] border border-sts-card-border bg-sts-card p-[22px]">
+            <DepartmentFeaturesPanel departmentId={data.id} />
+          </div>
+        </div>
+      )}
 
       {showInviteModal && (
         <InviteByEmailModal
@@ -976,6 +958,36 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
         confirmLabel="Remove"
         successMessage={confirmRemoveMember ? `${confirmRemoveMember.name} removed from sub-departments` : undefined}
         onConfirm={async () => { if (confirmRemoveMember) await removeMember(confirmRemoveMember); }}
+      />
+
+      <ConfirmDialog
+        open={!!confirmRemoveManager}
+        onOpenChange={(open) => { if (!open) setConfirmRemoveManager(null); }}
+        title="Remove manager"
+        description={confirmRemoveManager ? `Remove ${confirmRemoveManager.name} as a manager of ${data.name}?` : ""}
+        confirmLabel="Remove"
+        successMessage={confirmRemoveManager ? `${confirmRemoveManager.name} removed as manager` : undefined}
+        onConfirm={async () => { if (confirmRemoveManager) await removeManager(confirmRemoveManager.userId); }}
+      />
+
+      <ConfirmDialog
+        open={!!confirmRemoveMembership}
+        onOpenChange={(open) => { if (!open) setConfirmRemoveMembership(null); }}
+        title="Remove from sub-department"
+        description={
+          confirmRemoveMembership
+            ? `Remove ${confirmRemoveMembership.member.name} from ${confirmRemoveMembership.subDepartmentName}?`
+            : ""
+        }
+        confirmLabel="Remove"
+        successMessage={
+          confirmRemoveMembership
+            ? `${confirmRemoveMembership.member.name} removed from ${confirmRemoveMembership.subDepartmentName}`
+            : undefined
+        }
+        onConfirm={async () => {
+          if (confirmRemoveMembership) await handleRemoveMembership(confirmRemoveMembership.member, confirmRemoveMembership.subDepartmentId);
+        }}
       />
     </div>
   );

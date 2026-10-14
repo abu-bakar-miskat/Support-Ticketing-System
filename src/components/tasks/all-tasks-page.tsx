@@ -5,8 +5,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useDebounce } from "@/hooks/use-debounce";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
-import { X, Search, ChevronDown, Loader2, Users, ListTodo, CalendarClock } from "lucide-react";
-import { FilterDropdown, FilterVisibilityMenu, SortDropdown, type SortKey } from "@/components/tasks/task-filter-dropdown";
+import { X, Search, ChevronDown, Loader2, Users, ListTodo } from "lucide-react";
+import { FilterDropdown, FilterVisibilityMenu, RefreshButton, SortDropdown, type SortKey } from "@/components/tasks/task-filter-dropdown";
 import { usePersistedHiddenFilters } from "@/hooks/use-persisted-hidden-filters";
 import { DateRangeDropdown, formatRangeLabel, type DateRange } from "@/components/ui/date-range-dropdown";
 import { cn } from "@/lib/utils";
@@ -36,6 +36,7 @@ const PRIORITY_OPTIONS = [
 
 const SOURCE_OPTIONS = [
   { id: "intake", label: "Support Ticket" },
+  { id: "portal", label: "Portal API Ticket" },
   { id: "manual", label: "Manual Ticket" },
   { id: "mailbox", label: "Mailbox Ticket" },
 ];
@@ -161,12 +162,11 @@ export function AllTasksPage({
   const [selPeople, setSelPeople] = useState<Set<string>>(new Set()); // profile IDs
   const [selModule, setSelModule] = useState<Set<string>>(new Set()); // module IDs
   const [selLabels, setSelLabels] = useState<Set<string>>(new Set()); // label names
-  const [selSource, setSelSource] = useState<Set<string>>(new Set()); // "intake" | "manual" | "mailbox"
+  const [selSource, setSelSource] = useState<Set<string>>(new Set()); // "intake" | "portal" | "manual" | "mailbox"
   const [dateRange, setDateRange] = useState<DateRange>(null);
-  const [targetRange, setTargetRange] = useState<DateRange>(null);
   const [pageSize, setPageSize] = useState<PageSizeOption>(25);
-  // ── Filter visibility (persisted per user) ──────────────────────────────────
-  const filterVisibility = usePersistedHiddenFilters(unassignedOnly ? "all-tasks-unassigned" : "all-tasks");
+  // ── Filter visibility (persisted per user, shared across All / Unassigned / Drafts tabs) ──
+  const filterVisibility = usePersistedHiddenFilters("all-tasks");
   // ── Bulk selection ──────────────────────────────────────────────────────────
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [assignModalOpen, setAssignModalOpen] = useState(false);
@@ -197,12 +197,10 @@ export function AllTasksPage({
       labels: selLabels.size ? [...selLabels] : undefined,
       dateFrom: dateRange?.from ?? undefined,
       dateTo: dateRange?.to ?? undefined,
-      targetDateFrom: targetRange?.from ?? undefined,
-      targetDateTo: targetRange?.to ?? undefined,
       sort: sortKey,
       unassigned: unassignedOnly || undefined,
       drafts: draftsOnly || undefined,
-      source: selSource.size === 1 ? ([...selSource][0] as "intake" | "manual" | "mailbox") : undefined,
+      source: selSource.size === 1 ? ([...selSource][0] as "intake" | "portal" | "manual" | "mailbox") : undefined,
     }),
     [
       pageSize,
@@ -216,7 +214,6 @@ export function AllTasksPage({
       selLabels,
       selSource,
       dateRange,
-      targetRange,
       sortKey,
       unassignedOnly,
       draftsOnly,
@@ -303,7 +300,6 @@ export function AllTasksPage({
         labelOptions.length > 0 ? { id: "labels", label: "Labels" } : null,
         { id: "source", label: "Source" },
         { id: "dateRange", label: "Created date" },
-        { id: "targetRange", label: "Target date" },
       ].filter((f): f is { id: string; label: string } => f !== null),
     [showSubDeptFilter, unassignedOnly, moduleOptions.length, labelOptions.length],
   );
@@ -322,8 +318,8 @@ export function AllTasksPage({
   }
 
   // ── Bulk assign handler ─────────────────────────────────────────────────────
-  async function handleBulkAssign(mode: "single" | "round-robin", assigneeIds: string[]) {
-    const { updated } = await smartAssignTickets([...selectedIds], mode, assigneeIds);
+  async function handleBulkAssign(mode: "single" | "round-robin", assigneeIds: string[], subDepartmentId?: string) {
+    const { updated } = await smartAssignTickets([...selectedIds], mode, assigneeIds, subDepartmentId);
     toast.success(`${updated} ticket${updated === 1 ? "" : "s"} assigned`);
     setSelectedIds(new Set());
     setAssignModalOpen(false);
@@ -386,14 +382,6 @@ export function AllTasksPage({
           },
         ]
       : []),
-    ...(targetRange
-      ? [
-          {
-            label: `Target: ${formatRangeLabel(targetRange)}`,
-            onRemove: () => setTargetRange(null),
-          },
-        ]
-      : []),
   ];
 
   const hasFilters =
@@ -406,8 +394,7 @@ export function AllTasksPage({
     selModule.size ||
     selLabels.size ||
     selSource.size ||
-    dateRange ||
-    targetRange;
+    dateRange;
 
   function clearAll() {
     setRawSearch("");
@@ -420,7 +407,6 @@ export function AllTasksPage({
     setSelLabels(new Set());
     setSelSource(new Set());
     setDateRange(null);
-    setTargetRange(null);
   }
 
   // ── Stats line ─────────────────────────────────────────────────────────────
@@ -444,6 +430,11 @@ export function AllTasksPage({
             hideTitleBar ? "mb-0" : "mb-3 sm:mb-4",
           )}
         >
+          <div className="flex shrink-0 items-center gap-2">
+          <RefreshButton
+            onRefresh={() => refetch()}
+            refreshing={isFetching && !isFetchingNextPage}
+          />
           {/* Stats */}
           <p className="shrink-0 font-sans text-[12px] text-sts-muted sm:text-[12.5px]">
             {isLoading ? (
@@ -464,12 +455,10 @@ export function AllTasksPage({
                     your projects only
                   </span>
                 )}
-                {isFetching && !isFetchingNextPage && (
-                  <Loader2 className="ml-2 inline size-3.5 animate-spin text-sts-subtle" />
-                )}
               </>
             )}
           </p>
+          </div>
 
           {/* Toolbar */}
           <div className="min-w-0 flex-1 overflow-x-auto pb-1 [scrollbar-width:none] max-xl:-mx-4 max-xl:px-4 sm:max-xl:-mx-6 sm:max-xl:px-6 xl:px-0 [&::-webkit-scrollbar]:hidden">
@@ -598,17 +587,6 @@ export function AllTasksPage({
                   onClear={() => setDateRange(null)}
                 />
               )}
-              {showFilter("targetRange") && (
-                <DateRangeDropdown
-                  value={targetRange}
-                  onChange={setTargetRange}
-                  onClear={() => setTargetRange(null)}
-                  placeholder="Target date"
-                  icon={CalendarClock}
-                  future
-                />
-              )}
-
               <div className="hidden flex-1 lg:block" />
 
               <PageSizeSelector value={pageSize} onChange={setPageSize} />
@@ -653,9 +631,10 @@ export function AllTasksPage({
                   <button
                     type="button"
                     onClick={chip.onRemove}
+                    aria-label={`Remove filter ${chip.label}`}
                     className="hover:opacity-70"
                   >
-                    <X className="size-3" />
+                    <X className="size-3" aria-hidden />
                   </button>
                 </span>
               ))}
@@ -686,7 +665,7 @@ export function AllTasksPage({
               {allTasks.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={showBulkSelect ? 10 : 9}
+                    colSpan={showBulkSelect ? 9 : 8}
                     className="py-20 text-center font-sans text-[13px] text-sts-subtle"
                   >
                     {unassignedOnly
@@ -783,6 +762,7 @@ export function AllTasksPage({
       <BulkAssignModal
         count={selectedIds.size}
         subDepartmentMembers={availableMembers}
+        subDepartments={availableSubDepartments}
         onClose={() => setAssignModalOpen(false)}
         onAssign={handleBulkAssign}
       />

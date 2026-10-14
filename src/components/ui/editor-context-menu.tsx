@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getPortalRoot } from "@/lib/portal-root";
+import { Tip } from "./tooltip";
 
 export type EditorContextMenuState = {
   x: number;
@@ -82,25 +83,26 @@ function MenuIconButton({
   onSelect: () => void;
 }) {
   return (
-    <button
-      type="button"
-      role="menuitem"
-      title={item.label}
-      aria-label={item.label}
-      disabled={item.disabled}
-      onClick={onSelect}
-      className={cn(
-        "flex size-8 shrink-0 items-center justify-center rounded-full transition-colors",
-        item.active
-          ? "bg-sts-blue-tint text-sts-id"
-          : item.destructive
-            ? "text-destructive hover:bg-destructive/10"
-            : "text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",
-        item.disabled && "cursor-not-allowed opacity-40",
-      )}
-    >
-      {item.icon}
-    </button>
+    <Tip label={item.disabled ? undefined : item.label}>
+      <button
+        type="button"
+        role="menuitem"
+        aria-label={item.label}
+        disabled={item.disabled}
+        onClick={onSelect}
+        className={cn(
+          "flex size-8 shrink-0 items-center justify-center rounded-full transition-colors",
+          item.active
+            ? "bg-sts-blue-tint text-sts-id"
+            : item.destructive
+              ? "text-destructive hover:bg-destructive/10"
+              : "text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",
+          item.disabled && "cursor-not-allowed opacity-40",
+        )}
+      >
+        {item.icon}
+      </button>
+    </Tip>
   );
 }
 

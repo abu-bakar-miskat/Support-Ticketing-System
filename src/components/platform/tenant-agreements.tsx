@@ -12,6 +12,7 @@ import {
   SelectTrigger,
 } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   AGREEMENT_DOC_ACCEPT,
   AGREEMENT_DOC_MAX_LABEL,
@@ -19,6 +20,7 @@ import {
   validateAgreementDocFile,
 } from "@/lib/agreement-doc-file";
 import { getAgreementExpiry } from "@/lib/agreement-expiry";
+import { ListSearchInput, SortDropdown, byDateAsc, byDateDesc, useListControls } from "@/components/ui/list-controls";
 
 const RENEWAL_STATUSES = ["ACTIVE", "PENDING_RENEWAL", "RENEWED", "EXPIRED", "CANCELLED"] as const;
 type RenewalStatus = (typeof RENEWAL_STATUSES)[number];
@@ -81,7 +83,22 @@ export function TenantAgreements({
   const [endDate, setEndDate] = useState("");
   const [renewalStatus, setRenewalStatus] = useState<RenewalStatus>("ACTIVE");
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [docToRemove, setDocToRemove] = useState<{
+    agreementId: string;
+    documentId: string;
+    fileName: string;
+  } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const agreementList = useListControls(agreements, {
+    searchText: (a) =>
+      [STATUS_LABEL[a.renewalStatus], fmtDate(a.startDate), fmtDate(a.endDate), ...a.documents.map((d) => d.fileName)].join(" "),
+    sortOptions: [
+      { id: "end-desc", label: "Ends latest", compare: byDateDesc((a) => a.endDate) },
+      { id: "end-asc", label: "Ends soonest", compare: byDateAsc((a) => a.endDate) },
+      { id: "start-desc", label: "Started newest", compare: byDateDesc((a) => a.startDate) },
+      { id: "start-asc", label: "Started oldest", compare: byDateAsc((a) => a.startDate) },
+    ],
+  });
 
   function overlapsExisting(startISO: string, endISO: string, excludeId?: string) {
     const s = new Date(startISO).getTime();
@@ -179,6 +196,7 @@ export function TenantAgreements({
     toast.success(`"${file.name}" uploaded.`);
   }
 
+  // Throws on failure so ConfirmDialog surfaces the error as a toast.
   async function removeDocument(agreementId: string, documentId: string) {
     setBusyId(agreementId);
     setError(null);
@@ -189,8 +207,7 @@ export function TenantAgreements({
     setBusyId(null);
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      setError(body.error ?? "Failed to remove document");
-      return;
+      throw new Error(body.error ?? "Failed to remove document");
     }
     setAgreements((prev) =>
       prev.map((a) =>
@@ -253,8 +270,23 @@ export function TenantAgreements({
         </div>
       )}
 
-      <ul className="mt-4 flex flex-col gap-3">
-        {agreements.map((a) => (
+      {agreements.length > 0 && (
+        <div className="mt-4 flex items-center justify-between gap-2">
+          <ListSearchInput
+            value={agreementList.query}
+            onChange={agreementList.setQuery}
+            placeholder="Search agreements…"
+          />
+          <SortDropdown
+            value={agreementList.sortKey}
+            onChange={agreementList.setSortKey}
+            options={agreementList.sortDropdownOptions}
+          />
+        </div>
+      )}
+
+      <ul className="mt-3 flex flex-col gap-3">
+        {agreementList.visible.map((a) => (
           <li key={a.id} className="rounded-lg border border-sts-card-border p-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="flex flex-wrap items-center gap-2">
@@ -314,9 +346,9 @@ export function TenantAgreements({
                     aria-label={`Remove ${d.fileName}`}
                     onClick={(e) => {
                       e.preventDefault();
-                      removeDocument(a.id, d.id);
+                      setDocToRemove({ agreementId: a.id, documentId: d.id, fileName: d.fileName });
                     }}
-                    className="ml-0.5 rounded-full p-0.5 opacity-0 transition-opacity group-hover:opacity-100 hover:text-sts-red"
+                    className="ml-0.5 rounded-full p-0.5 opacity-0 transition-opacity group-hover:opacity-100 hover:text-sts-red focus-visible:opacity-100 [@media(hover:none)]:opacity-100"
                   >
                     <Trash2 className="size-3" />
                   </button>
@@ -346,7 +378,23 @@ export function TenantAgreements({
         {agreements.length === 0 && (
           <li className="font-sans text-[12px] text-sts-subtle">No agreements recorded yet.</li>
         )}
+        {agreements.length > 0 && agreementList.visible.length === 0 && (
+          <li className="font-sans text-[12px] text-sts-subtle">
+            No agreements match &ldquo;{agreementList.query.trim()}&rdquo;.
+          </li>
+        )}
       </ul>
+      <ConfirmDialog
+        open={docToRemove !== null}
+        onOpenChange={(o) => { if (!o) setDocToRemove(null); }}
+        title="Remove document?"
+        description={docToRemove ? `"${docToRemove.fileName}" will be permanently removed from this agreement.` : ""}
+        confirmLabel="Remove"
+        successMessage="Document removed."
+        onConfirm={async () => {
+          if (docToRemove) await removeDocument(docToRemove.agreementId, docToRemove.documentId);
+        }}
+      />
     </section>
   );
 }

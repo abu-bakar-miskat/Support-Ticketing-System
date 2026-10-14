@@ -13,6 +13,7 @@ import {
   isSubDeptScopedPath,
   parseTenantPathContext,
   tenantWithMissingDepartment,
+  withTenantContext,
   type TenantPathContext,
 } from "@/lib/tenant-path";
 import { PUBLIC_INTAKE_FORM_RE } from "@/lib/support-form-path";
@@ -114,6 +115,7 @@ export async function proxy(request: NextRequest) {
     pathname.startsWith("/auth/callback") ||
     pathname.startsWith("/invite/") || // department invite links — page sends the OTP itself, pre-auth
     pathname.startsWith("/tenant-invite/") || // tenant invite links — same, and the page names the invited email/role
+    pathname.startsWith("/super-admin-invite/") || // platform super-admin invite — account is created on accept
     PUBLIC_INTAKE_FORM_RE.test(pathname) || // public intake form: /<tenant>/<dept>/<form-uuid> (+ legacy 4-seg)
     pathname.startsWith("/support/") || // public intake support pages (e.g. /support/verify/<token>)
     pathname.startsWith("/api/support/") || // public intake submissions
@@ -125,6 +127,7 @@ export async function proxy(request: NextRequest) {
     pathname === "/api/screening/score" || // guarded by shared secret (or admin session) in the route
     pathname.startsWith("/api/auth/verify-otp") || // OTP sign-in; no session yet
     pathname.startsWith("/api/v1/") ||
+    pathname.startsWith("/api/portal/v1") || // tenant API-key auth; no browser session
     pathname.startsWith("/api/webhooks/") || // authenticated by HMAC signature, not session
     pathname.startsWith("/api/cron/") || // cron jobs — authenticated by Bearer CRON_SECRET in the route, not session
     pathname.startsWith("/api/mcp/") || // authenticated by API key in the path, not session
@@ -188,6 +191,22 @@ export async function proxy(request: NextRequest) {
           supabaseResponse,
           NextResponse.next({ request: { headers } }),
         );
+      }
+    }
+
+    // A bare in-app link (/settings/sla) clicked from a tenant page: canonicalise
+    // it from the referring tab's URL context, which is tab-local and names the
+    // department. Falling through to cookies here bounced users to
+    // /<tenant>/departments whenever pen_active_dept_slug was missing/stale.
+    if (isBareTenantScoped(pathname) && !pathname.startsWith("/api/")) {
+      const referrerContext = contextFromSameOriginReferrer(request);
+      if (referrerContext?.departmentSlug || (referrerContext && !isDeptScopedPath(pathname))) {
+        const target = withTenantContext(referrerContext, pathname);
+        if (target !== pathname) {
+          const url = request.nextUrl.clone();
+          url.pathname = target;
+          return carryCookies(supabaseResponse, NextResponse.redirect(url));
+        }
       }
     }
 

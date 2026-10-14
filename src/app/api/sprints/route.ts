@@ -36,7 +36,7 @@ export async function GET(request: Request) {
   const allSubDepartmentIds = [...new Set(sprints.flatMap((s) => s.tickets.map((t) => t.subDepartmentId)))]
   const completeStatuses = allSubDepartmentIds.length
     ? await prisma.subDepartmentStatus.findMany({
-        where: { subDepartmentId: { in: allSubDepartmentIds }, isComplete: true },
+        where: { subDepartmentId: { in: allSubDepartmentIds }, category: "COMPLETE" },
         select: { subDepartmentId: true, label: true },
       })
     : []

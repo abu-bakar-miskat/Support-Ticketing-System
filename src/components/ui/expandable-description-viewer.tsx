@@ -6,6 +6,7 @@ import { Maximize2, Minimize2, X } from "lucide-react";
 import { RichTextDisplay } from "@/components/ui/rich-text-editor";
 import { getPortalRoot } from "@/lib/portal-root";
 import { cn } from "@/lib/utils";
+import { Tip } from "@/components/ui/tooltip";
 
 export function ExpandDescriptionButton({
   onClick,
@@ -15,18 +16,19 @@ export function ExpandDescriptionButton({
   className?: string;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "flex size-7 items-center justify-center rounded-full border border-sts-card-border text-sts-muted transition-colors hover:border-sts-blue/40 hover:bg-sts-surface hover:text-sts-foreground",
-        className,
-      )}
-      aria-label="Expand description"
-      title="Expand"
-    >
-      <Maximize2 className="size-3.5" strokeWidth={2} />
-    </button>
+    <Tip label="Expand">
+      <button
+        type="button"
+        onClick={onClick}
+        className={cn(
+          "flex size-7 items-center justify-center rounded-full border border-sts-card-border text-sts-muted transition-colors hover:border-sts-blue/40 hover:bg-sts-surface hover:text-sts-foreground",
+          className,
+        )}
+        aria-label="Expand description"
+      >
+        <Maximize2 className="size-3.5" strokeWidth={2} />
+      </button>
+    </Tip>
   );
 }
 

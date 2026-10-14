@@ -21,6 +21,7 @@ import { MetricCard } from "@/components/dashboard/metric-card";
 import { RailCard } from "@/components/manager/rail-card";
 import { DrawerLink } from "@/components/tickets/drawer-link";
 import { useLondonGreeting } from "@/lib/london-time";
+import { HomeDashboardSkeleton } from "@/components/skeletons/page-skeletons";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -194,10 +195,10 @@ function AttentionCard({ attention }: { attention: AttentionTask[] }) {
         )}
       </div>
       {attention.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
-          <CheckCircle2 className="size-6 text-emerald-500" />
+        <div className="flex items-center gap-2 px-4 py-3">
+          <CheckCircle2 className="size-4 shrink-0 text-emerald-500" />
           <p className="font-sans text-[12.5px] text-sts-muted">
-            Nothing overdue, due soon, or blocked. Nice.
+            Nothing overdue, due soon, or blocked.
           </p>
         </div>
       ) : (
@@ -422,21 +423,31 @@ export function HomeDashboard({ initialData }: { initialData?: HomeDashboardData
     refetchOnWindowFocus: false,
   });
 
+  // Placeholder data is all zeros — show a skeleton rather than "0 · nothing
+  // late" metrics and empty sections until the real numbers arrive.
+  if (isPlaceholderData && !isError) return <HomeDashboardSkeleton />;
+
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
       <div className="mx-auto flex w-full max-w-[1760px] flex-col gap-6 px-4 py-6 sm:px-6 xl:px-8">
         {/* Briefing band */}
         <header className="flex flex-col gap-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="min-w-0">
-              {userName ? (
-                <h1 className="sts-text-display">
-                  {timeGreeting}, {firstName}.
-                </h1>
-              ) : (
-                <h1 className="sts-text-display">{timeGreeting}.</h1>
-              )}
-              <p className="mt-1.5 font-sans text-[13px] leading-relaxed text-sts-muted">
+              <h1 className="text-[28px] leading-none tracking-tight text-sts-foreground sm:text-[34px]">
+                <span className="font-sans font-medium text-sts-muted">
+                  {userName ? `${timeGreeting}, ` : `${timeGreeting}.`}
+                </span>
+                {userName ? (
+                  <span
+                    className="font-medium italic"
+                    style={{ fontFamily: "var(--font-display)" }}
+                  >
+                    {firstName}.
+                  </span>
+                ) : null}
+              </h1>
+              <p className="mt-2 font-sans text-[13px] leading-relaxed text-sts-muted">
                 {isError
                   ? "Could not load your day."
                   : isFetching && isPlaceholderData
@@ -447,22 +458,26 @@ export function HomeDashboard({ initialData }: { initialData?: HomeDashboardData
             <DualClock hideBangladesh className="shrink-0 justify-end" />
           </div>
 
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <MetricCard
+                compact
                 label="Open" value={data.metrics.open} color="#0a76b9"
                 sub="assigned to you" href="/tasks"
               />
               <MetricCard
+                compact
                 label="Overdue" value={data.metrics.overdue} color="#ef4444"
                 sub={data.metrics.overdue > 0 ? "past due date" : "nothing late"}
                 href="/tasks"
               />
               <MetricCard
+                compact
                 label="Due this week" value={data.metrics.dueThisWeek} color="#f59e0b"
                 sub={data.metrics.dueThisWeek > 0 ? "coming up" : "clear this week"}
                 href="/tasks"
               />
               <MetricCard
+                compact
                 label="Time today" value={data.metrics.timeTodaySecs}
                 display={data.metrics.timeToday} color="#10b981" sub="logged"
                 href="/time"

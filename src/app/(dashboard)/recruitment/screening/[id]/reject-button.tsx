@@ -160,6 +160,7 @@ export function RejectButton({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
+                aria-label="Close"
                 className="text-muted-foreground hover:text-foreground transition-colors"
               >
                 <X className="size-4" />

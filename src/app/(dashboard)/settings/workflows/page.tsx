@@ -54,7 +54,7 @@ export default async function SettingsWorkflowsRoute() {
     ? await prisma.subDepartmentStatus.findMany({
         where: { subDepartmentId: defaultSubDepartmentId },
         orderBy: { order: "asc" },
-        select: { id: true, label: true, color: true, order: true, isComplete: true, allowedLabels: true },
+        select: { id: true, label: true, color: true, order: true, category: true, isComplete: true, allowedLabels: true },
       })
     : [];
 

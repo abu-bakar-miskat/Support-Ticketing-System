@@ -13,6 +13,7 @@ import {
   type ChatStep,
 } from "./intake-chat-script"
 import { uploadIntakeFile } from "@/lib/api/upload-intake-file"
+import { Tip } from "@/components/ui/tooltip"
 
 type Message = { id: number; role: "bot" | "user"; text: string }
 
@@ -418,7 +419,7 @@ export function IntakeChat({
     }
     const data = (await res.json().catch(() => ({}))) as { pending?: boolean }
     // Default flow emails a verification link (no ticket yet). `pending === false`
-    // is the degraded path where the ticket was created directly.
+    // means the email was already verified, so the ticket was created directly.
     setAwaitingVerification(data.pending !== false)
     setSubmitting(false)
     setSubmitted(true)
@@ -778,14 +779,16 @@ function ChatInputDock({
       )}
       {canSkipText && !draft && <SkipChip onClick={() => onAnswer("", "")} />}
       <AttachButton uploading={!!upload?.uploading} onFiles={onFilesSelect} />
-      <button
-        type="button"
-        onClick={send}
-        title="Send"
-        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-sts-blue text-white transition-colors hover:bg-sts-blue/90"
-      >
-        <Send className="size-4" />
-      </button>
+      <Tip label="Send">
+        <button
+          aria-label="Send"
+          type="button"
+          onClick={send}
+          className="flex size-10 shrink-0 items-center justify-center rounded-full bg-sts-blue text-white transition-colors hover:bg-sts-blue/90"
+        >
+          <Send className="size-4" />
+        </button>
+      </Tip>
     </div>
   )
 }
@@ -798,25 +801,27 @@ function AttachButton({
   onFiles: (files: File[]) => void
 }) {
   return (
-    <label
-      title="Attach files"
-      className={cn(
-        "flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full border border-sts-card-border bg-sts-surface text-sts-muted transition-colors hover:border-sts-id hover:text-sts-id",
-        uploading && "pointer-events-none opacity-60",
-      )}
-    >
-      <input
-        type="file"
-        multiple
-        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
-        className="sr-only"
-        onChange={(e) => {
-          onFiles(Array.from(e.target.files ?? []))
-          e.target.value = ""
-        }}
-      />
-      {uploading ? <Loader2 className="size-4 animate-spin" /> : <Paperclip className="size-4" />}
-    </label>
+    <Tip label="Attach files">
+      <label
+        className={cn(
+          "flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full border border-sts-card-border bg-sts-surface text-sts-muted transition-colors hover:border-sts-id hover:text-sts-id",
+          uploading && "pointer-events-none opacity-60",
+        )}
+      >
+        <input
+          type="file"
+          multiple
+          accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+          className="sr-only"
+          aria-label="Attach files"
+          onChange={(e) => {
+            onFiles(Array.from(e.target.files ?? []))
+            e.target.value = ""
+          }}
+        />
+        {uploading ? <Loader2 className="size-4 animate-spin" /> : <Paperclip className="size-4" />}
+      </label>
+    </Tip>
   )
 }
 
@@ -918,14 +923,16 @@ function SummaryCard({
               )}
             </span>
             {!r.noEdit && (
-              <button
-                type="button"
-                onClick={() => onEdit(r.key)}
-                title={`Edit ${r.label}`}
-                className="shrink-0 rounded-full p-1 text-sts-subtle transition-colors hover:text-sts-id"
-              >
-                <Pencil className="size-3.5" />
-              </button>
+              <Tip label={`Edit ${r.label}`}>
+                <button
+                  aria-label={`Edit ${r.label}`}
+                  type="button"
+                  onClick={() => onEdit(r.key)}
+                  className="shrink-0 rounded-full p-1 text-sts-subtle transition-colors hover:text-sts-id"
+                >
+                  <Pencil className="size-3.5" />
+                </button>
+              </Tip>
             )}
           </div>
         ))}

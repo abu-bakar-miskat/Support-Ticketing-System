@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Tip } from "@/components/ui/tooltip";
 
 export function IntakeSubmissionDeleteButton({
   intakeId,
@@ -30,15 +31,16 @@ export function IntakeSubmissionDeleteButton({
 
   return (
     <>
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="inline-flex w-fit items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-3 py-1.5 font-sans text-[12px] font-semibold text-sts-muted hover:border-sts-red hover:text-sts-red transition-colors"
-        title="Delete submission"
-      >
-        <Trash2 className="size-3.5" />
-        Delete
-      </button>
+      <Tip label="Delete submission">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="inline-flex w-fit items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-3 py-1.5 font-sans text-[12px] font-semibold text-sts-muted hover:border-sts-red hover:text-sts-red transition-colors"
+        >
+          <Trash2 className="size-3.5" />
+          Delete
+        </button>
+      </Tip>
 
       <ConfirmDialog
         open={open}

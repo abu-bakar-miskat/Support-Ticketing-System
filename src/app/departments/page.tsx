@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { getProfile } from "@/lib/profile";
+import { X_TENANT_SLUG_HEADER } from "@/lib/tenant-path";
 import type { ProfileMembership } from "@/lib/profile";
 import { prisma } from "@/lib/db";
 import { avatarColorFor } from "@/lib/board-data";
 import { DepartmentsClient } from "@/components/departments/departments-client";
+import type { DepartmentMailboxUsage } from "@/components/departments/departments-mailboxes";
 import { MyDepartmentsClient, type MyDepartmentItem } from "@/components/departments/my-departments-client";
 import type { DepartmentRow, TemplateOption } from "@/components/settings/settings-departments-page";
 import type { MemberRow } from "@/components/settings/settings-members-page";
@@ -107,7 +110,7 @@ export default async function DepartmentsPage() {
     const mailboxGroups = await runAsSystem(() =>
       prisma.mailboxConnection.groupBy({
         by: ["departmentId", "status"],
-        where: { tenantId },
+        where: { tenantId, authType: "OAUTH_M365", departmentId: { not: null } },
         _count: { _all: true },
         _max: { lastCheckedAt: true },
       }),
@@ -117,6 +120,7 @@ export default async function DepartmentsPage() {
       { total: number; active: number; issues: number; lastCheckedAt: Date | null }
     >();
     for (const g of mailboxGroups) {
+      if (!g.departmentId) continue;
       const entry = mailboxByDept.get(g.departmentId) ?? { total: 0, active: 0, issues: 0, lastCheckedAt: null };
       const count = g._count._all;
       entry.total += count;
@@ -260,11 +264,15 @@ export default async function DepartmentsPage() {
     const tenantName =
       readTenantBranding(tenantRow?.branding).displayName ?? tenantRow?.name ?? null;
 
-    const mailboxUsage = rawDepts.map((d) => {
+    // Sub-department links must carry the department in the URL (/<tenant>/<dept>/…).
+    const tenantSlug = (await headers()).get(X_TENANT_SLUG_HEADER);
+
+    const mailboxUsage: DepartmentMailboxUsage[] = rawDepts.map((d) => {
       const u = mailboxByDept.get(d.id) ?? { total: 0, active: 0, issues: 0, lastCheckedAt: null };
       return {
         departmentId: d.id,
         name: d.name,
+        basePath: tenantSlug ? `/${tenantSlug}/${d.slug}` : "",
         subDepartments: d.subDepartments.map((subDepartment) => ({
           id: subDepartment.id,
           name: subDepartment.name,
@@ -313,8 +321,28 @@ export default async function DepartmentsPage() {
 
   const allIds = [...new Set([...managedIds, ...grantedIds, ...membershipDeptIds])];
 
-  // Only one (or zero) accessible department — no need for a picker page
-  if (allIds.length <= 1) redirect("/");
+  // Exactly one accessible department — skip the picker and drop the user
+  // straight into that department's workspace. Redirect to the dept-scoped
+  // URL (/<tenant>/<dept>), NOT to "/": a bare "/" has no department in the
+  // URL, and when the active-department cookie is missing/stale the proxy
+  // bounces "/" → /<tenant> → /<tenant>/departments, landing back here and
+  // redirecting to "/" again — an infinite loop (clearing cookies only masked
+  // it by re-seeding a valid cookie). Carrying the dept slug in the URL makes
+  // the destination resolve without any cookie dependency.
+  if (allIds.length === 1) {
+    const headerStore = await headers();
+    const tenantSlug = headerStore.get(X_TENANT_SLUG_HEADER);
+    const onlyDept = await runAsSystem(() =>
+      prisma.department.findUnique({
+        where: { id: allIds[0]! },
+        select: { slug: true },
+      }),
+    );
+    if (tenantSlug && onlyDept?.slug) redirect(`/${tenantSlug}/${onlyDept.slug}`);
+    redirect("/");
+  }
+  // Zero accessible departments — render the (empty) picker instead of
+  // redirecting to "/", which would re-enter the proxy ↔ departments loop.
 
   // Explicitly bound to the caller's accessible dept ids + tenant; run
   // unscoped to skip the per-query scope waterfall.

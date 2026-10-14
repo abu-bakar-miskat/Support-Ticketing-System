@@ -1,27 +1,29 @@
-import { createHash } from "crypto"
+import { createHash, randomBytes } from "crypto"
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
-import { runAsSystem, runWithScope } from "@/lib/request-scope"
+import { runWithScope } from "@/lib/request-scope"
 
 export type ApiKeyContext = {
   keyId: string
   departmentId: string | null
-  /** Tenant that owns the key's department; null for department-less keys. */
+  formConfigId?: string | null
+  /** Tenant that owns the key. Authentication fails when it cannot be resolved. */
   tenantId: string | null
   scope: string
+  kind?: string
   createdById: string
   creatorName: string
 }
 
 /**
  * Run `fn` under the API key's tenant scope so the non-bypassable extension
- * enforces isolation on every tenant-scoped read the handler makes. A key bound
- * to a department is scoped to that department's tenant; a department-less key
- * falls back to system scope (it has no tenant to bind to). This is the
- * API-key equivalent of a request establishing scope via `getProfile`.
+ * enforces isolation on every tenant-scoped read the handler makes. Both
+ * department and tenant-wide keys must resolve a tenant; unbound legacy keys
+ * fail authentication. This is the API-key equivalent of a request establishing
+ * scope via `getProfile`.
  */
 export function runWithApiKeyScope<T>(ctx: ApiKeyContext, fn: () => T): T {
-  if (!ctx.tenantId) return runAsSystem(fn)
+  if (!ctx.tenantId) throw new Error("API key scope requires a tenant")
   return runWithScope({ tenantIds: [ctx.tenantId] }, fn)
 }
 
@@ -31,7 +33,6 @@ function hashKey(raw: string): string {
 
 /** Generate a new API key. Returns the raw key (shown once) and the values to store. */
 export function generateApiKey(): { raw: string; hashed: string; suffix: string } {
-  const { randomBytes } = require("crypto") as typeof import("crypto")
   const raw = "pen_" + randomBytes(24).toString("base64url")
   const suffix = raw.slice(-4)
   const hashed = hashKey(raw)
@@ -44,6 +45,7 @@ export function generateApiKey(): { raw: string; hashed: string; suffix: string 
  */
 export async function requireApiKey(
   req: NextRequest,
+  options: { allowPortal?: boolean } = {},
 ): Promise<{ ctx: ApiKeyContext; error: null } | { ctx: null; error: NextResponse }> {
   const auth = req.headers.get("authorization") ?? ""
   if (!auth.startsWith("Bearer ")) {
@@ -57,7 +59,7 @@ export async function requireApiKey(
   }
 
   const raw = auth.slice(7).trim()
-  const result = await requireApiKeyRaw(raw)
+  const result = await requireApiKeyRaw(raw, options)
   if (result.error) {
     return {
       ctx: null,
@@ -74,11 +76,12 @@ export async function requireApiKey(
  */
 export async function requireApiKeyRaw(
   raw: string,
+  options: { allowPortal?: boolean } = {},
 ): Promise<
   | { ctx: ApiKeyContext; error: null }
   | { ctx: null; error: { message: string; status: number } }
 > {
-  if (!raw.startsWith("pen_")) {
+  if (!/^pen_[A-Za-z0-9_-]{32}$/.test(raw)) {
     return { ctx: null, error: { message: "Invalid API key format", status: 401 } }
   }
 
@@ -89,8 +92,17 @@ export async function requireApiKeyRaw(
       id: true,
       revokedAt: true,
       scope: true,
+      kind: true,
+      tenantId: true,
+      tenant: { select: { id: true, status: true, deletedAt: true } },
       departmentId: true,
-      department: { select: { tenantId: true } },
+      formConfigId: true,
+      department: {
+        select: {
+          tenantId: true,
+          tenant: { select: { id: true, status: true, deletedAt: true } },
+        },
+      },
       createdById: true,
       createdBy: { select: { name: true } },
     },
@@ -102,6 +114,23 @@ export async function requireApiKeyRaw(
   if (key.revokedAt !== null) {
     return { ctx: null, error: { message: "API key has been revoked", status: 401 } }
   }
+  if (key.kind === "portal" && !options.allowPortal) {
+    return {
+      ctx: null,
+      error: { message: "This key is restricted to the Support Portal API", status: 403 },
+    }
+  }
+
+  const tenant = key.tenant ?? key.department?.tenant ?? null
+  const tenantId = tenant?.id ?? key.tenantId ?? key.department?.tenantId ?? null
+  if (!tenantId || !tenant) {
+    // Never let a department-less legacy key acquire system-wide scope. These
+    // keys must be replaced by a tenant-bound key from Generate API.
+    return { ctx: null, error: { message: "API key is not bound to a tenant", status: 401 } }
+  }
+  if (tenant.status !== "active" || tenant.deletedAt !== null) {
+    return { ctx: null, error: { message: "API key tenant is unavailable", status: 403 } }
+  }
 
   // Stamp lastUsedAt asynchronously — don't block the response
   prisma.apiKey.update({ where: { id: key.id }, data: { lastUsedAt: new Date() } }).catch(() => undefined)
@@ -110,8 +139,10 @@ export async function requireApiKeyRaw(
     ctx: {
       keyId: key.id,
       departmentId: key.departmentId,
-      tenantId: key.department?.tenantId ?? null,
+      formConfigId: key.formConfigId,
+      tenantId,
       scope: key.scope,
+      kind: key.kind,
       createdById: key.createdById,
       creatorName: key.createdBy.name,
     },

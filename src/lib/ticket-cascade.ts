@@ -1,18 +1,19 @@
 import "server-only"
 import { prisma } from "@/lib/db"
 import { syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
+import { clearAgentUnavailableLabel } from "@/lib/agent-unavailable"
 
 /**
  * When a parent ticket is moved to a complete status, automatically complete
  * all its sub-tickets that are not already in a complete status.
- * Each sub-ticket is updated to the first isComplete status configured for its subDepartment.
+ * Each sub-ticket is updated to the first Complete-category status configured for its subDepartment.
  */
 export async function cascadeCompleteToSubtickets(
   parentId: string,
 ): Promise<void> {
   const subTickets = await prisma.ticket.findMany({
     where: { parentId, deletedAt: null },
-    select: { id: true, subDepartmentId: true, status: true },
+    select: { id: true, subDepartmentId: true, status: true, labels: true },
   })
 
   if (subTickets.length === 0) return
@@ -20,7 +21,7 @@ export async function cascadeCompleteToSubtickets(
   const subSubDepartmentIds = [...new Set(subTickets.map((s) => s.subDepartmentId))]
 
   const completeStatuses = await prisma.subDepartmentStatus.findMany({
-    where: { subDepartmentId: { in: subSubDepartmentIds }, isComplete: true },
+    where: { subDepartmentId: { in: subSubDepartmentIds }, category: "COMPLETE" },
     select: { subDepartmentId: true, label: true, order: true },
     orderBy: { order: "asc" },
   })
@@ -44,7 +45,9 @@ export async function cascadeCompleteToSubtickets(
         if (!completeStatus) return
         await prisma.ticket.update({
           where: { id: sub.id },
-          data: { status: completeStatus, closedAt: now },
+          // Closing drops the agent-unavailable flag — the availability
+          // sweep only revisits open tickets, so it would otherwise stick.
+          data: { status: completeStatus, closedAt: now, labels: clearAgentUnavailableLabel(sub.labels) },
         })
         await syncResolutionTimerOnClosedAtChange(sub.id, now)
       }),

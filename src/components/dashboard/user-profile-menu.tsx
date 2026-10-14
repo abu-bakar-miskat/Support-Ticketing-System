@@ -115,7 +115,7 @@ export function UserProfileMenu({
         aria-label={`User menu for ${userName}`}
         title={isTopBar || collapsed ? userName : undefined}
         className={cn(
-          "outline-none transition-colors",
+          "outline-none transition-colors focus-visible:ring-2 focus-visible:ring-sts-accent/60",
           isTopBar
             ? "flex size-8 items-center justify-center rounded-full hover:bg-sts-bg data-popup-open:bg-sts-bg"
             : cn(

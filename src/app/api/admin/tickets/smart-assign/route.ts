@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
 import { requireAdminOrManager } from "@/lib/auth"
-import { getProfileDeptScope } from "@/lib/dept-scope"
+import { getProfileDeptScope, subDepartmentInScope } from "@/lib/dept-scope"
 import { isMemberActiveInRotation, isMemberAvailableNow } from "@/lib/rota"
 import { createNotification } from "@/lib/notify"
 import { sendAssignmentEmail } from "@/lib/email"
@@ -12,10 +12,11 @@ export async function POST(req: NextRequest) {
   if (error) return error
 
   const body = await req.json()
-  const { ticketIds, mode } = body as {
+  const { ticketIds, mode, subDepartmentId: selectedSubDepartmentId } = body as {
     ticketIds: string[]
     mode: "single" | "round-robin"
     assigneeIds: string[]
+    subDepartmentId?: string
   }
   let { assigneeIds } = body as { assigneeIds: string[] }
 
@@ -29,6 +30,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "assigneeIds must be a non-empty array" }, { status: 400 })
   }
 
+  if (selectedSubDepartmentId !== undefined) {
+    if (typeof selectedSubDepartmentId !== "string" || !selectedSubDepartmentId) {
+      return NextResponse.json({ error: "Select a valid sub-department" }, { status: 400 })
+    }
+    if (!(await subDepartmentInScope(caller!, selectedSubDepartmentId))) {
+      return NextResponse.json({ error: "Sub-department is outside your scope" }, { status: 403 })
+    }
+    const memberships = await prisma.subDepartmentMembership.findMany({
+      where: {
+        subDepartmentId: selectedSubDepartmentId,
+        userId: { in: assigneeIds },
+        isActive: true,
+        ...(mode === "round-robin" ? { role: "agent" as const } : {}),
+      },
+      select: { userId: true },
+    })
+    const memberIds = new Set(memberships.map((member) => member.userId))
+    if (assigneeIds.some((id) => !memberIds.has(id))) {
+      return NextResponse.json({ error: "Choose eligible members of the selected sub-department" }, { status: 400 })
+    }
+  }
+
   // Verify all assignees exist
   const assignees = await prisma.profile.findMany({
     where: { id: { in: assigneeIds }, deletedAt: null },
@@ -40,12 +63,12 @@ export async function POST(req: NextRequest) {
 
   // Round-robin must never land on a manager — they don't work tickets.
   if (mode === "round-robin") {
-    const managerIds = new Set(assignees.filter((a) => a.role === "manager").map((a) => a.id))
+    const managerIds = new Set(assignees.filter((a) => a.role !== "agent").map((a) => a.id))
     if (managerIds.size > 0) {
       assigneeIds = assigneeIds.filter((id) => !managerIds.has(id))
       if (assigneeIds.length === 0) {
         return NextResponse.json(
-          { error: "No eligible (non-manager) assignees to round robin across" },
+          { error: "No eligible agents to round robin across" },
           { status: 400 },
         )
       }
@@ -107,7 +130,7 @@ export async function POST(req: NextRequest) {
       where: { id: ticketIds[0] },
       select: { subDepartmentId: true },
     })
-    const subDepartmentId = firstTicket?.subDepartmentId ?? null
+    const subDepartmentId = selectedSubDepartmentId ?? firstTicket?.subDepartmentId ?? null
 
     let effectiveIds = assigneeIds
     if (subDepartmentId) {

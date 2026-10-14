@@ -7,9 +7,13 @@ import { Switch } from "@/components/ui/switch";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { UI_PRIORITY_DOT_HEX, type UiPriority } from "@/components/board/board-types";
+import { Tip } from "@/components/ui/tooltip";
+import { ListSearchInput, SortDropdown, byDateAsc, byDateDesc, byText, useListControls } from "@/components/ui/list-controls";
 
 const PRIORITIES = ["Low", "Medium", "High", "Critical", "Urgent"] as const;
 type Priority = (typeof PRIORITIES)[number];
+/** Highest priority first; policies with no priority goal sort last. */
+const priorityRank = (p: Priority | null) => (p ? PRIORITIES.length - PRIORITIES.indexOf(p) : 0);
 
 type SlaPolicy = {
   id: string;
@@ -20,6 +24,8 @@ type SlaPolicy = {
   enabled: boolean;
   order: number;
   priority: Priority | null;
+  /** ISO timestamp — drives the Newest / Oldest sorts. */
+  createdAt?: string;
 };
 
 function SkeletonRows({ count = 3, height = "h-9" }: { count?: number; height?: string }) {
@@ -53,6 +59,19 @@ export function TenantSlaSettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const [newOpen, setNewOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  // Display-only — the strictest matching target wins, so list order doesn't affect which policy applies.
+  const list = useListControls(policies ?? [], {
+    searchText: (p) => `${p.name} ${p.priority ?? ""} ${p.enabled ? "enabled active" : "disabled"}`,
+    sortOptions: [
+      { id: "default", label: "Default order", compare: (a, b) => a.order - b.order },
+      { id: "name", label: "Name A–Z", compare: byText((p: SlaPolicy) => p.name) },
+      { id: "newest", label: "Newest first", compare: byDateDesc((p: SlaPolicy) => p.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((p: SlaPolicy) => p.createdAt) },
+      { id: "priority", label: "Highest priority", compare: (a, b) => priorityRank(b.priority) - priorityRank(a.priority) },
+      { id: "first-response", label: "Fastest first response", compare: (a, b) => a.firstResponseMins - b.firstResponseMins },
+      { id: "resolution", label: "Fastest resolution", compare: (a, b) => a.resolutionMins - b.resolutionMins },
+    ],
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -142,13 +161,21 @@ export function TenantSlaSettingsPage() {
               </p>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => setNewOpen(true)}
-            className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
-          >
-            <Plus className="size-3.5" /> New policy
-          </button>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            {policies !== null && policies.length > 0 && (
+              <>
+                <ListSearchInput value={list.query} onChange={list.setQuery} placeholder="Search policies…" />
+                <SortDropdown value={list.sortKey} onChange={list.setSortKey} options={list.sortDropdownOptions} />
+              </>
+            )}
+            <button
+              type="button"
+              onClick={() => setNewOpen(true)}
+              className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
+            >
+              <Plus className="size-3.5" /> New policy
+            </button>
+          </div>
         </div>
 
         {policies === null ? (
@@ -157,6 +184,10 @@ export function TenantSlaSettingsPage() {
           <p className="rounded-lg border border-dashed border-sts-card-border px-3 py-6 text-center font-sans text-[11.5px] text-sts-muted">
             No tenant-level SLA defaults yet. Add one to apply an SLA to every department that
             hasn&apos;t set its own.
+          </p>
+        ) : list.visible.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-sts-card-border px-3 py-6 text-center font-sans text-[11.5px] text-sts-muted">
+            No policies match &ldquo;{list.query.trim()}&rdquo;
           </p>
         ) : (
           <div className="overflow-x-auto">
@@ -172,7 +203,7 @@ export function TenantSlaSettingsPage() {
                 </tr>
               </thead>
               <tbody>
-                {policies.map((policy) => (
+                {list.visible.map((policy) => (
                   <PolicyRow key={policy.id} policy={policy} onSave={savePolicy} onDelete={deletePolicy} />
                 ))}
               </tbody>
@@ -302,23 +333,26 @@ function PolicyRow({
       </td>
       <td className={cell}>
         <div className="flex items-center justify-end gap-1.5">
-          <button
-            type="button"
-            onClick={save}
-            disabled={!canSave}
-            className="inline-flex items-center gap-1 rounded-full bg-sts-blue px-2 py-1 font-sans text-[11.5px] font-medium text-white transition-opacity hover:bg-sts-blue/90 disabled:opacity-40"
-            title="Save changes"
-          >
-            <Save className="size-3.5" /> {saving ? "Saving…" : "Update"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setConfirmOpen(true)}
-            className="rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-            title="Delete policy"
-          >
-            <Trash2 className="size-3.5" />
-          </button>
+          <Tip label="Save changes">
+            <button
+              type="button"
+              onClick={save}
+              disabled={!canSave}
+              className="inline-flex items-center gap-1 rounded-full bg-sts-blue px-2 py-1 font-sans text-[11.5px] font-medium text-white transition-opacity hover:bg-sts-blue/90 disabled:opacity-40"
+            >
+              <Save className="size-3.5" /> {saving ? "Saving…" : "Update"}
+            </button>
+          </Tip>
+          <Tip label="Delete policy">
+            <button
+              aria-label="Delete policy"
+              type="button"
+              onClick={() => setConfirmOpen(true)}
+              className="rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+            >
+              <Trash2 className="size-3.5" />
+            </button>
+          </Tip>
           <ConfirmDialog
             open={confirmOpen}
             onOpenChange={setConfirmOpen}
@@ -376,14 +410,17 @@ function NewPolicyModal({
       >
         <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-sts-card-border px-[22px]">
           <h2 className="sts-text-modal-title">New SLA default</h2>
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={creating}
-            className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
-          >
-            <X size={17} strokeWidth={2} />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              type="button"
+              onClick={onCancel}
+              disabled={creating}
+              className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+            >
+              <X size={17} strokeWidth={2} />
+            </button>
+          </Tip>
         </div>
 
         <div className="flex flex-col gap-4 overflow-y-auto px-[22px] py-5">

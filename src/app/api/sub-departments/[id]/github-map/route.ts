@@ -26,7 +26,7 @@ export async function GET(
   const statuses = await prisma.subDepartmentStatus.findMany({
     where: { subDepartmentId: id },
     orderBy: { order: "asc" },
-    select: { label: true, order: true, isComplete: true },
+    select: { label: true, order: true, category: true },
   })
   const config = await prisma.subDepartmentGitHubStatusMap.findUnique({ where: { subDepartmentId: id } })
 

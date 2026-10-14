@@ -3,8 +3,16 @@ import { prisma } from "@/lib/db";
 import { runAsSystem } from "@/lib/request-scope";
 import { recordAuditEvent } from "@/lib/audit-log";
 import { createNotification } from "@/lib/notify";
-import { TEMPLATE_FEATURE_KEYS, isTemplateFeatureKey, type TemplateFeatureKey } from "@/lib/template-features";
-import { SYSTEM_TEMPLATES } from "@/lib/system-templates";
+import {
+  ALWAYS_ON_FEATURE_KEYS,
+  MARKETPLACE_FEATURE_KEYS,
+  TEMPLATE_FEATURE_KEYS,
+  grantedMarketplaceFeatures,
+  isMarketplaceFeatureKey,
+  isStaleBuiltinFeatureDescription,
+  type TemplateFeatureKey,
+} from "@/lib/template-features";
+import { AVAILABLE_FEATURE_TEMPLATES, SYSTEM_TEMPLATES } from "@/lib/system-templates";
 import { templateRequestReviewedMessage } from "@/lib/template-request-messages";
 import type { TemplateRequestStatus } from "@/generated/prisma/enums";
 
@@ -15,10 +23,11 @@ import type { TemplateRequestStatus } from "@/generated/prisma/enums";
  * and sidebar gating (and thus its sub-departments), unlike
  * getTenantActiveFeatureKeys which is tenant-wide.
  *
- * `null` featureKeys = uncontrolled → "ALL" (every feature visible, fail-open).
- * A (possibly empty) array = exactly those features; an empty controlled set
- * means every template-gated feature is revoked. Resilient to the column not
- * existing yet (additive migration pending): fails open to "ALL".
+ * `null` featureKeys = legacy department → "ALL" (marketplace features included).
+ * An array grants only the marketplace keys it lists. Everything else
+ * (tasks, members, …) stays on. An empty array — what a new
+ * department is created with — means none of the marketplace features.
+ * Resilient to the column not existing yet: fails open to "ALL".
  */
 export async function getDepartmentActiveFeatureKeys(
   departmentId: string,
@@ -29,15 +38,12 @@ export async function getDepartmentActiveFeatureKeys(
     prisma.department.findUnique({ where: { id: departmentId }, select: { featureKeys: true } }),
   ).catch(() => null);
 
-  const raw = dept?.featureKeys;
-  if (raw == null) return "ALL";
+  const granted = grantedMarketplaceFeatures(dept?.featureKeys);
+  if (granted === "ALL") return "ALL";
 
-  const arr = Array.isArray(raw) ? raw : [];
-  const keys = new Set<TemplateFeatureKey>();
-  for (const k of arr) {
-    if (typeof k === "string" && isTemplateFeatureKey(k)) keys.add(k);
-  }
-  return keys;
+  // A template token marks which operation board is active. It does not turn
+  // on every feature in that operation — those are granted one key at a time.
+  return new Set<TemplateFeatureKey>([...ALWAYS_ON_FEATURE_KEYS, ...granted]);
 }
 
 /**
@@ -75,12 +81,14 @@ export async function hasTemplateFeature(tenantId: string, key: TemplateFeatureK
 }
 
 /**
- * The effective feature set for a request: the INTERSECTION of the tenant's
- * active template features and (when a department is active) that department's
- * restriction. A department can never surface a feature the tenant hasn't
- * licensed. Fail-open: `"ALL"` on either side means the other governs; both
- * unrestricted → `"ALL"`. Single source of truth for the sidebar, the settings
- * nav, and the client route guard.
+ * Effective features for the sidebar, settings nav, and route guard.
+ *
+ * No active department → the tenant's template set (or everything).
+ * A legacy department (`featureKeys` null) already has every marketplace
+ * feature, on top of that tenant set, so an Enabled package is usable.
+ * A department with an explicit grant list uses always-on features plus the
+ * marketplace features that are on. A grant is enough — it is not stripped
+ * because a tenant template omitted it.
  */
 export async function getEffectiveFeatureKeys(
   tenantId: string | null | undefined,
@@ -90,9 +98,11 @@ export async function getEffectiveFeatureKeys(
   if (!departmentId) return tenantSet;
 
   const deptSet = await getDepartmentActiveFeatureKeys(departmentId);
-  if (deptSet === "ALL") return tenantSet;
-  if (tenantSet === "ALL") return deptSet;
-  return new Set([...deptSet].filter((k) => tenantSet.has(k)));
+  if (deptSet === "ALL") {
+    if (tenantSet === "ALL") return "ALL";
+    return new Set<TemplateFeatureKey>([...tenantSet, ...MARKETPLACE_FEATURE_KEYS]);
+  }
+  return deptSet;
 }
 
 export type FeatureCheck = { ok: true } | { ok: false; error: string };
@@ -135,6 +145,7 @@ export async function listCatalogueForTenant(tenantId: string) {
     slug: template.slug,
     description: template.description,
     features: template.features.map((f) => f.key),
+    createdAt: template.createdAt.toISOString(),
     status: activeTemplateIds.has(template.id)
       ? ("active" as const)
       : pendingTemplateIds.has(template.id)
@@ -357,6 +368,28 @@ export async function setTemplateFeatures(templateId: string, featureKeys: Templ
     prisma.templateFeature.deleteMany({ where: { templateId } }),
     prisma.templateFeature.createMany({ data: featureKeys.map((key) => ({ templateId, key })) }),
   ]);
+  await syncGrantedTemplateFeatures(templateId, featureKeys);
+}
+
+/** Departments that already have this template pick up newly added marketplace features. */
+async function syncGrantedTemplateFeatures(templateId: string, featureKeys: TemplateFeatureKey[]) {
+  const token = `template:${templateId}`;
+  const marketplaceKeys = featureKeys.filter(isMarketplaceFeatureKey);
+  if (marketplaceKeys.length === 0) return;
+  const departments = await prisma.department.findMany({
+    select: { id: true, featureKeys: true },
+  });
+  for (const dept of departments) {
+    if (!Array.isArray(dept.featureKeys) || !dept.featureKeys.includes(token)) continue;
+    const current = grantedMarketplaceFeatures(dept.featureKeys);
+    if (current === "ALL") continue;
+    const missing = marketplaceKeys.filter((key) => !current.includes(key));
+    if (missing.length === 0) continue;
+    await prisma.department.update({
+      where: { id: dept.id },
+      data: { featureKeys: [...dept.featureKeys, ...missing] },
+    });
+  }
 }
 
 export async function archiveTemplate(id: string) {
@@ -369,6 +402,44 @@ export async function archiveTemplate(id: string) {
  * ones and re-syncs features/name/description on existing ones, keeping them
  * active. Additive only — never deletes. Safe to run on every deploy/boot.
  */
+/**
+ * Create any built-in feature template that is not in the catalogue yet.
+ * Existing rows are left alone, so a renamed or re-featured template stays as edited.
+ */
+export async function ensureAvailableFeatureTemplates(createdById: string) {
+  // One-feature templates are no longer offered. Departments that already have
+  // one keep that grant; the row just leaves the marketplace.
+  await prisma.template.updateMany({
+    where: { slug: { in: [...MARKETPLACE_FEATURE_KEYS] }, isActive: true },
+    data: { isActive: false },
+  });
+
+  for (const tpl of AVAILABLE_FEATURE_TEMPLATES) {
+    const existing = await prisma.template.findUnique({
+      where: { slug: tpl.slug },
+      select: { id: true, description: true },
+    });
+    if (existing) {
+      if (isStaleBuiltinFeatureDescription(tpl.slug, existing.description, tpl.description)) {
+        await prisma.template.update({
+          where: { id: existing.id },
+          data: { description: tpl.description },
+        });
+      }
+      continue;
+    }
+    await prisma.template.create({
+      data: {
+        name: tpl.name,
+        slug: tpl.slug,
+        description: tpl.description,
+        createdById,
+        features: { create: tpl.featureKeys.map((key) => ({ key })) },
+      },
+    });
+  }
+}
+
 export async function ensureSystemTemplates(createdById: string) {
   for (const tpl of SYSTEM_TEMPLATES) {
     const existing = await prisma.template.findUnique({ where: { slug: tpl.slug }, select: { id: true } });

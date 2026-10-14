@@ -178,7 +178,7 @@ async function handlePost(
     })
     if (pending) {
       const res = await verify(pending.token)
-      if (res.ok || res.skipped) {
+      if (res.ok) {
         return NextResponse.json({ pending: true, email: submitterEmail })
       }
     }
@@ -198,22 +198,18 @@ async function handlePost(
 
   const res = await verify(token)
 
-  // Email sending unavailable (no provider / dept disabled confirmations): we
-  // can't verify, so fall back to creating the ticket directly.
-  if (res.skipped) {
-    await prisma.pendingIntake.delete({ where: { id: pending.id } }).catch(() => undefined)
-    try {
-      const { ticketId, humanId } = await createTicketFromPayload(uuid, payload)
-      return NextResponse.json({ pending: false, ticketId, humanId }, { status: 201 })
-    } catch (err) {
-      console.error("[intake submit] direct creation failed:", err)
-      return NextResponse.json({ error: "Failed to create submission" }, { status: 500 })
-    }
-  }
-
-  // Provider rejected the address (bad recipient) — no ticket, tell the requester.
+  // Verification is mandatory: if the link can't be sent, no ticket is created —
+  // never fall back to creating one with an unverified address.
   if (!res.ok) {
     await prisma.pendingIntake.delete({ where: { id: pending.id } }).catch(() => undefined)
+    if (res.reason === "unavailable") {
+      console.error("[intake submit] verification email unavailable — no email provider configured")
+      return NextResponse.json(
+        { error: "We can't send confirmation emails right now, so your request couldn't be submitted. Please try again later." },
+        { status: 503 },
+      )
+    }
+    // Provider rejected the address (bad recipient) — tell the requester.
     return NextResponse.json(
       { error: "We couldn't send a confirmation to that email address — please double-check it." },
       { status: 400 },

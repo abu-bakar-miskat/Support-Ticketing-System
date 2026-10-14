@@ -1,3 +1,5 @@
+import { notifyMailboxTicketCreated } from "@/lib/notify-mailbox-ticket-created";
+import { normalizeMessageId } from "@/lib/inbound-email";
 import "server-only";
 import { prisma } from "@/lib/db";
 import { autoAssignTicket, recordAssignmentFailure } from "@/lib/assignment-engine";
@@ -5,19 +7,21 @@ import { getSubDepartmentStatuses } from "@/lib/board-data";
 import { resolveSupportProjectForDepartment } from "@/lib/support-project";
 import { ensureSystemUser } from "@/lib/intake-conversion";
 import { ensureProjectMembers } from "@/lib/ensure-project-members";
-import { startSlaTimers } from "@/lib/sla-engine";
 import { applyRulesToTicket } from "@/lib/rule-executor";
 import { createNotification } from "@/lib/notify";
 import { sendAssignmentEmail } from "@/lib/email";
+import { prepareMailboxSla } from "@/lib/sla-engine";
 import { assertDepartmentOperational, DepartmentNotOperationalError } from "@/lib/department-setup";
 import { TicketPriority } from "@/generated/prisma/enums";
+import { mailboxOriginIdsWhere, mailboxOriginRouting } from "@/lib/mailbox-ticket-origin";
+import type { Prisma } from "@/generated/prisma/client";
 
 /**
  * EM-01/02/03: creates a brand-new ticket from an inbound email that matched
  * a configured `MailboxConnection` (no reply-token/header/subject match to an
  * existing ticket). Mirrors the ticket-creation block in
  * lib/intake-conversion.ts's runConversion — same ticketNumber-by-trigger,
- * board-column resolution, auto-assignment, and SLA-timer wiring — but there
+ * board-column resolution and auto-assignment — but there
  * is no Intake/form submission behind it, so it's simpler: no responses, no
  * versioned form values.
  */
@@ -28,6 +32,17 @@ export type CreateTicketFromEmailResult = {
   creatorId: string;
   assigneeId: string | null;
 };
+
+/**
+ * Another run (Resend's at-least-once webhook, or the webhook racing the
+ * on-open reconcile) already stored this email — and with it, its ticket.
+ */
+export class DuplicateInboundEmailError extends Error {
+  constructor() {
+    super("Inbound email already stored");
+    this.name = "DuplicateInboundEmailError";
+  }
+}
 
 /**
  * A mailbox was switched off after the inbound router resolved its address but
@@ -52,8 +67,13 @@ export async function createTicketFromInboundEmail(params: {
   /** The mailbox this email arrived at — its per-mailbox assignment override
    *  (if any) takes precedence over the sub-department's method. */
   mailboxConnectionId?: string | null;
+  /** Routing metadata for the creation audit; the body lives only in description. */
+  inboundMessage: {
+    providerMessageIds: string[];
+    data: Omit<Prisma.TicketMessageUncheckedCreateInput, "ticketId"> & { providerMessageId: string };
+  };
 }): Promise<CreateTicketFromEmailResult> {
-  const { departmentId, teamId, fromEmail, fromName, subject, description, mailboxConnectionId } = params;
+  const { departmentId, teamId, fromEmail, fromName, subject, description, mailboxConnectionId, inboundMessage } = params;
 
   // DS-08: a department blocks ticket creation until its initial setup review is complete.
   const setupCheck = await assertDepartmentOperational(departmentId);
@@ -77,7 +97,24 @@ export async function createTicketFromInboundEmail(params: {
     mailboxConnectionId,
   });
 
+  const slaPlan = await prepareMailboxSla(subDepartment.tenantId, departmentId, {
+    mailboxConnectionId, subDepartmentId: teamId, assigneeId: assignResult.assigneeId,
+  });
+
   const ticket = await prisma.$transaction(async (tx) => {
+    // Serialize duplicate deliveries; the ticket and origin metadata commit together.
+    // $executeRaw: pg_advisory_xact_lock returns `void`, which the adapter can't read.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${normalizeMessageId(inboundMessage.data.providerMessageId)}))`;
+    const dup = await tx.ticketMessage.findFirst({
+      where: { providerMessageId: { in: inboundMessage.providerMessageIds } },
+      select: { id: true },
+    });
+    const origin = await tx.activityLog.findFirst({
+      where: mailboxOriginIdsWhere(inboundMessage.providerMessageIds),
+      select: { id: true },
+    });
+    if (dup || origin) throw new DuplicateInboundEmailError();
+
     // The router also checks `isActive`, but that read can become stale while
     // parsing/assignment is in progress. Lock this connection row at the point
     // of creation so a concurrent off-toggle and ticket creation are ordered:
@@ -109,7 +146,7 @@ export async function createTicketFromInboundEmail(params: {
         projectId,
         assigneeId: assignResult.assigneeId,
       },
-      select: { id: true, ticketNumber: true },
+      select: { id: true, ticketNumber: true, createdAt: true },
     });
 
     await tx.activityLog.create({
@@ -117,16 +154,36 @@ export async function createTicketFromInboundEmail(params: {
         ticketId: created.id,
         actorId: creatorId,
         action: "TICKET_CREATED",
-        metadata: { source: "email", fromEmail, fromName },
+        metadata: {
+          source: "email", fromEmail, fromName, mailboxReceiptManagedByApp: true,
+          providerMessageId: inboundMessage.data.providerMessageId,
+          rawPayload: mailboxOriginRouting(inboundMessage.data.rawPayload),
+        },
       },
     });
+
+    // Older webhook deployments only look in TicketMessage under this same
+    // advisory lock. Keep an identity-only system receipt for rolling-deploy
+    // compatibility; the original body remains solely in the description.
+    await tx.ticketMessage.create({ data: {
+      ticketId: created.id, providerMessageId: normalizeMessageId(inboundMessage.data.providerMessageId),
+      direction: "inbound", status: "system", fromEmail, fromName, bodyHtml: "",
+      rawPayload: { ...mailboxOriginRouting(inboundMessage.data.rawPayload), mailboxReceipt: true },
+    } });
 
     if (assignResult.nextRotaPointer !== undefined) {
       await tx.subDepartment.update({ where: { id: teamId }, data: { rotaPointer: assignResult.nextRotaPointer } });
     }
 
+    if (slaPlan) await tx.slaTimer.create({ data: {
+      ticketId: created.id, ...slaPlan,
+      firstResponseStartedAt: created.createdAt, resolutionStartedAt: created.createdAt,
+    } });
     return created;
   });
+
+  await notifyMailboxTicketCreated({ ticketId: ticket.id, tenantId: subDepartment.tenantId, departmentId, mailboxConnectionId })
+    .catch((err) => console.error("[inbound] new mailbox ticket notification failed:", ticket.id, err));
 
   if (assignResult.assigneeId && projectId) {
     await ensureProjectMembers(projectId, [assignResult.assigneeId]).catch(() => undefined);
@@ -134,10 +191,8 @@ export async function createTicketFromInboundEmail(params: {
 
   // The ticket is already committed above, so these follow-up steps are
   // best-effort: a throw here must not bubble out of this function, or the
-  // inbound webhook would treat a fully-created ticket as a failure and (post
-  // the retry-on-error change in process-inbound-email) retry it — creating a
-  // duplicate ticket, since the message row that gates idempotency isn't stored
-  // until after this returns. Log and move on instead.
+  // inbound webhook would treat a fully-created ticket as a failure and retry
+  // it. The creation audit already gates idempotency; log and move on instead.
   const ruleFormValues = {
     title,
     subject: subject ?? "",
@@ -145,9 +200,6 @@ export async function createTicketFromInboundEmail(params: {
     fromName,
     priority: TicketPriority.Medium,
   };
-  await startSlaTimers(ticket.id, subDepartment.tenantId, departmentId, ruleFormValues, undefined, teamId)
-    .catch((err) => console.error("[inbound] startSlaTimers failed for", ticket.id, err));
-
   // RE-01/02: run the department's automation rules on the inbound-email ticket.
   await applyRulesToTicket(
     {
@@ -156,6 +208,9 @@ export async function createTicketFromInboundEmail(params: {
       departmentId,
       subDepartmentId: teamId,
       assigneeId: assignResult.assigneeId,
+      // Mailbox tickets only use the department's shared-mailbox SLA (started
+      // above) — never form SLA policies, including through automation.
+      allowSla: false,
     },
     ruleFormValues,
   ).catch((err) => console.error("[inbound] applyRulesToTicket failed for", ticket.id, err));
@@ -174,7 +229,7 @@ export async function createTicketFromInboundEmail(params: {
         select: { id: true, name: true, email: true },
       });
       if (assignee) {
-        createNotification({
+        await createNotification({
           recipientId: assignee.id,
           type: "assignment",
           ticketId: ticket.id,

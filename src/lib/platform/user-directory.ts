@@ -8,6 +8,8 @@ export type PlatformDirectoryUser = {
   avatarUrl: string | null
   role: string
   isSuperAdmin: boolean
+  /** ISO timestamp the profile was created (joined the platform). */
+  createdAt: string
   tenants: string[]
   // Names of the tenants this user is Admin of (TENANT-scoped `admin` role
   // assignment). A user can belong to several tenants but administer only some.
@@ -22,7 +24,7 @@ export type PlatformDirectoryUser = {
 
 /**
  * Load every active profile with tenants + departments aggregated.
- * Used by /platform/administrators and /platform/users.
+ * Used by /platform/users.
  */
 export async function loadPlatformUserDirectory(): Promise<PlatformDirectoryUser[]> {
   const rows = await prisma.profile.findMany({
@@ -34,6 +36,7 @@ export async function loadPlatformUserDirectory(): Promise<PlatformDirectoryUser
       avatarUrl: true,
       role: true,
       isSuperAdmin: true,
+      createdAt: true,
       // Canonical role lives in RoleAssignment (SRS D-06), not the legacy
       // Profile.role column — scoped role changes never write Profile.role, so
       // it goes stale (e.g. a sub-department lead still reads "agent" there).
@@ -112,6 +115,7 @@ export async function loadPlatformUserDirectory(): Promise<PlatformDirectoryUser
       avatarUrl: r.avatarUrl,
       role: deriveEffectiveRole(r.roleAssignments),
       isSuperAdmin: r.isSuperAdmin,
+      createdAt: r.createdAt.toISOString(),
       tenants: [...new Set(r.tenantMemberships.map((t) => t.tenant.name))],
       adminTenants: [
         ...new Set(

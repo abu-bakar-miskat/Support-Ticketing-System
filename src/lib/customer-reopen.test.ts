@@ -84,73 +84,23 @@ beforeEach(() => {
 })
 
 describe("maybeReopenTicket", () => {
-  it("reopens a ticket that is in a completion status", async () => {
+  it("labels a closed ticket but leaves status/closedAt and timers untouched", async () => {
     mockFindTicket.mockResolvedValue({ status: "Done", labels: [] } as never)
     mockFindStatuses.mockResolvedValue(typicalStatuses as never)
-
-    const result = await maybeReopenTicket(TICKET_ID, SUB_DEPARTMENT_ID, ACTOR_ID)
-
-    expect(result).toBe(true)
-    expect(mockUpdateTicket).toHaveBeenCalledWith({
-      where: { id: TICKET_ID },
-      data: { status: "Not Started", closedAt: null, labels: ["Reopened"] },
-    })
-    expect(mockCreateLog).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        ticketId: TICKET_ID,
-        actorId: ACTOR_ID,
-        action: "STATUS_CHANGED",
-        metadata: expect.objectContaining({
-          from: "Done",
-          to: "Not Started",
-          triggeredBy: "customer_reply",
-        }),
-      }),
-    })
-  })
-
-  it("does not reopen a ticket that is not in a completion status", async () => {
-    mockFindTicket.mockResolvedValue({ status: "In Progress", labels: [] } as never)
-    mockFindStatuses.mockResolvedValue(typicalStatuses as never)
-
-    const result = await maybeReopenTicket(TICKET_ID, SUB_DEPARTMENT_ID, ACTOR_ID)
-
-    expect(result).toBe(false)
-    expect(mockUpdateTicket).not.toHaveBeenCalled()
+    expect(await maybeReopenTicket(TICKET_ID, SUB_DEPARTMENT_ID, ACTOR_ID)).toBe(false)
+    expect(mockUpdateTicket).toHaveBeenCalledWith({ where: { id: TICKET_ID }, data: { labels: ["Reopened"] } })
     expect(mockCreateLog).not.toHaveBeenCalled()
   })
-
-  it("stays put (returns false) when all subDepartment statuses are completion statuses", async () => {
-    mockFindTicket.mockResolvedValue({ status: "Closed", labels: [] } as never)
-    mockFindStatuses.mockResolvedValue([
-      { label: "Resolved", isComplete: true, order: 0 },
-      { label: "Closed", isComplete: true, order: 1 },
-    ] as never)
-
-    const result = await maybeReopenTicket(TICKET_ID, SUB_DEPARTMENT_ID, ACTOR_ID)
-
-    expect(result).toBe(false)
+  it("does not change an open ticket", async () => {
+    mockFindTicket.mockResolvedValue({ status: "In Progress", labels: [] } as never)
+    mockFindStatuses.mockResolvedValue(typicalStatuses as never)
+    expect(await maybeReopenTicket(TICKET_ID, SUB_DEPARTMENT_ID, ACTOR_ID)).toBe(false)
     expect(mockUpdateTicket).not.toHaveBeenCalled()
   })
-
-  it("returns false when the ticket is not found", async () => {
-    mockFindTicket.mockResolvedValue(null as never)
+  it("does not repeatedly write the attention label", async () => {
+    mockFindTicket.mockResolvedValue({ status: "Done", labels: ["Reopened"] } as never)
     mockFindStatuses.mockResolvedValue(typicalStatuses as never)
-
-    const result = await maybeReopenTicket(TICKET_ID, SUB_DEPARTMENT_ID, ACTOR_ID)
-
-    expect(result).toBe(false)
-    expect(mockUpdateTicket).not.toHaveBeenCalled()
-  })
-
-  it("clears closedAt when reopening", async () => {
-    mockFindTicket.mockResolvedValue({ status: "Done", labels: [] } as never)
-    mockFindStatuses.mockResolvedValue(typicalStatuses as never)
-
     await maybeReopenTicket(TICKET_ID, SUB_DEPARTMENT_ID, ACTOR_ID)
-
-    expect(mockUpdateTicket).toHaveBeenCalledWith(
-      expect.objectContaining({ data: expect.objectContaining({ closedAt: null }) }),
-    )
+    expect(mockUpdateTicket).not.toHaveBeenCalled()
   })
 })

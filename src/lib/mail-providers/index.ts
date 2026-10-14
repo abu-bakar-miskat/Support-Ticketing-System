@@ -1,16 +1,26 @@
 import "server-only";
 import type { MailboxAuthType } from "@/generated/prisma/enums";
-import type { MailProvider } from "./types";
-import { resendProvider } from "./resend-provider";
+import type { PullMailProvider } from "./types";
+import { m365Provider } from "./m365-provider";
 
 /**
- * Provider registry (D-10/EM-05). Only RESEND is implemented; the other
- * MailboxAuthType values are reserved for OAuth (M365/Google) and IMAP,
- * which land behind this same {@link MailProvider} interface later.
+ * Provider registry (D-10/EM-05). OAUTH_M365 is the only provider: polled by
+ * lib/mailbox-sync.ts and used to send (lib/mailbox-outbound.ts). RESEND /
+ * OAUTH_GOOGLE / IMAP are enum values with no implementation.
  */
-export function getMailProvider(authType: MailboxAuthType): MailProvider | null {
-  if (authType === "RESEND") return resendProvider;
+export function getPullMailProvider(authType: MailboxAuthType): PullMailProvider | null {
+  if (authType === "OAUTH_M365") return m365Provider;
   return null;
 }
 
-export type { MailProvider, NormalizedInboundEmail, NormalizedAttachment, MailboxCredentials, HealthCheckResult } from "./types";
+export const PULL_AUTH_TYPES = ["OAUTH_M365"] as const satisfies readonly MailboxAuthType[];
+
+export type {
+  PullMailProvider,
+  NormalizedInboundEmail,
+  NormalizedAttachment,
+  HealthCheckResult,
+  PullCredentials,
+  OAuthMailboxCredentials,
+} from "./types";
+export { MailProviderError } from "./types";

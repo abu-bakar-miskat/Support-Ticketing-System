@@ -17,6 +17,7 @@ import {
   sidebarSelectContentClass,
   sidebarSelectItemClass,
 } from "@/components/tickets/sidebar-field-styles"
+import { toastError } from "@/lib/toast-error"
 
 const MODULE_ZERO = "__module0__"
 const MODULE_ZERO_LABEL = "Module 0 (General)"
@@ -57,7 +58,8 @@ export function ModuleSelect({ ticketId, projectId, moduleId, moduleName, disabl
     setLiveModuleId(nextId)
     setLiveModuleName(nextId ? modules.find((m) => m.id === nextId)?.name ?? null : null)
     setError(null)
-    void updateTicket(ticketId, { moduleId: nextId }).catch(() => {
+    void updateTicket(ticketId, { moduleId: nextId }).catch((err: unknown) => {
+      toastError("Couldn't update module", err)
       setLiveModuleId(prevId)
       setLiveModuleName(prevName)
       setError("Failed to update module")

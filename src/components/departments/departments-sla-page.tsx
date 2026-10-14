@@ -56,6 +56,7 @@ export function DepartmentsSlaPage({ departments }: { departments: DepartmentOpt
           subDepartments={selected.subDepartments}
           hideBackLink
           showSubDepartment={false}
+          showMailboxSla={false}
         />
       )}
     </div>

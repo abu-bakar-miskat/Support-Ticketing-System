@@ -5,6 +5,7 @@ import { FontSizeInitScript } from "@/components/font-size/font-size-init-script
 import { FontSizeProvider } from "@/components/font-size/font-size-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { ServiceWorkerRegister } from "@/components/pwa/service-worker-register";
 import { UpdateNotifier } from "@/components/update-notifier";
 import { Analytics } from "@vercel/analytics/next";
@@ -14,7 +15,7 @@ import "./globals.css";
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#0f172a" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
   ],
   width: "device-width",
   initialScale: 1,
@@ -57,12 +58,13 @@ export default function RootLayout({
         <QueryProvider>
           <FontSizeProvider>
             <ThemeProvider>
-            {children}
+            <TooltipProvider>{children}</TooltipProvider>
             <Toaster
               position="top-center"
               gap={8}
               offset={16}
-              duration={2000}
+              duration={4000}
+              closeButton
               containerAriaLabel="Notifications"
               style={{ left: "50%", transform: "translateX(-50%)" }}
             />

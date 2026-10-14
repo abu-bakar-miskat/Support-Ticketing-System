@@ -27,6 +27,7 @@ import { uploadTemporaryAttachmentFile } from "@/lib/api/upload-temporary-file";
 import { downloadFile } from "@/lib/download-file";
 import { formatDateTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
+import { Tip } from "@/components/ui/tooltip";
 
 function initials(name: string): string {
   return name
@@ -143,6 +144,8 @@ export type MessageData = {
   notes?: MessageNote[];
   deliveryStatus?: string | null;
   deliveryError?: string | null;
+  /** Present on a successful outbound send so the ticket header updates immediately. */
+  ticketStatus?: string;
 };
 
 type PendingAttachment = {
@@ -308,15 +311,17 @@ export function CustomerReplyComposer({
           showAttachButton={false}
           toolbarExtraAlign="left"
           toolbarExtra={
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              disabled={submitting}
-              title="Attach file"
-              className="flex size-6 items-center justify-center rounded text-sts-muted transition-colors hover:bg-sts-card hover:text-sts-foreground disabled:cursor-not-allowed disabled:opacity-30"
-            >
-              <Paperclip className="size-3.5" />
-            </button>
+            <Tip label="Attach file">
+              <button
+                aria-label="Attach file"
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                disabled={submitting}
+                className="flex size-6 items-center justify-center rounded text-sts-muted transition-colors hover:bg-sts-card hover:text-sts-foreground disabled:cursor-not-allowed disabled:opacity-30"
+              >
+                <Paperclip className="size-3.5" />
+              </button>
+            </Tip>
           }
           className="min-h-0 rounded-none border-0 bg-transparent [&>div:first-child]:border-sts-blue/15 [&>div:first-child]:bg-transparent"
           contentClassName="max-h-[220px]"
@@ -346,13 +351,16 @@ export function CustomerReplyComposer({
                 {att.fileName}
               </span>
               {!att.uploading && (
-                <button
-                  type="button"
-                  onClick={() => removeAttachment(att.id)}
-                  className="ml-0.5 text-sts-subtle hover:text-sts-red"
-                >
-                  <X className="size-[11px]" />
-                </button>
+                <Tip label="Remove attachment">
+                  <button
+                    aria-label={`Remove ${att.fileName}`}
+                    type="button"
+                    onClick={() => removeAttachment(att.id)}
+                    className="ml-0.5 text-sts-subtle hover:text-sts-red"
+                  >
+                    <X className="size-[11px]" />
+                  </button>
+                </Tip>
               )}
             </div>
           ))}
@@ -479,14 +487,13 @@ function MessageNotes({
     }
   }
 
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+
+  // Throws on failure so ConfirmDialog keeps itself open and toasts the error.
   async function removeNote(noteId: string) {
-    try {
-      const res = await fetch(`/api/comments/${noteId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
-      onRemoved(noteId);
-    } catch (err) {
-      toastError("Failed to delete note", err);
-    }
+    const res = await fetch(`/api/comments/${noteId}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Failed to delete comment");
+    onRemoved(noteId);
   }
 
   return (
@@ -512,26 +519,30 @@ function MessageNotes({
                 {n.editedAt ? " · edited" : ""}
               </span>
               {isAuthor && !editing && (
-                <span className="ml-auto flex items-center gap-0.5 opacity-0 transition-opacity group-hover/note:opacity-100">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setEditingId(n.id);
-                      setEditValue(n.body);
-                    }}
-                    title="Edit comment"
-                    className="flex size-5 items-center justify-center rounded text-sts-subtle hover:bg-sts-card hover:text-sts-foreground"
-                  >
-                    <Pencil className="size-3" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removeNote(n.id)}
-                    title="Delete comment"
-                    className="flex size-5 items-center justify-center rounded text-sts-subtle hover:bg-sts-red/10 hover:text-sts-red"
-                  >
-                    <Trash2 className="size-3" />
-                  </button>
+                <span className="ml-auto flex items-center gap-0.5 opacity-0 transition-opacity group-hover/note:opacity-100 group-focus-within/note:opacity-100 [@media(hover:none)]:opacity-100">
+                  <Tip label="Edit comment">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingId(n.id);
+                        setEditValue(n.body);
+                      }}
+                      aria-label="Edit comment"
+                      className="flex size-5 items-center justify-center rounded text-sts-subtle hover:bg-sts-card hover:text-sts-foreground"
+                    >
+                      <Pencil className="size-3" />
+                    </button>
+                  </Tip>
+                  <Tip label="Delete comment">
+                    <button
+                      type="button"
+                      onClick={() => setPendingDeleteId(n.id)}
+                      aria-label="Delete comment"
+                      className="flex size-5 items-center justify-center rounded text-sts-subtle hover:bg-sts-red/10 hover:text-sts-red"
+                    >
+                      <Trash2 className="size-3" />
+                    </button>
+                  </Tip>
                 </span>
               )}
             </div>
@@ -621,11 +632,91 @@ function MessageNotes({
           Add internal comment
         </button>
       )}
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        onOpenChange={(o) => {
+          if (!o) setPendingDeleteId(null);
+        }}
+        title="Delete internal comment?"
+        description="This comment will be permanently removed for everyone on the ticket."
+        confirmLabel="Delete"
+        successMessage="Comment deleted"
+        onConfirm={async () => {
+          if (pendingDeleteId) await removeNote(pendingDeleteId);
+        }}
+      />
     </div>
   );
 }
 
 /** A single customer-conversation message in the interleaved timeline. */
+/** Inline image previews + downloadable file chips for a message's attachments. */
+export function MessageAttachments({
+  attachments,
+  className,
+}: {
+  attachments: MessageData["attachments"];
+  className?: string;
+}) {
+  const imageAttachments = attachments.filter((a) => isImage(a.fileName));
+  const fileAttachments = attachments.filter((a) => !isImage(a.fileName));
+  if (attachments.length === 0) return null;
+  return (
+    <>
+      {/* Inline image previews */}
+      {imageAttachments.length > 0 && (
+        <div className={cn("flex flex-col gap-2", className)}>
+          {imageAttachments.map((a) => (
+            <a
+              key={a.id}
+              href={a.storageUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="block"
+            >
+              <img
+                src={a.storageUrl}
+                alt={a.fileName}
+                className="max-h-64 max-w-full rounded-lg object-contain"
+              />
+            </a>
+          ))}
+        </div>
+      )}
+
+      {/* File attachments */}
+      {fileAttachments.length > 0 && (
+        <div className="mt-2 flex flex-col gap-1.5">
+          {fileAttachments.map((a) => (
+            <Tip key={a.id} label={`Download ${a.fileName}`}>
+              <button
+                type="button"
+                onClick={() => downloadFile(a.storageUrl, a.fileName)}
+                className="flex w-full cursor-pointer items-center gap-2.5 rounded-full border border-sts-card-border bg-sts-bg px-2.5 py-2 text-left transition-colors hover:border-sts-blue/40 hover:bg-sts-blue/5"
+              >
+                <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-sts-surface">
+                  <FileText className="size-4 text-sts-blue" />
+                </span>
+                <span className="flex min-w-0 flex-col">
+                  <span className="max-w-[220px] truncate font-sans text-[12px] font-medium text-sts-foreground">
+                    {a.fileName}
+                  </span>
+                  {a.fileSize > 0 && (
+                    <span className="font-sans text-[10.5px] text-sts-subtle">
+                      {formatFileSize(a.fileSize)}
+                    </span>
+                  )}
+                </span>
+                <Download className="ml-auto size-3.5 shrink-0 text-sts-muted" />
+              </button>
+            </Tip>
+          ))}
+        </div>
+      )}
+    </>
+  );
+}
+
 export function CustomerMessageItem({
   message,
   ticketId,
@@ -655,13 +746,6 @@ export function CustomerMessageItem({
   const displayName = outbound
     ? (message.authorName ?? message.fromName)
     : message.fromName;
-
-  const imageAttachments = message.attachments.filter((a) =>
-    isImage(a.fileName),
-  );
-  const fileAttachments = message.attachments.filter(
-    (a) => !isImage(a.fileName),
-  );
 
   async function doDelete() {
     if (!ticketId || !onDelete) return;
@@ -769,20 +853,23 @@ export function CustomerMessageItem({
             {/* Collapsed quoted history */}
             {quotedBody && (
               <div className={cn(visibleBody && "mt-1.5")}>
-                <button
-                  type="button"
-                  onClick={() => setShowQuote((v) => !v)}
-                  title={showQuote ? "Hide quoted text" : "Show quoted text"}
-                  className="inline-flex items-center gap-1 rounded-full bg-sts-bg px-1.5 py-0.5 font-sans text-[11px] text-sts-subtle transition-colors hover:text-sts-foreground"
-                >
-                  <span className="tracking-widest leading-none">•••</span>
-                  <ChevronDown
-                    className={cn(
-                      "size-3 transition-transform",
-                      showQuote && "rotate-180",
-                    )}
-                  />
-                </button>
+                <Tip label={showQuote ? "Hide quoted text" : "Show quoted text"}>
+                  <button
+                    aria-label={showQuote ? "Hide quoted text" : "Show quoted text"}
+                    aria-expanded={showQuote}
+                    type="button"
+                    onClick={() => setShowQuote((v) => !v)}
+                    className="inline-flex items-center gap-1 rounded-full bg-sts-bg px-1.5 py-0.5 font-sans text-[11px] text-sts-subtle transition-colors hover:text-sts-foreground"
+                  >
+                    <span className="tracking-widest leading-none">•••</span>
+                    <ChevronDown
+                      className={cn(
+                        "size-3 transition-transform",
+                        showQuote && "rotate-180",
+                      )}
+                    />
+                  </button>
+                </Tip>
                 {showQuote && (
                   <div
                     className="mt-1.5 whitespace-pre-wrap break-words border-l-2 border-sts-card-border pl-2.5 font-sans text-[12px] leading-relaxed text-sts-subtle"
@@ -792,56 +879,10 @@ export function CustomerMessageItem({
               </div>
             )}
 
-            {/* Inline image previews */}
-            {imageAttachments.length > 0 && (
-              <div className={cn("flex flex-col gap-2", visibleBody && "mt-2")}>
-                {imageAttachments.map((a) => (
-                  <a
-                    key={a.id}
-                    href={a.storageUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block"
-                  >
-                    <img
-                      src={a.storageUrl}
-                      alt={a.fileName}
-                      className="max-h-64 max-w-full rounded-lg object-contain"
-                    />
-                  </a>
-                ))}
-              </div>
-            )}
-
-            {/* File attachments */}
-            {fileAttachments.length > 0 && (
-              <div className="mt-2 flex flex-col gap-1.5">
-                {fileAttachments.map((a) => (
-                  <button
-                    key={a.id}
-                    type="button"
-                    onClick={() => downloadFile(a.storageUrl, a.fileName)}
-                    title={`Download ${a.fileName}`}
-                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-full border border-sts-card-border bg-sts-bg px-2.5 py-2 text-left transition-colors hover:border-sts-blue/40 hover:bg-sts-blue/5"
-                  >
-                    <span className="flex size-8 shrink-0 items-center justify-center rounded-md bg-sts-surface">
-                      <FileText className="size-4 text-sts-blue" />
-                    </span>
-                    <span className="flex min-w-0 flex-col">
-                      <span className="max-w-[220px] truncate font-sans text-[12px] font-medium text-sts-foreground">
-                        {a.fileName}
-                      </span>
-                      {a.fileSize > 0 && (
-                        <span className="font-sans text-[10.5px] text-sts-subtle">
-                          {formatFileSize(a.fileSize)}
-                        </span>
-                      )}
-                    </span>
-                    <Download className="ml-auto size-3.5 shrink-0 text-sts-muted" />
-                  </button>
-                ))}
-              </div>
-            )}
+            <MessageAttachments
+              attachments={message.attachments}
+              className={cn(visibleBody && "mt-2")}
+            />
           </div>
 
           {/* Internal notes attached to this message (staff-only) */}

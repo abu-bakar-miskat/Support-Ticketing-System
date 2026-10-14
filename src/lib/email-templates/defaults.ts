@@ -102,7 +102,7 @@ export const DEFAULT_TEMPLATES: Record<EmailTemplateKey, TemplateDefault> = {
     description: "Sent when a staff member replies to a support submitter.",
     subject: "Re: {{ticketTitle}}",
     heading: "A reply to your request",
-    bodyHtml: `<p style="margin:0 0 16px 0;">Hi {{submitterFirstName}},</p>\n<div style="margin:0 0 24px 0;color:#374151;font-size:15px;line-height:1.6;">{{messageHtml}}</div>\n{{signature}}\n<p style="margin:16px 0 0 0;color:#9ca3af;font-size:12px;">Reply to this email to continue the conversation.</p>`,
+    bodyHtml: `<p style="margin:0 0 20px 0;">Hi {{submitterFirstName}},</p>\n<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="width:100%;margin:0 0 24px 0;border:1px solid #dfe7e3;border-radius:8px;border-collapse:separate;background:#f7faf8;">\n  <tr>\n    <td style="padding:16px 20px 6px 20px;color:#6b7c74;font-size:11px;line-height:1.4;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Message from {{agentName}}</td>\n  </tr>\n  <tr>\n    <td style="padding:6px 20px 20px 20px;color:#26352f;font-size:15px;line-height:1.7;">{{messageHtml}}</td>\n  </tr>\n</table>\n{{signature}}\n<p style="margin:16px 0 0 0;color:#9ca3af;font-size:12px;">Reply to this email to continue the conversation.</p>`,
     placeholders: ["submitterName", "submitterFirstName", "ticketTitle", "agentName", "messageHtml", "signature"],
     sample: {
       submitterName: "Morgan Lee",

@@ -1,3 +1,5 @@
+import { recoverMailboxSla } from "@/lib/mailbox-sla-recovery"
+import { getManualResolutionView } from "@/lib/manual-resolution"
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth, assertTicketAccess } from "@/lib/auth"
 import { prisma } from "@/lib/db"
@@ -6,7 +8,8 @@ import { runAsSystem } from "@/lib/request-scope"
 
 // GET /api/tickets/[id]/sla — the ticket's SLA indicator (SLA-06): status +
 // remaining/overdue time for first-response and resolution. Returns
-// { indicator: null } when no SLA policy applied to this ticket.
+// { indicator: null } when no SLA policy applied to this ticket. Admins and the
+// department's managers also receive `indicator.details`.
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -34,6 +37,25 @@ export async function GET(
   const accessError = await assertTicketAccess(profile, ticket, { forWrite: false })
   if (accessError) return accessError
 
-  const indicator = await runAsSystem(() => getSlaIndicatorViewForTicket(ticketId))
+  // Full breakdown (clock instants, breach history) is for tenant admins and the
+  // ticket department's admins/managers; everyone else gets the badge summary.
+  const departmentId = ticket.subDepartment.departmentId
+  const includeDetails =
+    (profile.tenantMemberships ?? []).some((membership) =>
+      membership.tenantId === ticket.tenantId && ["admin", "manager"].includes(membership.role),
+    ) ||
+    profile.isSuperAdmin ||
+    profile.role === "admin" ||
+    (profile.managedDepartmentIds ?? []).includes(departmentId) ||
+    (profile.departmentAdminIds ?? []).includes(departmentId)
+
+  await runAsSystem(() => recoverMailboxSla(ticketId))
+
+  const manualResolution = await runAsSystem(() => getManualResolutionView(ticketId, new Date(), includeDetails))
+  if (manualResolution) return NextResponse.json({ indicator: null, manualResolution })
+
+  const indicator = await runAsSystem(() =>
+    getSlaIndicatorViewForTicket(ticketId, new Date(), { includeDetails }),
+  )
   return NextResponse.json({ indicator })
 }

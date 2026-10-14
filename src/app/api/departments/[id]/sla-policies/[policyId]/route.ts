@@ -130,6 +130,15 @@ export async function PATCH(
       if (!sub) {
         return NextResponse.json({ error: "Sub-department not found in department" }, { status: 404 })
       }
+    } else {
+      // Clearing is only allowed when the department has no sub-departments.
+      const hasSubDepartments = await prisma.subDepartment.findFirst({
+        where: { departmentId: id },
+        select: { id: true },
+      })
+      if (hasSubDepartments) {
+        return NextResponse.json({ error: "subDepartmentId is required" }, { status: 400 })
+      }
     }
     data.subDepartmentId = v
   }

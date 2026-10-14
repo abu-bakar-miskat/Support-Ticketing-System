@@ -1,5 +1,6 @@
 "use client";
 
+import { Tip } from "@/components/ui/tooltip";
 import { useEffect, useMemo, useState } from "react";
 import { Dialog } from "@base-ui/react/dialog";
 import { Loader2, X } from "lucide-react";
@@ -140,13 +141,16 @@ export function ModuleFormDialog({
             <Dialog.Title className="sts-text-modal-title">
               {isEdit ? "Edit module" : "New module"}
             </Dialog.Title>
-            <button
-              type="button"
-              onClick={() => onOpenChange(false)}
-              className="shrink-0 rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
-            >
-              <X className="size-4" />
-            </button>
+            <Tip label="Close">
+              <button
+                aria-label="Close"
+                type="button"
+                onClick={() => onOpenChange(false)}
+                className="shrink-0 rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
+              >
+                <X className="size-4" />
+              </button>
+            </Tip>
           </div>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4 px-6 py-5">

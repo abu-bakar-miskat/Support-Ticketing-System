@@ -10,6 +10,8 @@ export default function NotFound() {
 
   return (
     <main className="sts-ambient-bg relative flex min-h-screen flex-col items-center justify-center overflow-hidden font-sans">
+      {/* Client component, so no `metadata` export — React hoists this into <head>. */}
+      <title>Page not found — Global Support Portal</title>
 
       {/* Theme toggle */}
       <ThemeToggle className="absolute right-6 top-6 z-20" />

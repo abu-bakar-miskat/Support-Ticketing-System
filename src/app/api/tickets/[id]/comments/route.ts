@@ -5,6 +5,8 @@ import { processMentions, resolveMentionedProfiles } from "@/lib/mentions"
 import { createNotification } from "@/lib/notify"
 import { appendTicketEvent } from "@/lib/ticket-events"
 import { runWithScope, uniqueTicketReadScope } from "@/lib/request-scope"
+import { stopFirstResponseOnPublicAgentMessage } from "@/lib/sla-engine"
+import { syncWorkTimerWithConversation } from "@/lib/timer-conversation-sync"
 
 export async function POST(
   request: NextRequest,
@@ -29,6 +31,7 @@ export async function POST(
       deletedAt: true,
       assignees: { select: { userId: true } },
       subDepartment: { select: { departmentId: true } },
+      intake: { select: { apiKeyId: true } },
     },
   })
   if (!ticket) {
@@ -54,6 +57,7 @@ export async function POST(
   }
   const parentId = typeof body.parentId === "string" ? body.parentId : null
   const messageId = typeof body.messageId === "string" ? body.messageId : null
+  const requestedPortalVisible = body.portalVisible === true
 
   // Internal note attached to a specific customer email message. Staff-only and
   // never emailed to the customer. Supports @mentions (with notifications) like
@@ -87,6 +91,33 @@ export async function POST(
     return NextResponse.json({ ...note, attachments: [] }, { status: 201 })
   }
 
+  let portalVisible = requestedPortalVisible
+  if (parentId) {
+    const parent = await prisma.comment.findFirst({
+      where: {
+        id: parentId,
+        ticketId,
+        deletedAt: null,
+        messageId: null,
+      },
+      select: { portalVisible: true },
+    })
+    if (!parent) {
+      return NextResponse.json(
+        { error: "Parent comment not found for this ticket" },
+        { status: 400 },
+      )
+    }
+    // A thread has one audience. Replies inherit it from the parent instead of
+    // trusting the client to choose whether the response is requester-visible.
+    portalVisible = parent.portalVisible
+  } else if (requestedPortalVisible && !ticket.intake?.apiKeyId) {
+    return NextResponse.json(
+      { error: "Portal replies are only available for portal tickets" },
+      { status: 400 },
+    )
+  }
+
   let pendingAttachments: Array<{
     id: string
     storageUrl: string
@@ -112,9 +143,30 @@ export async function POST(
   }
 
   const comment = await prisma.comment.create({
-    data: { ticketId, authorId: profile.id, body: commentBody, parentId },
+    data: {
+      ticketId,
+      authorId: profile.id,
+      body: commentBody,
+      parentId,
+      portalVisible,
+    },
     include: { author: { select: { id: true, name: true, avatarUrl: true } } },
   })
+
+  // SLA-03: on portal tickets the requester-visible reply thread replaces the
+  // email conversation, so a staff portal reply is the first public response.
+  if (portalVisible) {
+    await stopFirstResponseOnPublicAgentMessage(ticketId, comment.createdAt)
+    // Same as a public email reply: the label becomes "Waiting for customer"
+    // and work tracking pauses. Touching the ticket row refreshes the badge on
+    // board and task-list views via the Ticket-UPDATE realtime subscription.
+    await prisma.ticket
+      .update({ where: { id: ticketId }, data: { updatedAt: new Date() } })
+      .catch(() => undefined)
+    await syncWorkTimerWithConversation(ticketId, "outbound").catch((err) =>
+      console.error("[comments] failed to pause work timer:", err),
+    )
+  }
 
   // Write event to ActivityLog and broadcast to ticket-activity:{ticketId} so
   // every user currently viewing this ticket receives the update in real-time.

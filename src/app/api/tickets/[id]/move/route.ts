@@ -13,6 +13,7 @@ import { labelsAfterDeEscalation } from "@/lib/ticket-escalation"
 import { syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
 import { resolutionUpdateOnStatusChange } from "@/lib/resolution-tracking"
 import { runWithScope, uniqueTicketReadScope } from "@/lib/request-scope"
+import { clearAgentUnavailableLabel } from "@/lib/agent-unavailable"
 
 export async function PATCH(
   request: NextRequest,
@@ -79,6 +80,7 @@ export async function PATCH(
     return NextResponse.json({ error: `"${status}" is not a valid status for this subDepartment` }, { status: 400 })
   }
 
+  const isCompletion = validStatus.category === "COMPLETE"
   const fromStatus = ticket.status
 
   const departmentId = ticket.subDepartment.departmentId
@@ -99,7 +101,7 @@ export async function PATCH(
     )
   }
 
-  const nextLabels = labelsAfterDeEscalation(
+  const movedLabels = labelsAfterDeEscalation(
     labelsAfterStatusMove({
       ticketLabels: ticket.labels,
       priorLinkedLabels,
@@ -107,19 +109,24 @@ export async function PATCH(
       chosenLabel: resolvedChosen,
     }),
     status,
+    validStatus.category,
   )
+  // A closed ticket isn't waiting on anyone — and the availability sweep only
+  // revisits open tickets, so the flag would otherwise stick forever.
+  const nextLabels = isCompletion ? clearAgentUnavailableLabel(movedLabels) : movedLabels
   const labelsChanged =
     nextLabels.length !== ticket.labels.length ||
     nextLabels.some((label) => !ticket.labels.includes(label)) ||
     ticket.labels.some((label) => !nextLabels.includes(label))
 
-  const newClosedAt = validStatus.isComplete ? (ticket.closedAt ?? new Date()) : null
+  const newClosedAt = isCompletion ? (ticket.closedAt ?? new Date()) : null
 
   // Start the resolution timer on entry to "In Progress"; stop it + record the
   // total time and within/exceeded verdict on completion (shared helper).
   const resolutionData = resolutionUpdateOnStatusChange({
     toStatus: status,
-    isCompletion: validStatus.isComplete,
+    category: validStatus.category,
+    isCompletion: isCompletion,
     newClosedAt,
     currentInProgressStartedAt: ticket.inProgressStartedAt,
     slaResolutionTargetMins: ticket.slaTimer?.resolutionTargetMins,
@@ -166,18 +173,18 @@ export async function PATCH(
     if (ticket.closedAt !== newClosedAt) {
       await syncResolutionTimerOnClosedAtChange(id, newClosedAt).catch(() => undefined)
     }
-    await stopRunningTimersOnStatusChange(id, status).catch(() => undefined)
+    await stopRunningTimersOnStatusChange(id, status, validStatus.category).catch(() => undefined)
     await startTimerOnStatusChange(id, status, {
       id: profile.id,
       name: profile.name,
       avatarUrl: profile.avatarUrl,
-    }).catch(() => undefined)
+    }, validStatus.category).catch(() => undefined)
 
     if (ticket.projectId) {
       broadcastProjectBoardsChange(ticket.projectId).catch(() => undefined)
     }
 
-    if (validStatus.isComplete) {
+    if (isCompletion) {
       cascadeCompleteToSubtickets(id).catch(() => undefined)
       const humanId = `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`
       notifyTicketCompletion({
@@ -191,7 +198,7 @@ export async function PATCH(
       }).catch(() => undefined)
     }
 
-    if (validStatus.isComplete && ticket.intake) {
+    if (isCompletion && ticket.intake) {
       sendResolutionEmail({
         to: ticket.intake.submitterEmail,
         submitterName: ticket.intake.submitterName,
@@ -200,7 +207,7 @@ export async function PATCH(
         departmentId: ticket.subDepartment.departmentId,
         subDepartmentId: ticket.subDepartmentId,
       }).catch((err) => console.error("[resolution email] failed:", err))
-    } else if (!validStatus.isComplete && ticket.intake && fromStatus !== status) {
+    } else if (!isCompletion && ticket.intake && fromStatus !== status) {
       sendStatusChangedEmail({
         to: ticket.intake.submitterEmail,
         submitterName: ticket.intake.submitterName,

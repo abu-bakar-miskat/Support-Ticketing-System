@@ -10,7 +10,8 @@ import {
 import { UserAvatar } from "@/components/ui/user-avatar";
 import { cn } from "@/lib/utils";
 import { markNotificationRead, markAllNotificationsRead } from "@/lib/api/notifications";
-import { useNotificationStore } from "@/store";
+import { useNotificationStore, notifEvents } from "@/store";
+import { Tip } from "@/components/ui/tooltip";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -42,6 +43,8 @@ const TYPE_META: Record<string, { icon: React.ElementType; color: string; label:
   intake_manager_alert: { icon: Inbox,    color: "#0a76b9", label: "new support ticket"   },
   assignment_failed_alert: { icon: AlertTriangle, color: "#dc2626", label: "needs a manual assignee" },
   agreement_expiring: { icon: CalendarClock, color: "#d97706", label: "agreement expiring" },
+  feature_request_submitted: { icon: GitPullRequest, color: "#f84201", label: "requested feature approval" },
+  time_estimate_exceeded: { icon: AlertTriangle, color: "#dc2626", label: "Ticket breached its resolution estimate" },
   sla_breach:     { icon: AlertTriangle,  color: "#dc2626", label: "Ticket breached the SLA"     },
   sla_at_risk:    { icon: CalendarClock,  color: "#d97706", label: "Ticket is at risk of breaching SLA" },
 };
@@ -62,13 +65,15 @@ function NotifRow({
   const Icon = meta.icon;
 
   // SLA alerts are system-generated: lead with the ticket number, not "System".
-  const isSla = item.type === "sla_breach" || item.type === "sla_at_risk";
+  const isSla = item.type === "sla_breach" || item.type === "sla_at_risk" || item.type === "time_estimate_exceeded";
   const subject = isSla ? (item.ticket?.humanId ?? item.actorName) : item.actorName;
 
   function handleClick() {
     onMarkRead(item.id);
     onClose();
-    if (item.ticket) {
+    if (item.type === "feature_request_submitted") {
+      router.push("/platform/feature-approvals");
+    } else if (item.ticket) {
       router.push(`/tickets/${item.ticket.dbId}`);
     } else if (item.joinRequest) {
       router.push("/settings/sub-departments");
@@ -158,19 +163,31 @@ export function NotificationSidebar({
   const [loading, setLoading] = useState(false);
   const decrement = useNotificationStore((s) => s.decrement);
   const reset     = useNotificationStore((s) => s.reset);
+  const init      = useNotificationStore((s) => s.init);
+  const unreadCount = useNotificationStore((s) => s.unreadCount);
 
   const fetchRecent = useCallback(async () => {
     setLoading(true);
     try {
       const res = await fetch("/api/notifications/recent");
-      if (res.ok) setItems(await res.json());
+      if (res.ok) {
+        const data = (await res.json()) as { items: RecentNotif[]; unreadCount: number };
+        setItems(data.items);
+        // Re-sync the bell badge with the authoritative server count.
+        init(data.unreadCount);
+      }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [init]);
 
   useEffect(() => {
     if (open) fetchRecent();
+  }, [open, fetchRecent]);
+
+  useEffect(() => {
+    if (!open) return;
+    return notifEvents.subscribe(() => { void fetchRecent(); });
   }, [open, fetchRecent]);
 
   // Close on Escape
@@ -194,8 +211,6 @@ export function NotificationSidebar({
     reset();
     markAllNotificationsRead().catch(() => null);
   }
-
-  const unreadCount = items.filter((n) => n.unread).length;
 
   return (
     <>
@@ -228,14 +243,16 @@ export function NotificationSidebar({
             </span>
           )}
           {unreadCount > 0 && (
-            <button
-              type="button"
-              onClick={markAllRead}
-              title="Mark all read"
-              className="flex size-7 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
-            >
-              <CheckCheck className="size-3.5" />
-            </button>
+            <Tip label="Mark all read">
+              <button
+                type="button"
+                onClick={markAllRead}
+                aria-label="Mark all notifications as read"
+                className="flex size-7 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+              >
+                <CheckCheck className="size-3.5" />
+              </button>
+            </Tip>
           )}
           <button
             type="button"

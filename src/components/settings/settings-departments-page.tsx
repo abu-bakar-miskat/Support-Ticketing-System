@@ -19,7 +19,6 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DepartmentWalkthroughModal } from "@/components/departments/department-walkthrough";
 import { UserAvatar, AvatarVisual } from "@/components/ui/user-avatar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,6 +32,8 @@ import {
   deleteAdminDepartment,
   createAdminSubDepartment,
 } from "@/lib/api/admin";
+import { Tip } from "@/components/ui/tooltip";
+import { ListSearchInput, SortDropdown, useListControls, byText, byNumberDesc } from "@/components/ui/list-controls";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -48,14 +49,6 @@ export type TemplateOption = {
   /** Board/interface type this template creates (shown as a badge beside the name). */
   departmentType: DepartmentType;
 };
-
-function TemplateTypeBadge({ type }: { type: string }) {
-  return (
-    <span className="inline-flex items-center rounded-full bg-sts-blue-tint px-[7px] py-px font-sans text-[10px] font-semibold uppercase tracking-wide text-sts-blue">
-      {departmentTypeLabel(type)}
-    </span>
-  );
-}
 
 type DeptManager = {
   id: string;
@@ -254,8 +247,9 @@ function NewDepartmentModal({
 }) {
   const options = templateOptions.length > 0 ? templateOptions : builtInTemplateOptions();
   const [name, setName] = useState("");
-  // Empty until the admin explicitly picks a template — selection is required.
-  const [templateSlug, setTemplateSlug] = useState("");
+  // Template selection was removed from the modal; default to the first
+  // available option so the server's required-template check still passes.
+  const [templateSlug] = useState(options[0]?.slug ?? "");
   const [selectedManagers, setSelectedManagers] = useState<UserOption[]>([]);
   const [subDepartments, setSubDepartments] = useState<PendingSubDepartment[]>([]);
   const [subDepartmentInput, setSubDepartmentInput] = useState("");
@@ -266,8 +260,6 @@ function NewDepartmentModal({
   // Holds the department id once created, so a retry (after a sub-department
   // error) never creates a duplicate department.
   const createdDeptIdRef = useRef<string | null>(null);
-
-  const selectedTemplate = options.find((opt) => opt.slug === templateSlug) ?? null;
 
   function handleSubDepartmentNameChange(v: string) {
     setSubDepartmentInput(v);
@@ -395,9 +387,11 @@ function NewDepartmentModal({
             </div>
             <p className="font-sans text-[14px] font-semibold text-sts-foreground">New department</p>
           </div>
-          <button type="button" onClick={onClose} className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground">
-            <X className="size-4" />
-          </button>
+          <Tip label="Close">
+            <button aria-label="Close" type="button" onClick={onClose} className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground">
+              <X className="size-4" />
+            </button>
+          </Tip>
         </div>
 
         {/* Body */}
@@ -417,53 +411,6 @@ function NewDepartmentModal({
             />
           </div>
 
-          {/* Template */}
-          <div>
-            <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">
-              Template <span className="text-red-500">*</span>
-            </label>
-            <Select
-              items={options.map((opt) => ({ value: opt.slug, label: opt.name }))}
-              value={templateSlug || null}
-              onValueChange={(v) => setTemplateSlug(v ?? "")}
-            >
-              <SelectTrigger className="h-9 w-full border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground">
-                <SelectValue placeholder="Select a template…">
-                  {selectedTemplate ? (
-                    <span className="flex min-w-0 items-center gap-2">
-                      <span className="truncate">{selectedTemplate.name}</span>
-                      <TemplateTypeBadge type={selectedTemplate.departmentType} />
-                    </span>
-                  ) : null}
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {options.map((opt) => (
-                  <SelectItem key={opt.slug} value={opt.slug} className="py-1.5">
-                    <div className="flex flex-col gap-0.5">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-sans text-[12.5px] font-semibold text-sts-foreground">
-                          {opt.name}
-                        </span>
-                        <TemplateTypeBadge type={opt.departmentType} />
-                        {opt.featureCount > 0 && (
-                          <span className="rounded-full bg-sts-surface px-1.5 py-0.5 font-sans text-[9.5px] font-medium text-sts-subtle">
-                            {opt.featureCount} {opt.featureCount === 1 ? "feature" : "features"}
-                          </span>
-                        )}
-                      </div>
-                      {opt.description && (
-                        <span className="font-sans text-[10.5px] leading-tight text-sts-subtle">
-                          {opt.description}
-                        </span>
-                      )}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
           {/* Managers */}
           <div>
             <div className="mb-2 flex items-center gap-2">
@@ -479,9 +426,11 @@ function NewDepartmentModal({
                   <div key={m.id} className="flex items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-surface py-1 pl-1.5 pr-2">
                     <UserAvatar name={m.name} size={18} avatarUrl={m.avatarUrl ?? null} />
                     <span className="font-sans text-[11.5px] text-sts-foreground">{m.name}</span>
-                    <button type="button" onClick={() => removeManager(m.id)} className="ml-0.5 rounded-full p-0.5 text-sts-subtle hover:text-red-500">
-                      <X className="size-2.5" />
-                    </button>
+                    <Tip label="Remove manager">
+                      <button aria-label="Remove manager" type="button" onClick={() => removeManager(m.id)} className="ml-0.5 rounded-full p-0.5 text-sts-subtle hover:text-red-500">
+                        <X className="size-2.5" />
+                      </button>
+                    </Tip>
                   </div>
                 ))}
               </div>
@@ -524,9 +473,11 @@ function NewDepartmentModal({
                   <div key={t.id} className="flex items-center gap-2 rounded-lg border border-sts-card-border bg-sts-surface px-3 py-1.5">
                     <span className="font-mono text-[11.5px] text-sts-id">{t.prefix}</span>
                     <span className="font-sans text-[12.5px] text-sts-foreground flex-1">{t.name}</span>
-                    <button type="button" onClick={() => removeSubDepartment(t.id)} className="rounded p-0.5 text-sts-subtle hover:text-red-500">
-                      <X className="size-3" />
-                    </button>
+                    <Tip label="Remove sub-department">
+                      <button aria-label="Remove sub-department" type="button" onClick={() => removeSubDepartment(t.id)} className="rounded p-0.5 text-sts-subtle hover:text-red-500">
+                        <X className="size-3" />
+                      </button>
+                    </Tip>
                   </div>
                 ))}
               </div>
@@ -698,8 +649,8 @@ function DepartmentCard({
                   }}
                   className="min-w-0 flex-1 rounded-lg border border-sts-blue/50 bg-sts-surface px-3 py-1 font-sans text-[14px] font-semibold text-sts-foreground outline-none"
                 />
-                <button type="button" onClick={saveEdit} disabled={saving} className="rounded-full p-1.5 text-sts-green hover:bg-sts-green/10"><Check className="size-3.5" /></button>
-                <button type="button" onClick={() => { setEditing(false); setEditName(dept.name); }} className="rounded-full p-1.5 text-sts-subtle hover:text-sts-foreground"><X className="size-3.5" /></button>
+                <Tip label="Save"><button aria-label="Save department name" type="button" onClick={saveEdit} disabled={saving} className="rounded-full p-1.5 text-sts-green hover:bg-sts-green/10"><Check className="size-3.5" /></button></Tip>
+                <Tip label="Cancel"><button aria-label="Cancel editing" type="button" onClick={() => { setEditing(false); setEditName(dept.name); }} className="rounded-full p-1.5 text-sts-subtle hover:text-sts-foreground"><X className="size-3.5" /></button></Tip>
               </div>
             ) : (
               <div className="flex flex-wrap items-center gap-2">
@@ -967,6 +918,25 @@ export function SettingsDepartmentsPage({
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [showNewModal, setShowNewModal] = useState(false);
+  const deptList = useListControls(departments, {
+    searchText: (d) =>
+      [
+        d.name,
+        d.type ?? "",
+        ...d.subDepartments.map((sd) => sd.name),
+        ...d.managers.map((m) => `${m.user.name} ${m.user.email}`),
+      ].join(" "),
+    sortOptions: [
+      { id: "name", label: "Name A–Z", compare: byText((d: DepartmentRow) => d.name) },
+      { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((d: DepartmentRow) => d.name)(b, a) },
+      { id: "members", label: "Most members", compare: byNumberDesc((d: DepartmentRow) => d.memberIds.length) },
+      {
+        id: "sub-departments",
+        label: "Most sub-departments",
+        compare: byNumberDesc((d: DepartmentRow) => d._count.subDepartments),
+      },
+    ],
+  });
   const [error, setError] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const confirmDeleteDept = departments.find((d) => d.id === confirmDeleteId) ?? null;
@@ -1055,8 +1025,18 @@ export function SettingsDepartmentsPage({
           />
         </div>
       ) : (
+        <>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <ListSearchInput value={deptList.query} onChange={deptList.setQuery} placeholder="Search departments, managers…" />
+          <SortDropdown value={deptList.sortKey} onChange={deptList.setSortKey} options={deptList.sortDropdownOptions} />
+        </div>
+        {deptList.visible.length === 0 ? (
+          <p className="py-10 text-center font-sans text-[13px] text-sts-muted">
+            No departments match &ldquo;{deptList.query.trim()}&rdquo;
+          </p>
+        ) : (
         <div className="grid grid-cols-1 items-start gap-5 lg:grid-cols-2 xl:grid-cols-3">
-          {departments.map((dept, i) => (
+          {deptList.visible.map((dept, i) => (
             <DepartmentCard
               key={dept.id}
               dept={dept}
@@ -1068,6 +1048,8 @@ export function SettingsDepartmentsPage({
             />
           ))}
         </div>
+        )}
+        </>
       )}
     </div>
     </>

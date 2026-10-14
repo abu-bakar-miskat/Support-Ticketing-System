@@ -1,3 +1,5 @@
+import { sortStatusesByCategory } from "@/lib/status-category"
+import { creationEstimate } from "@/lib/ticket-estimates"
 import { prisma } from "@/lib/db"
 import { NextResponse, after } from "next/server"
 import { parseStartDatePayload, parseDueDatePayload } from "@/lib/ticket-datetime"
@@ -15,7 +17,6 @@ import { resolveSubDepartmentIdForProject, resolveBoardSubDepartmentForProjectTi
 import { resolveMiscProjectForSubDepartment } from "@/lib/misc-project"
 import { canModifyProjectContent, PROJECT_MODIFY_FORBIDDEN_MESSAGE } from "@/lib/project-permissions"
 import { ensureProjectMembers } from "@/lib/ensure-project-members"
-import { startSlaTimers } from "@/lib/sla-engine"
 import { applyRulesToTicket } from "@/lib/rule-executor"
 import { assertDepartmentOperational } from "@/lib/department-setup"
 
@@ -102,7 +103,7 @@ async function createTicket(request: Request, profile: AuthProfile) {
   const title = (body.title as string)?.trim()
   const type = (body.type as string) || "Task"
   const priority = (body.priority as string) || (isDraft ? "Low" : "")
-  const status = (body.status as string)?.trim() || "To Do"
+  let status = typeof body.status === "string" ? body.status.trim() : ""
   const projectId = (body.projectId as string | null) || null
   const assigneeId = body.unassigned === true
     ? null
@@ -402,7 +403,17 @@ async function createTicket(request: Request, profile: AuthProfile) {
       })
     : []
 
+  const workflowStatuses = sortStatusesByCategory(await prisma.subDepartmentStatus.findMany({
+    where: { subDepartmentId: resolvedSubDepartmentId },
+    select: { label: true, category: true, order: true },
+  }))
+  if (!status) status = workflowStatuses.find((s) => s.category === "TODO")?.label ?? workflowStatuses[0]?.label ?? "OPEN"
+  if (workflowStatuses.length && !workflowStatuses.some((s) => s.label === status)) {
+    return NextResponse.json({ error: "Invalid status for this sub-department" }, { status: 400 })
+  }
+
   // ticketNumber: 0 is a placeholder — the BEFORE INSERT trigger stamps the real per-team value
+  const initialEstimate = creationEstimate(assigneeId, estimatedTime)
   let ticket
   try {
     const persist = async (db: Prisma.TransactionClient | typeof prisma) => {
@@ -425,6 +436,7 @@ async function createTicket(request: Request, profile: AuthProfile) {
           ...(parentId ? { parent: { connect: { id: parentId } } } : {}),
           ...(storyPoints != null && !isNaN(storyPoints) ? { storyPoints } : {}),
           ...(estimatedTime != null && !isNaN(estimatedTime) ? { estimatedTime } : {}),
+          ...(initialEstimate ? { estimates: { create: initialEstimate } } : {}),
           ...(sprintId ? { sprint: { connect: { id: sprintId } } } : {}),
           ...(moduleId ? { module: { connect: { id: moduleId } } } : {}),
           ...(labels.length > 0 ? { labels } : {}),
@@ -475,7 +487,7 @@ async function createTicket(request: Request, profile: AuthProfile) {
   const humanId = `${ticket.subDepartment.prefix}-${ticket.ticketNumber}`
 
   // The ticket is already committed above. Everything below is a side effect —
-  // SLA timers, automation rules, the activity event, project-member sync, and
+  // Automation rules, the activity event, project-member sync, and
   // the assignment notification/email. On a single-connection pool these add
   // ~6-10 sequential DB round-trips; awaiting them here made "Create" feel slow
   // (the client blocks on the 201 for work it doesn't need in the response —
@@ -488,34 +500,6 @@ async function createTicket(request: Request, profile: AuthProfile) {
   // a non-JSON body the client can't parse (which would drive retries/dupes).
   const creationScope = getRequestScope()!
   after(() => runWithScope(creationScope, async () => {
-    if (!isDraft) {
-      // Resolve the ticket's department (the project's, or its subDepartment's)
-      // to start SLA timers for the new ticket.
-      const columnProject = await prisma.project
-        .findUnique({
-          where: { id: resolvedProjectId },
-          select: { departmentId: true, subDepartment: { select: { departmentId: true } } },
-        })
-        .catch(() => null)
-      const columnDeptId =
-        columnProject?.departmentId ?? columnProject?.subDepartment?.departmentId ?? null
-
-      if (columnDeptId) {
-        try {
-          await startSlaTimers(
-            ticket.id,
-            ticketTenantId,
-            columnDeptId,
-            { priority, type, title, description, labels },
-            ticket.createdAt,
-            ticket.subDepartment.id,
-          )
-        } catch (err) {
-          console.error("[POST /api/tickets] startSlaTimers failed:", err)
-        }
-      }
-    }
-
     // RE-01/02: run the department's automation rules on the new ticket.
     if (!isDraft) {
       try {
@@ -526,6 +510,8 @@ async function createTicket(request: Request, profile: AuthProfile) {
             departmentId: ticket.subDepartment.departmentId,
             subDepartmentId: ticket.subDepartment.id,
             assigneeId: ticket.assignee?.id ?? null,
+            // Manually created tickets never receive an SLA, including via rules.
+            allowSla: false,
           },
           { priority, type, title, description, labels },
         )

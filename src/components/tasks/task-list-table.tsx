@@ -1,4 +1,6 @@
-"use client";
+"use client"
+
+import { categoryForStatus } from "@/lib/status-category";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -22,8 +24,8 @@ import { useSubDepartmentMembers } from "@/hooks/queries/use-board";
 import { moveTicket, updateTicket } from "@/lib/api/tickets";
 import { toastError } from "@/lib/toast-error";
 import { TaskTimeCell } from "@/components/tasks/task-time-cell";
-import { ModuleCell } from "@/components/board/module-label";
-import { AssigneeAvatars, AllTasksHeadRow, ALL_TASKS_COLGROUP, COL_ASSIGNEE, COL_CREATED, COL_MODULE, COL_PROJECT, COL_STATUS, COL_TIME, ListDueCell, ListCreatedCell, TASK_TABLE_CLASS, TaskListLabels, TITLE_CELL_CLASS, TITLE_INNER_CLASS } from "@/components/tasks/task-list-cells";
+import { useTenantHref } from "@/hooks/use-tenant-href";
+import { AssigneeAvatars, AllTasksHeadRow, ALL_TASKS_COLGROUP, COL_ASSIGNEE, COL_CREATED, COL_PROJECT, COL_STATUS, COL_TIME, ListDueCell, ListCreatedCell, TASK_TABLE_CLASS, TaskListLabels, TITLE_CELL_CLASS, TITLE_INNER_CLASS } from "@/components/tasks/task-list-cells";
 
 function truncateTitle(title: string, maxWords = 6): string {
   const words = title.trim().split(/\s+/);
@@ -42,6 +44,7 @@ export function TaskListRow({
   isSelected?: boolean;
   onToggleSelect?: (id: string) => void;
 }) {
+  const tenantHref = useTenantHref();
   const [expanded, setExpanded] = useState(false);
   const hasChildren = task.subTicketCards.length > 0;
   const [liveStatus, setLiveStatus] = useState(task.status);
@@ -55,9 +58,7 @@ export function TaskListRow({
 
   const { data: statuses = [] } = useSubDepartmentStatuses(task.subDepartmentId);
   const { data: members = [] } = useSubDepartmentMembers(task.subDepartmentId);
-  const liveIsComplete =
-    statuses.find((s) => s.label === liveStatus)?.isComplete === true ||
-    liveStatus === "Live";
+  const liveIsComplete = categoryForStatus(liveStatus, statuses) === "COMPLETE";
 
   async function handleStatusChange(newStatus: string, chosenLabel?: string) {
     const prev = liveStatus;
@@ -113,7 +114,7 @@ export function TaskListRow({
         )}
         <td className={cn("w-[80px] py-2.5", onToggleSelect ? "pl-2" : "pl-4")}>
           <Link
-            href={`/tickets/${task.dbId}`}
+            href={tenantHref(`/tickets/${task.dbId}`)}
             className="font-mono text-[11.5px] font-semibold text-sts-id hover:underline"
           >
             {task.humanId}
@@ -137,7 +138,7 @@ export function TaskListRow({
               </button>
             )}
             <Link
-              href={`/tickets/${task.dbId}`}
+              href={tenantHref(`/tickets/${task.dbId}`)}
               className="flex min-w-0 items-center gap-1.5"
               title={task.title}
             >
@@ -235,19 +236,18 @@ export function TaskListRow({
             </span>
           </div>
         </td>
-        <td className={cn(COL_MODULE, "overflow-hidden py-2.5")}>
-          <ModuleCell moduleName={task.moduleName} />
-        </td>
         <td className={cn(COL_TIME, "overflow-hidden py-2.5")}>
           <TaskTimeCell
             ticketDbId={task.dbId}
             humanId={task.humanId}
             title={task.title}
             status={liveStatus}
+            category={categoryForStatus(liveStatus, statuses)}
             assigneeId={liveAssigneeId}
             coAssigneeIds={task.coAssignees.map((a) => a.id)}
             userLoggedSecs={task.userLoggedSecs}
-            estimatedTime={task.estimatedTime}
+            estimatedTime={task.slaResolutionTargetMins ?? task.estimatedTime}
+            slaResolution={task.slaResolution}
           />
         </td>
         <td className={cn(COL_CREATED, "overflow-hidden py-2.5")}>
@@ -279,7 +279,7 @@ export function TaskListRow({
               {onToggleSelect && <td className="w-9 py-2 pl-4" />}
               <td className={cn("w-[80px] py-2", onToggleSelect ? "pl-2" : "pl-4")}>
                 <Link
-                  href={`/tickets/${sub.dbId}`}
+                  href={tenantHref(`/tickets/${sub.dbId}`)}
                   className="font-mono text-[11.5px] font-semibold text-sts-id hover:underline"
                 >
                   {sub.humanId}
@@ -287,7 +287,7 @@ export function TaskListRow({
               </td>
               <td className="max-w-0 py-2 pr-3 pl-5">
                 <Link
-                  href={`/tickets/${sub.dbId}`}
+                  href={tenantHref(`/tickets/${sub.dbId}`)}
                   className="flex min-w-0 items-center gap-2"
                 >
                   <span
@@ -319,7 +319,6 @@ export function TaskListRow({
                 )}
               </td>
               <td className={cn(COL_PROJECT, "py-2")} />
-              <td className={cn(COL_MODULE, "py-2")} />
               <td className={cn(COL_TIME, "py-2")} />
               <td className={cn(COL_CREATED, "py-2")} />
               <td className="py-2 pr-4" />
@@ -368,7 +367,7 @@ export function TaskListTable({
           {tasks.length === 0 ? (
             <tr>
               <td
-                colSpan={9}
+                colSpan={8}
                 className="py-20 text-center font-sans text-[13px] text-sts-subtle"
               >
                 {emptyMessage}

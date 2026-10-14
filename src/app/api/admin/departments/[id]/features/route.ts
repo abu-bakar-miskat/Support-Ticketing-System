@@ -1,9 +1,12 @@
 import { prisma } from "@/lib/db"
 import { NextRequest, NextResponse } from "next/server"
-import { Prisma } from "@/generated/prisma/client"
 import { requireSuperAdmin } from "@/lib/auth"
 import { badRequest, notFound } from "@/lib/api-response"
-import { TEMPLATE_FEATURE_KEYS, isTemplateFeatureKey } from "@/lib/template-features"
+import {
+  MARKETPLACE_FEATURE_KEYS,
+  grantedMarketplaceFeatures,
+  isMarketplaceFeatureKey,
+} from "@/lib/template-features"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -28,19 +31,18 @@ export async function GET(_req: NextRequest, { params }: Params) {
   })
   if (!dept) return notFound("Department not found")
 
-  const raw = dept.featureKeys
-  const controlled = raw != null
-  const featureKeys = Array.isArray(raw) ? raw.filter((k): k is string => typeof k === "string") : []
+  const granted = grantedMarketplaceFeatures(dept.featureKeys)
+  const featureKeys = granted === "ALL" ? [...MARKETPLACE_FEATURE_KEYS] : granted
 
   return NextResponse.json({
     departmentId: dept.id,
     name: dept.name,
     tenant: dept.tenant,
     templateSlug: dept.templateSlug,
-    // false = uncontrolled (every feature visible); true = only `featureKeys`.
-    controlled,
+    // Legacy null allowlist: every marketplace feature is already on.
+    unrestricted: granted === "ALL",
     featureKeys,
-    allKeys: TEMPLATE_FEATURE_KEYS,
+    allKeys: MARKETPLACE_FEATURE_KEYS,
   })
 }
 
@@ -54,19 +56,14 @@ export async function PUT(req: NextRequest, { params }: Params) {
 
   const body = await req.json().catch(() => ({}))
 
-  // Clear control → every feature visible again (fail-open).
-  if (body.featureKeys === null || body.controlled === false) {
-    await prisma.department.update({ where: { id }, data: { featureKeys: Prisma.JsonNull } })
-    return NextResponse.json({ controlled: false, featureKeys: [] })
-  }
-
   const raw: unknown[] | null = Array.isArray(body.featureKeys) ? body.featureKeys : null
   if (!raw) {
-    return badRequest("featureKeys must be an array of feature keys, or null to remove control")
+    return badRequest("featureKeys must be an array of marketplace feature keys")
   }
-  // Grant/revoke = replace with exactly this validated, de-duplicated set.
-  const keys: string[] = [...new Set(raw.filter(isTemplateFeatureKey))]
+  // Only the marketplace set is opt-in. Anything else is always available
+  // and is not stored on the department.
+  const keys = [...new Set(raw.filter(isMarketplaceFeatureKey))]
   await prisma.department.update({ where: { id }, data: { featureKeys: keys } })
 
-  return NextResponse.json({ controlled: true, featureKeys: keys })
+  return NextResponse.json({ unrestricted: false, featureKeys: keys })
 }

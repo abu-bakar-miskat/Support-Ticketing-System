@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth, assertDepartmentAdmin } from "@/lib/auth"
-import { listMailboxConnectionsForSubDepartment, createMailboxConnection } from "@/lib/mailbox-connection"
-import { assertFeatureEnabled } from "@/lib/feature-flags"
-import { checkDomainVerification } from "@/lib/resend-domains"
-
-const AUTH_TYPES = ["RESEND", "OAUTH_M365", "OAUTH_GOOGLE", "IMAP"] as const
-const IMPLEMENTED_AUTH_TYPES = new Set(["RESEND"])
+import { listMailboxConnectionsForSubDepartment } from "@/lib/mailbox-connection"
 
 type Params = { params: Promise<{ id: string }> }
 
@@ -42,61 +37,5 @@ export async function GET(_req: NextRequest, { params }: Params) {
   return NextResponse.json(connections)
 }
 
-export async function POST(req: NextRequest, { params }: Params) {
-  const { profile: caller, error } = await requireAuth()
-  if (error) return error
-
-  const { id } = await params
-  const { subDepartment, error: scopeError } = await loadSubDepartmentInScope(id, caller!)
-  if (scopeError) return scopeError
-
-  const body = await req.json().catch(() => ({}))
-  const { address, authType, plaintextCredentials } = body as {
-    address?: string
-    authType?: string
-    plaintextCredentials?: string | null
-  }
-
-  if (!address) {
-    return NextResponse.json({ error: "address is required" }, { status: 400 })
-  }
-  const resolvedAuthType = authType ?? "RESEND"
-  if (!AUTH_TYPES.includes(resolvedAuthType as never)) {
-    return NextResponse.json({ error: `authType must be one of ${AUTH_TYPES.join(", ")}` }, { status: 400 })
-  }
-  if (!IMPLEMENTED_AUTH_TYPES.has(resolvedAuthType)) {
-    return NextResponse.json({ error: `${resolvedAuthType} is not implemented yet` }, { status: 400 })
-  }
-
-  const verification = await checkDomainVerification(address)
-  if (verification.status !== "verified" || !verification.receivingEnabled) {
-    return NextResponse.json(
-      { error: `The ${verification.domain ?? "email"} domain is not ready to receive mail in Resend. Enable receiving and verify its MX record first.` },
-      { status: 400 },
-    )
-  }
-
-  const featureCheck = await assertFeatureEnabled(subDepartment!.tenantId, "mailboxConnections")
-  if (!featureCheck.ok) {
-    return NextResponse.json({ error: featureCheck.error }, { status: 403 })
-  }
-
-  try {
-    const connection = await createMailboxConnection({
-      tenantId: subDepartment!.tenantId,
-      departmentId: subDepartment!.departmentId,
-      subDepartmentId: subDepartment!.id,
-      scopeType: "SUB_DEPARTMENT",
-      address,
-      authType: resolvedAuthType as never,
-      plaintextCredentials,
-      actorId: caller!.id,
-    })
-    return NextResponse.json(connection, { status: 201 })
-  } catch (err) {
-    if (err instanceof Error && err.message.includes("Unique constraint")) {
-      return NextResponse.json({ error: "That address is already connected" }, { status: 409 })
-    }
-    throw err
-  }
-}
+// Mailboxes are connected by signing in with Microsoft — see
+// /api/admin/mailbox-oauth/[provider]/start — not created through this route.

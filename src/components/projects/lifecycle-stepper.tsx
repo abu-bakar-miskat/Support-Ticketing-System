@@ -266,6 +266,7 @@ export function LifecycleStepper({
                           >
                             <input
                               type="color"
+                              aria-label="Stage color"
                               value={stage.color}
                               onChange={(e) =>
                                 onUpdateStage(stage.id, { color: e.target.value })
@@ -374,6 +375,7 @@ export function LifecycleStepper({
                       >
                         <input
                           type="color"
+                          aria-label="Stage color"
                           value={draftColor}
                           onChange={(e) => setDraftColor(e.target.value)}
                           className="absolute inset-0 cursor-pointer opacity-0"

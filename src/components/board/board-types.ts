@@ -1,3 +1,4 @@
+import { type StatusCategory } from "@/lib/status-category"
 // Client-safe shared types for board/task surfaces fed by real ticket data.
 
 export type UiPriority = "urgent" | "critical" | "high" | "medium" | "low"
@@ -180,16 +181,17 @@ export type SubDepartmentStatusConfig = {
   label: string
   color: string
   order: number
+  category?: StatusCategory
   isComplete?: boolean
   allowedLabels?: string[]
 }
 
 export const DEFAULT_STATUSES: SubDepartmentStatusConfig[] = [
-  { id: "open",        label: "OPEN",        color: "#94a3b8", order: 0, isComplete: false },
-  { id: "in-progress", label: "IN PROGRESS", color: "#0a76b9", order: 1, isComplete: false },
-  { id: "paused",      label: "PAUSED",      color: "#f59e0b", order: 2, isComplete: false },
-  { id: "escalated",   label: "ESCALATED",   color: "#dc2626", order: 3, isComplete: false },
-  { id: "resolved",    label: "RESOLVED",    color: "#16a34a", order: 4, isComplete: true },
+  { id: "open",        label: "OPEN", category: "TODO",        color: "#94a3b8", order: 0, isComplete: false },
+  { id: "in-progress", label: "IN PROGRESS", category: "IN_PROGRESS", color: "#0a76b9", order: 1, isComplete: false },
+  { id: "paused",      label: "PAUSED", category: "BLOCKED",      color: "#f59e0b", order: 2, isComplete: false },
+  { id: "escalated",   label: "ESCALATED", category: "BLOCKED",   color: "#dc2626", order: 3, isComplete: false },
+  { id: "resolved",    label: "RESOLVED", category: "COMPLETE",    color: "#16a34a", order: 4, isComplete: true },
 ]
 
 export type SubCardData = {
@@ -216,6 +218,7 @@ export type BoardCardData = {
   description: string | null
   priority: UiPriority
   status: string
+  statusCategory?: StatusCategory
   subDepartment: string
   subDepartmentId: string
   project: string
@@ -246,6 +249,10 @@ export type BoardCardData = {
   userLoggedSecs: number
   /** Estimated time in minutes. */
   estimatedTime: number | null
+  /** Mailbox/form SLA resolution target, kept separate from personal work estimates. */
+  slaResolutionTargetMins?: number | null
+  /** Resolution clock (mailbox SLA or manual tracked work), attached by task lists. */
+  slaResolution?: { elapsedMs: number; running: boolean } | null
   startDate: string | null
   startDateIso: string | null
   due: string | null

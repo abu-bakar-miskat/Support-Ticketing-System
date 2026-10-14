@@ -6,25 +6,26 @@ vi.mock("@/lib/db", () => ({
     mailboxConnection: { findMany: vi.fn(), create: vi.fn(), update: vi.fn(), delete: vi.fn(), findFirst: vi.fn(), findUnique: vi.fn() },
     mailSuppressionLog: { create: vi.fn() },
     departmentManager: { findMany: vi.fn() },
+    tenantMembership: { findMany: vi.fn() },
   },
 }))
 vi.mock("@/lib/mailbox-credentials", () => ({
   encryptMailboxCredentials: vi.fn((s: string) => `encrypted(${s})`),
+  decryptMailboxCredentials: vi.fn(() => JSON.stringify({ kind: "oauth", refreshToken: "r", account: "a@x.com" })),
 }))
-vi.mock("@/lib/mail-providers", () => ({ getMailProvider: vi.fn() }))
+vi.mock("@/lib/mail-providers", () => ({ getPullMailProvider: vi.fn() }))
 vi.mock("@/lib/notify", () => ({ createNotification: vi.fn().mockResolvedValue(undefined) }))
 vi.mock("@/lib/email", () => ({ sendMailboxConnectionFailedAlertEmail: vi.fn().mockResolvedValue(undefined) }))
 vi.mock("@/lib/audit-log", () => ({ recordAuditEvent: vi.fn().mockResolvedValue(undefined) }))
 
 import { prisma } from "@/lib/db"
 import { encryptMailboxCredentials } from "@/lib/mailbox-credentials"
-import { getMailProvider } from "@/lib/mail-providers"
+import { getPullMailProvider } from "@/lib/mail-providers"
 import { createNotification } from "@/lib/notify"
 import { sendMailboxConnectionFailedAlertEmail } from "@/lib/email"
 import {
   createMailboxConnection,
   updateMailboxConnection,
-  findMailboxRouteForRecipients,
   logMailSuppression,
   checkMailboxConnectionHealth,
   sweepMailboxConnectionHealth,
@@ -32,12 +33,12 @@ import {
 
 const mockCreate = vi.mocked(prisma.mailboxConnection.create)
 const mockUpdate = vi.mocked(prisma.mailboxConnection.update)
-const mockFindFirst = vi.mocked(prisma.mailboxConnection.findFirst)
 const mockFindUnique = vi.mocked(prisma.mailboxConnection.findUnique)
 const mockFindManyDue = vi.mocked(prisma.mailboxConnection.findMany)
 const mockSuppressionCreate = vi.mocked(prisma.mailSuppressionLog.create)
 const mockManagers = vi.mocked(prisma.departmentManager.findMany)
-const mockGetProvider = vi.mocked(getMailProvider)
+const mockTenantAdmins = vi.mocked(prisma.tenantMembership.findMany)
+const mockGetProvider = vi.mocked(getPullMailProvider)
 const mockCreateNotification = vi.mocked(createNotification)
 const mockSendAlert = vi.mocked(sendMailboxConnectionFailedAlertEmail)
 
@@ -52,7 +53,7 @@ describe("createMailboxConnection", () => {
     await createMailboxConnection({
       tenantId: "t1", departmentId: "d1", subDepartmentId: "team-1",
       scopeType: "DEPARTMENT", address: "Support@Tickets.PenGroup.com",
-      authType: "IMAP", plaintextCredentials: "super-secret", actorId: "admin-1",
+      authType: "OAUTH_M365", plaintextCredentials: "super-secret", actorId: "admin-1",
     })
 
     expect(encryptMailboxCredentials).toHaveBeenCalledWith("super-secret")
@@ -66,11 +67,11 @@ describe("createMailboxConnection", () => {
     expect(select).not.toHaveProperty("credentialsRef")
   })
 
-  it("stores null credentialsRef for RESEND (no plaintext supplied)", async () => {
+  it("stores null credentialsRef when no credentials are supplied", async () => {
     mockCreate.mockResolvedValue({ id: "mc-1" } as never)
     await createMailboxConnection({
-      tenantId: "t1", departmentId: "d1", subDepartmentId: "team-1",
-      scopeType: "DEPARTMENT", address: "support@tickets.pengroup.com", authType: "RESEND", actorId: "admin-1",
+      tenantId: "t1", departmentId: null, subDepartmentId: null,
+      scopeType: "TENANT", address: "noreply@pengroup.com", authType: "OAUTH_M365", actorId: "admin-1",
     })
     expect(encryptMailboxCredentials).not.toHaveBeenCalled()
     expect(mockCreate).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ credentialsRef: null }) }))
@@ -78,44 +79,13 @@ describe("createMailboxConnection", () => {
 })
 
 describe("updateMailboxConnection", () => {
-  it("re-encrypts new credentials and never selects credentialsRef", async () => {
-    mockUpdate.mockResolvedValue({ id: "mc-1" } as never)
-    await updateMailboxConnection("mc-1", { plaintextCredentials: "new-secret" }, "admin-1")
-    expect(mockUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { credentialsRef: "encrypted(new-secret)" } }),
-    )
+  it("updates only the given fields and never selects credentialsRef", async () => {
+    mockFindUnique.mockResolvedValue({ id: "mc-1", isActive: true } as never)
+    mockUpdate.mockResolvedValue({ id: "mc-1", isActive: false } as never)
+    await updateMailboxConnection("mc-1", { isActive: false }, "admin-1")
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: { isActive: false } }))
     const select = mockUpdate.mock.calls[0][0].select as Record<string, unknown>
     expect(select).not.toHaveProperty("credentialsRef")
-  })
-
-  it("clears credentials when plaintextCredentials is explicitly null", async () => {
-    mockUpdate.mockResolvedValue({ id: "mc-1" } as never)
-    await updateMailboxConnection("mc-1", { plaintextCredentials: null }, "admin-1")
-    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: { credentialsRef: null } }))
-  })
-
-  it("leaves credentials untouched when the field is omitted", async () => {
-    mockUpdate.mockResolvedValue({ id: "mc-1" } as never)
-    await updateMailboxConnection("mc-1", { address: "new@tickets.pengroup.com" }, "admin-1")
-    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ data: { address: "new@tickets.pengroup.com" } }))
-  })
-})
-
-describe("findMailboxRouteForRecipients", () => {
-  it("matches on exact (case-insensitive) address, stripping angle brackets, and only active mailboxes", async () => {
-    mockFindFirst.mockResolvedValue({ id: "mc-1", address: "support@tickets.pengroup.com", tenantId: "t1", departmentId: "d1", subDepartmentId: "team-1" } as never)
-
-    const route = await findMailboxRouteForRecipients(['"PEN" <Support@Tickets.PenGroup.com>'])
-
-    expect(route?.id).toBe("mc-1")
-    expect(mockFindFirst).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { address: { in: ["support@tickets.pengroup.com"] }, isActive: true } }),
-    )
-  })
-
-  it("returns null with no recipients", async () => {
-    expect(await findMailboxRouteForRecipients([])).toBeNull()
-    expect(mockFindFirst).not.toHaveBeenCalled()
   })
 })
 
@@ -140,10 +110,11 @@ describe("logMailSuppression", () => {
 
 const baseConnection = {
   id: "mc-1",
-  authType: "RESEND" as const,
-  credentialsRef: null,
+  authType: "OAUTH_M365" as const,
+  credentialsRef: "enc",
   status: "ACTIVE" as const,
   failureCount: 0,
+  tenantId: "t1",
   departmentId: "d1",
   address: "support@tickets.pengroup.com",
 }
@@ -197,6 +168,18 @@ describe("checkMailboxConnectionHealth", () => {
     expect(mockSendAlert).toHaveBeenCalledWith(
       expect.objectContaining({ to: "mo@x.com", address: "support@tickets.pengroup.com", error: "unreachable" }),
     )
+  })
+
+  it("notifies the tenant's admins when the tenant (send-only) mailbox fails", async () => {
+    mockFindUnique.mockResolvedValue({ ...baseConnection, departmentId: null } as never)
+    mockGetProvider.mockReturnValue({ checkHealth: vi.fn().mockResolvedValue({ ok: false, error: "invalid_grant" }) } as never)
+    mockTenantAdmins.mockResolvedValue([{ user: { id: "adm-1", name: "Ana", email: "ana@x.com" } }] as never)
+
+    await checkMailboxConnectionHealth("mc-1")
+
+    expect(mockManagers).not.toHaveBeenCalled()
+    expect(mockTenantAdmins).toHaveBeenCalledWith(expect.objectContaining({ where: { tenantId: "t1", role: "admin", isActive: true } }))
+    expect(mockSendAlert).toHaveBeenCalledWith(expect.objectContaining({ to: "ana@x.com", error: "invalid_grant" }))
   })
 
   it("does not re-notify on a subsequent failure while already unhealthy", async () => {

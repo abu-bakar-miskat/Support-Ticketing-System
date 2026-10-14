@@ -1,7 +1,6 @@
 import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { SubDepartmentTimePage } from "@/components/time/sub-department-time-page";
-import { OpsReportPanels } from "@/components/reports/ops-report-panels";
 import { getProfileDeptScope } from "@/lib/dept-scope";
 
 export const metadata = { title: "Reports — Global Support Portal" };
@@ -17,10 +16,5 @@ export default async function ReportsPage() {
   // A selected department keeps the report inside that department.
   const tenantWide = profile.role === "admin" && !activeDeptId;
 
-  return (
-    <>
-      {!tenantWide && <OpsReportPanels />}
-      <SubDepartmentTimePage showDepartmentFilter={tenantWide} />
-    </>
-  );
+  return <SubDepartmentTimePage showDepartmentFilter={tenantWide} />;
 }

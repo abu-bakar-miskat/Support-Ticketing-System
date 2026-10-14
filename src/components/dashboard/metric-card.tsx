@@ -17,6 +17,7 @@ export function MetricCard({
   active,
   onClick,
   href,
+  compact,
 }: {
   label: string;
   value: number;
@@ -27,6 +28,8 @@ export function MetricCard({
   active?: boolean;
   onClick?: () => void;
   href?: string;
+  /** Shorter tile for dense briefing rows. */
+  compact?: boolean;
 }) {
   const hasValue = value > 0;
 
@@ -34,7 +37,10 @@ export function MetricCard({
     <>
       <span className="sts-text-label">{label}</span>
       <span
-        className="font-mono text-[28px] font-bold leading-none tabular-nums tracking-tight"
+        className={cn(
+          "font-mono font-bold leading-none tabular-nums tracking-tight",
+          compact ? "text-[22px]" : "text-[28px]",
+        )}
         style={{ color: hasValue ? color : "var(--sts-subtle, #64748b)" }}
       >
         {display ?? value}
@@ -44,7 +50,8 @@ export function MetricCard({
   );
 
   const className = cn(
-    "flex flex-col gap-1.5 rounded-xl border px-4 py-3.5 text-left transition-all",
+    "flex flex-col rounded-xl border text-left transition-all",
+    compact ? "gap-1 px-3 py-2.5" : "gap-1.5 px-4 py-3.5",
     hasValue ? "shadow-sm" : "opacity-80",
     active
       ? "ring-1 ring-offset-1 ring-offset-sts-bg"

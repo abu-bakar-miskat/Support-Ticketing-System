@@ -40,7 +40,6 @@ export type EmailConfig = {
   replyTo: string;
   notifyAssignment: boolean;
   notifyMention: boolean;
-  notifyIntakeConfirmation: boolean;
   notifyResolution: boolean;
   notifyCustomerReply: boolean;
   notifyTicketCompleted: boolean;
@@ -51,17 +50,6 @@ export type EmailConfig = {
 
 /** Whether a Resend API key is present in the environment. */
 export const RESEND_CONFIGURED = Boolean(process.env.RESEND_API_KEY);
-
-/** Receiving subdomain that accepts customer replies, e.g. `reply.pengroup.com`. */
-export const INBOUND_DOMAIN = (process.env.RESEND_INBOUND_DOMAIN ?? "").trim();
-
-/**
- * Whether two-way customer replies can be received. Requires both a Resend key
- * (to send) and a configured inbound domain (to receive). When false, the
- * feature degrades to outbound-only and the reply composer is hidden.
- */
-export const RESEND_RECEIVING_ENABLED =
-  RESEND_CONFIGURED && Boolean(INBOUND_DOMAIN);
 
 /** Address portion of the configured RESEND_FROM_EMAIL (handles "Name <addr>" form). */
 function defaultFromEmail(): string {
@@ -80,7 +68,6 @@ export function emailConfigDefaults(): EmailConfig {
     replyTo: "",
     notifyAssignment: true,
     notifyMention: true,
-    notifyIntakeConfirmation: true,
     notifyResolution: true,
     notifyCustomerReply: true,
     notifyTicketCompleted: true,
@@ -153,7 +140,6 @@ async function writeEmailConfigRaw(scope: EmailConfigScope, nextConfig: Record<s
 export const EMAIL_NOTIFY_KEYS = [
   "notifyAssignment",
   "notifyMention",
-  "notifyIntakeConfirmation",
   "notifyResolution",
   "notifyCustomerReply",
   "notifyTicketCompleted",
@@ -495,13 +481,11 @@ export async function getEmailConfig(
   if (departmentId) {
     const overrides = await getDepartmentNotifyOverrides(departmentId);
     config = { ...config, ...overrides };
+    // Only the display name applies: a department's own address is its
+    // connected Microsoft 365 mailbox (lib/mailbox-outbound.ts), and the
+    // platform fallback always sends from the platform address.
     const identity = await getDepartmentEmailIdentity(departmentId);
     if (identity.fromName) config = { ...config, fromName: identity.fromName };
-    if (identity.fromEmail) {
-      // DS-02: the default sender is also the department Reply-To when no
-      // inbound reply-token address is used for this send.
-      config = { ...config, fromEmail: identity.fromEmail, replyTo: identity.fromEmail };
-    }
     const branding = await getDepartmentEmailBranding(departmentId);
     if (Object.keys(branding).length > 0) {
       config = { ...config, ...branding };
@@ -513,9 +497,6 @@ export async function getEmailConfig(
     config = { ...config, ...overrides };
     const identity = await getDepartmentEmailIdentity(departmentId ?? "", subDepartmentId);
     if (identity.fromName) config = { ...config, fromName: identity.fromName };
-    if (identity.fromEmail) {
-      config = { ...config, fromEmail: identity.fromEmail, replyTo: identity.fromEmail };
-    }
     const branding = await getDepartmentEmailBranding(departmentId ?? "", subDepartmentId);
     if (Object.keys(branding).length > 0) {
       config = { ...config, ...branding };

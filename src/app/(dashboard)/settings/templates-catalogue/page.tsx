@@ -6,6 +6,8 @@ import { SettingsTemplatesCataloguePage } from "@/components/settings/settings-t
 
 export const dynamic = "force-dynamic"
 
+export const metadata = { title: "Template Marketplace — Global Support Portal" }
+
 export default async function TemplatesCataloguePage() {
   const profile = await getProfile()
   if (!profile) redirect("/login")

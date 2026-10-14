@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils"
 import { uploadIntakeFile } from "@/lib/api/upload-intake-file"
 import { resolveIntakeDefaultFields, type ResolvedDefaultFields } from "@/lib/intake-default-fields"
 import { isFieldVisible, toFormFieldDef, validateSubmission } from "@/lib/form-validation"
+import { Tip } from "@/components/ui/tooltip"
 
 type FieldValidation = {
   minLength?: number
@@ -50,6 +51,7 @@ export function IntakeForm({
   issues,
   defaultFields = resolveIntakeDefaultFields(null),
   accentColor,
+  accentFg,
   confirmationText,
 }: {
   formId: string
@@ -59,6 +61,8 @@ export function IntakeForm({
   defaultFields?: ResolvedDefaultFields
   /** Per-form brand accent color for the submit button/highlights. */
   accentColor?: string
+  /** Text color that stays readable on `accentColor`. */
+  accentFg?: string
   /** Per-form custom message shown after a successful submission. */
   confirmationText?: string | null
 }) {
@@ -161,8 +165,8 @@ export function IntakeForm({
     }
     const data = (await res.json().catch(() => ({}))) as { pending?: boolean; humanId?: string }
     // Default flow: a verification link was emailed and no ticket exists yet.
-    // `pending === false` is the degraded path (email unavailable) where the
-    // ticket was created directly and we can show its number.
+    // `pending === false` means the submitter's email is already verified (or
+    // belongs to an account), so the ticket was created directly and we can show its number.
     setAwaitingVerification(data.pending !== false)
     setTicketNumber(data.humanId ?? null)
     setSubmitted(true)
@@ -237,7 +241,12 @@ export function IntakeForm({
   // ── Form ─────────────────────────────────────────────────────────────────────
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-6">
+    <form
+      onSubmit={handleSubmit}
+      noValidate
+      className="flex flex-col gap-6"
+      style={accentColor ? { ["--form-accent" as string]: accentColor } : undefined}
+    >
 
       {/* Contact info row */}
       <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
@@ -276,11 +285,7 @@ export function IntakeForm({
       {hasIssues && (
         <FormField label={defaultFields.issueType.label} required error={errors["__issue"]}>
           <Select value={issueId} onValueChange={(v) => { if (v) { setIssueId(v); setErrors((prev) => { const next = { ...prev }; delete next["__issue"]; return next; }); } }}>
-            <SelectTrigger className={cn(
-              "!h-11 w-full rounded-xl border bg-sts-surface py-0 px-3.5 font-poppins text-[13px] text-sts-foreground transition-colors data-placeholder:text-sts-subtle",
-              "focus:border-sts-id focus:ring-2 focus:ring-sts-id/10",
-              errors["__issue"] ? "border-sts-red" : "border-sts-card-border",
-            )}>
+            <SelectTrigger className={cn(selectCn(!!errors["__issue"]))}>
               <SelectValue>
                 {(value: string) => value
                   ? (issues.find((i) => i.id === value)?.name ?? value)
@@ -297,9 +302,6 @@ export function IntakeForm({
           </Select>
         </FormField>
       )}
-
-      {/* Divider */}
-      {fields.length > 0 && <div className="h-px bg-sts-card-border" />}
 
       {/* Dynamic fields */}
       {fields.filter((field) => isFieldVisible(toFormFieldDef(field), values)).map((field) => (
@@ -334,7 +336,7 @@ export function IntakeForm({
       <button
         type="submit"
         disabled={submitting}
-        style={accentColor ? { backgroundColor: accentColor } : undefined}
+        style={accentColor ? { backgroundColor: accentColor, color: accentFg ?? "#ffffff" } : undefined}
         className={cn(
           "flex h-12 items-center justify-center gap-2 rounded-full font-poppins text-[14px] font-semibold text-white shadow-sm transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60",
           !accentColor && "bg-sts-blue",
@@ -364,7 +366,7 @@ function FormField({
 }) {
   return (
     <div className="flex flex-col gap-1.5">
-      <label className="font-sans text-[13px] font-semibold text-sts-foreground">
+      <label className="px-0.5 font-poppins text-[13px] font-semibold text-sts-foreground">
         {label}
         {required && <span className="ml-0.5 text-sts-red">*</span>}
       </label>
@@ -447,7 +449,10 @@ function DynamicField({
         content={value}
         onChange={onChange}
         placeholder={field.placeholder ?? "Write your response…"}
-        className={cn(hasError && "border-sts-red")}
+        className={cn(
+          "!rounded-xl !border-transparent !bg-[#f3f4f6] focus-within:!border-[var(--form-accent,var(--sts-id))] focus-within:!bg-white focus-within:!shadow-[0_0_0_4px_color-mix(in_srgb,var(--form-accent,var(--sts-id))_14%,transparent)]",
+          hasError && "!border-sts-red",
+        )}
         showAttachButton={false}
       />
     )
@@ -457,12 +462,7 @@ function DynamicField({
     const [parentVal, childVal] = value.includes(" > ") ? value.split(" > ") : [value, ""]
     const childOpts = parentVal ? (field.childOptions?.[parentVal] ?? []) : []
 
-    const triggerCn = (error: boolean) =>
-      cn(
-        "!h-11 w-full rounded-xl border bg-sts-surface py-0 px-3.5 font-poppins text-[13px] text-sts-foreground transition-colors data-placeholder:text-sts-subtle",
-        "focus:border-sts-id focus:ring-2 focus:ring-sts-id/10",
-        error ? "border-sts-red" : "border-sts-card-border",
-      )
+    const triggerCn = (error: boolean) => selectCn(error)
 
     return (
       <div className={cn("flex gap-3", childOpts.length > 0 ? "flex-row" : "flex-col")}>
@@ -518,13 +518,21 @@ function DynamicField({
     return (
       <div className="flex flex-col gap-2">
         {field.options.map((opt) => (
-          <label key={opt} className="flex cursor-pointer items-center gap-2.5 font-poppins text-[13px] text-sts-foreground">
+          <label
+            key={opt}
+            className={cn(
+              "flex cursor-pointer items-center gap-3 rounded-xl px-3.5 py-3 font-poppins text-[14px] text-sts-foreground transition-colors",
+              value === opt
+                ? "bg-[color-mix(in_srgb,var(--form-accent,var(--sts-id))_10%,white)] shadow-[inset_0_0_0_1.5px_var(--form-accent,var(--sts-id))]"
+                : "bg-[#f3f4f6] hover:bg-[#eceef2]",
+            )}
+          >
             <input
               type="radio"
               name={field.id}
               checked={value === opt}
               onChange={() => onChange(opt)}
-              className="size-4 accent-sts-blue"
+              className="size-4 accent-[var(--form-accent,var(--sts-blue))]"
             />
             {opt}
           </label>
@@ -536,12 +544,19 @@ function DynamicField({
   if (field.type === "checkbox") {
     if (field.options.length === 0) {
       return (
-        <label className="flex cursor-pointer items-center gap-2.5 font-poppins text-[13px] text-sts-foreground">
+        <label
+          className={cn(
+            "flex cursor-pointer items-center gap-3 rounded-xl px-3.5 py-3 font-poppins text-[14px] text-sts-foreground transition-colors",
+            value === "true"
+              ? "bg-[color-mix(in_srgb,var(--form-accent,var(--sts-id))_10%,white)] shadow-[inset_0_0_0_1.5px_var(--form-accent,var(--sts-id))]"
+              : "bg-[#f3f4f6] hover:bg-[#eceef2]",
+          )}
+        >
           <input
             type="checkbox"
             checked={value === "true"}
             onChange={(e) => onChange(e.target.checked ? "true" : "false")}
-            className="size-4 rounded accent-sts-blue"
+            className="size-4 rounded accent-[var(--form-accent,var(--sts-blue))]"
           />
           {field.placeholder || "Yes"}
         </label>
@@ -553,7 +568,15 @@ function DynamicField({
         {field.options.map((opt) => {
           const checked = selected.has(opt)
           return (
-            <label key={opt} className="flex cursor-pointer items-center gap-2.5 font-poppins text-[13px] text-sts-foreground">
+            <label
+              key={opt}
+              className={cn(
+                "flex cursor-pointer items-center gap-3 rounded-xl px-3.5 py-3 font-poppins text-[14px] text-sts-foreground transition-colors",
+                checked
+                  ? "bg-[color-mix(in_srgb,var(--form-accent,var(--sts-id))_10%,white)] shadow-[inset_0_0_0_1.5px_var(--form-accent,var(--sts-id))]"
+                  : "bg-[#f3f4f6] hover:bg-[#eceef2]",
+              )}
+            >
               <input
                 type="checkbox"
                 checked={checked}
@@ -563,7 +586,7 @@ function DynamicField({
                   else next.add(opt)
                   onChange([...next].join(","))
                 }}
-                className="size-4 rounded accent-sts-blue"
+                className="size-4 rounded accent-[var(--form-accent,var(--sts-blue))]"
               />
               {opt}
             </label>
@@ -584,14 +607,16 @@ function DynamicField({
               alt={upload.file.name}
               className="max-h-56 w-full object-contain bg-[#f8f9fb]"
             />
-            <button
-              type="button"
-              onClick={onFileRemove}
-              title="Remove image"
-              className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
-            >
-              <X className="size-3.5" />
-            </button>
+            <Tip label="Remove image">
+              <button
+                aria-label="Remove image"
+                type="button"
+                onClick={onFileRemove}
+                className="absolute right-2 top-2 flex size-7 items-center justify-center rounded-full bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+              >
+                <X className="size-3.5" />
+              </button>
+            </Tip>
           </div>
           <div className="flex items-center gap-2 border-t border-sts-card-border px-3 py-2">
             <Paperclip className="size-3 shrink-0 text-sts-subtle" />
@@ -620,14 +645,16 @@ function DynamicField({
           <span className="min-w-0 flex-1 truncate font-poppins text-[12.5px] font-medium text-sts-foreground">
             {upload.file.name}
           </span>
-          <button
-            type="button"
-            onClick={onFileRemove}
-            title="Remove file"
-            className="shrink-0 text-sts-subtle transition-colors hover:text-sts-red"
-          >
-            <X className="size-4" />
-          </button>
+          <Tip label="Remove file">
+            <button
+              aria-label="Remove file"
+              type="button"
+              onClick={onFileRemove}
+              className="shrink-0 text-sts-subtle transition-colors hover:text-sts-red"
+            >
+              <X className="size-4" />
+            </button>
+          </Tip>
         </div>
       )
     }
@@ -636,8 +663,8 @@ function DynamicField({
     return (
       <label
         className={cn(
-          "flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 border-dashed px-4 py-8 text-center transition-colors hover:bg-sts-surface",
-          hasError ? "border-sts-red" : "border-sts-card-border",
+          "flex cursor-pointer flex-col items-center gap-3 rounded-xl border border-transparent bg-[#f3f4f6] px-4 py-8 text-center transition-colors hover:bg-[#eceef2]",
+          hasError && "border-sts-red bg-sts-red-tint",
           upload?.uploading && "pointer-events-none opacity-60",
         )}
       >
@@ -681,10 +708,19 @@ function DynamicField({
   return null
 }
 
+const fieldShell =
+  "h-[52px] w-full rounded-xl border border-transparent bg-[#f3f4f6] px-4 font-poppins text-[15px] text-sts-foreground outline-none transition-[background-color,border-color,box-shadow] placeholder:text-[#9ca3af] hover:bg-[#eceef2] focus:border-[var(--form-accent,var(--sts-id))] focus:bg-white focus:shadow-[0_0_0_4px_color-mix(in_srgb,var(--form-accent,var(--sts-id))_16%,transparent)]"
+
 function inputCn(hasError: boolean) {
+  return cn(fieldShell, hasError && "border-sts-red bg-sts-red-tint hover:bg-sts-red-tint")
+}
+
+function selectCn(hasError: boolean) {
   return cn(
-    "h-11 w-full rounded-xl border bg-sts-surface px-3.5 font-poppins text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle transition-colors",
-    "focus:border-sts-id focus:ring-2 focus:ring-sts-id/10",
-    hasError ? "border-sts-red" : "border-sts-card-border",
+    fieldShell,
+    "!h-[52px] !w-full !rounded-xl !border-transparent !bg-[#f3f4f6] !px-4 !py-0 !shadow-none hover:!bg-[#eceef2]",
+    "focus-visible:!border-[var(--form-accent,var(--sts-id))] focus-visible:!bg-white focus-visible:!ring-4 focus-visible:!ring-[color-mix(in_srgb,var(--form-accent,var(--sts-id))_16%,transparent)]",
+    "data-placeholder:text-[#9ca3af]",
+    hasError && "!border-sts-red !bg-sts-red-tint",
   )
 }

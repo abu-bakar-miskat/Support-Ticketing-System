@@ -3,7 +3,6 @@ import { getProfile } from "@/lib/profile";
 import { getProfileDeptScope } from "@/lib/dept-scope";
 import { prisma } from "@/lib/db";
 import { runAsSystem } from "@/lib/request-scope";
-import { listScopeDomainRequests } from "@/lib/email-domain-requests";
 import { DepartmentMailboxesPage } from "@/components/department/department-mailboxes-page";
 
 export const metadata = { title: "Shared Mailboxes — Global Support Portal" };
@@ -52,19 +51,12 @@ export default async function DepartmentMailboxesRoute() {
     assignmentMethod: s.assignmentMethod ?? dept.assignmentMethod ?? "RULE_BASED",
   }));
 
-  const tenantId = profile.activeTenantId ?? null;
-  const domainRequests = tenantId
-    ? await listScopeDomainRequests(tenantId, { departmentId: dept.id })
-    : [];
-
   return (
     <DepartmentMailboxesPage
       departmentId={dept.id}
       departmentName={dept.name}
       subDepartments={subDepartments}
       canManage={isAdmin || isManager}
-      canRequestDomain={isAdmin || isManager || isSubManager}
-      domainRequests={domainRequests}
     />
   );
 }

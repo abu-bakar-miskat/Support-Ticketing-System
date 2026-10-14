@@ -1,33 +1,18 @@
 import { NextResponse } from "next/server"
-import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { resolveReportScope } from "@/lib/reporting/report-scope"
+import { requireScheduleAdmin } from "@/lib/reporting/schedule-service"
+import type { JobParams } from "@/lib/reporting/report-export-job"
 
-// RPT-06: recent generated report exports (scheduled + on-demand async) for the
-// active tenant, for the Project Admin to download. Cross-department scope only.
 export async function GET() {
-  const { profile, error } = await requireAuth()
-  if (error) return error
-
-  const scope = await resolveReportScope(profile!)
-  if (scope.kind !== "cross_department") {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-  }
-
+  const auth = await requireScheduleAdmin()
+  if (auth.error) return auth.error
   const jobs = await prisma.reportExportJob.findMany({
-    where: { tenantId: scope.tenantId },
-    orderBy: { createdAt: "desc" },
-    take: 20,
-    select: {
-      id: true,
-      reportType: true,
-      format: true,
-      status: true,
-      resultUrl: true,
-      rowCount: true,
-      createdAt: true,
-      completedAt: true,
-    },
+    where: { tenantId: auth.tenantId }, orderBy: { createdAt: "desc" }, take: 50,
+    select: { id: true, reportType: true, format: true, status: true, resultUrl: true, rowCount: true,
+      createdAt: true, startedAt: true, completedAt: true, failureReason: true, params: true },
   })
-  return NextResponse.json({ exports: jobs })
+  return NextResponse.json({ exports: jobs.map(({ params, ...job }) => {
+    const snapshot = params as unknown as JobParams
+    return { ...job, context: snapshot.context, range: snapshot.reportParams }
+  }) })
 }

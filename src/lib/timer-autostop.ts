@@ -1,7 +1,11 @@
+import { stopMailboxFirstResponseOnActiveStatus } from "@/lib/sla-engine"
+import { finalizeManualResolution } from "@/lib/manual-resolution"
+import { checkAndNotifyEstimateOverrun } from "@/lib/time-estimate-notify"
 import { prisma } from "@/lib/db"
 import { broadcastTimerChange } from "@/lib/timer-broadcast"
 import { broadcastTicketEvent } from "@/lib/ticket-events"
-import { normalizeStatus } from "@/components/board/board-types"
+import type { StatusCategory } from "@/lib/status-category"
+import { getTicketStatusCategory } from "@/lib/status-category.server"
 
 function durationSecsBetween(start: Date, end: Date): number {
   return Math.max(0, Math.floor((end.getTime() - start.getTime()) / 1000))
@@ -15,8 +19,26 @@ function durationSecsBetween(start: Date, end: Date): number {
 export async function stopRunningTimersOnStatusChange(
   ticketId: string,
   newStatus: string,
+  category?: StatusCategory,
 ): Promise<void> {
-  if (normalizeStatus(newStatus) === "In Progress") return
+  await stopMailboxFirstResponseOnActiveStatus(ticketId, newStatus).catch(() => undefined)
+  if ((category ?? await getTicketStatusCategory(ticketId, newStatus)) === "IN_PROGRESS") return
+
+  await finalizeManualResolution(ticketId)
+  await stopRunningTimers(ticketId)
+}
+
+/**
+ * A public agent reply changes the conversation to "Waiting for customer".
+ * Stop work tracking even though the ticket itself remains In Progress.
+ */
+export async function stopRunningTimersForWaitingCustomer(
+  ticketId: string,
+): Promise<void> {
+  await stopRunningTimers(ticketId)
+}
+
+async function stopRunningTimers(ticketId: string): Promise<void> {
 
   const running = await prisma.timeEntry.findMany({
     where: { ticketId, endedAt: null },
@@ -27,7 +49,10 @@ export async function stopRunningTimersOnStatusChange(
       profile: { select: { name: true } },
     },
   })
-  if (running.length === 0) return
+  if (running.length === 0) {
+    await checkAndNotifyEstimateOverrun(ticketId)
+    return
+  }
 
   const now = new Date()
   await prisma.$transaction(
@@ -38,6 +63,8 @@ export async function stopRunningTimersOnStatusChange(
       }),
     ),
   )
+
+  await checkAndNotifyEstimateOverrun(ticketId)
 
   const affected = [...new Set(running.map((e) => e.profileId))]
   await Promise.all([

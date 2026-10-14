@@ -1,3 +1,5 @@
+import { creationEstimate } from "@/lib/ticket-estimates";
+import { checkAndNotifyEstimateOverrun } from "@/lib/time-estimate-notify";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth, assertTicketEditAccess } from "@/lib/auth";
 import { prisma } from "@/lib/db";
@@ -9,6 +11,8 @@ type TicketForEstimate = {
   subDepartmentId: string;
   projectId: string | null;
   assigneeId: string | null;
+  estimatedTime: number | null;
+  estimates: { userId: string }[];
   creatorId: string;
   deletedAt: Date | null;
   subDepartment: { departmentId: string | null };
@@ -23,6 +27,8 @@ async function loadTicket(ticketId: string): Promise<TicketForEstimate | null> {
       subDepartmentId: true,
       projectId: true,
       assigneeId: true,
+      estimatedTime: true,
+      estimates: { select: { userId: true } },
       tenantId: true,
       creatorId: true,
       deletedAt: true,
@@ -39,6 +45,16 @@ function assignedUserIds(ticket: TicketForEstimate): Set<string> {
   ]);
 }
 
+/** Preserve the creation estimate when a co-assignee first adds their own. */
+async function persistCreationEstimate(ticket: TicketForEstimate) {
+  if (ticket.estimates.length) return;
+  const initial = creationEstimate(ticket.assigneeId, ticket.estimatedTime);
+  if (!initial) return;
+  await prisma.ticketEstimate.createMany({
+    data: [{ ticketId: ticket.id, ...initial }], skipDuplicates: true,
+  });
+}
+
 /** Ticket-wide estimatedTime is the sum of everyone's personal estimate (null when none set). */
 async function recomputeRollup(ticketId: string): Promise<number | null> {
   const agg = await prisma.ticketEstimate.aggregate({
@@ -50,6 +66,7 @@ async function recomputeRollup(ticketId: string): Promise<number | null> {
     where: { id: ticketId },
     data: { estimatedTime: total ?? null },
   });
+  await checkAndNotifyEstimateOverrun(ticketId);
   return total ?? null;
 }
 
@@ -95,6 +112,7 @@ export async function PUT(
       ? null
       : parseDueDatePayload(rawTarget);
 
+  await persistCreationEstimate(ticket);
   await prisma.ticketEstimate.upsert({
     where: { ticketId_userId: { ticketId, userId: targetUserId } },
     create: { ticketId, userId: targetUserId, estimatedMinutes, targetDate },
@@ -137,6 +155,7 @@ export async function DELETE(
     if (accessError) return accessError;
   }
 
+  await persistCreationEstimate(ticket);
   await prisma.ticketEstimate.deleteMany({
     where: { ticketId, userId: targetUserId },
   });

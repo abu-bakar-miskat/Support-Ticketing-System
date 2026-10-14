@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useTransition, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, Pencil, Trash2, Check, X, GripVertical, CheckCircle2, Loader2, Tag } from "lucide-react";
+import { Plus, Pencil, Trash2, Check, X, GripVertical, CheckCircle2, Tag } from "lucide-react";
 import { toastError } from "@/lib/toast-error";
 import { cn } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Select,
   SelectContent,
@@ -30,8 +31,12 @@ import {
   replaceSubDepartmentStatusesInCaches,
 } from "@/hooks/queries/sync-sub-department-status-caches";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { invalidateTaskCaches } from "@/hooks/queries/invalidate-task-caches";
+import { Tip } from "@/components/ui/tooltip";
+import { ListSearchInput } from "@/components/ui/list-controls";
 
-type SubDepartmentStatus = { id: string; label: string; color: string; order: number; isComplete: boolean; allowedLabels: string[] };
+import type { SubDepartmentStatus } from "@/lib/api/sub-departments";
+import { STATUS_CATEGORIES, STATUS_CATEGORY_LABELS, statusCategory, sortStatusesByCategory, type StatusCategory } from "@/lib/status-category";
 type SubDepartment = { id: string; name: string; prefix: string };
 
 const PRESET_COLORS = [
@@ -48,13 +53,17 @@ function CategoryLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function groupStatuses(statuses: SubDepartmentStatus[]) {
-  const sorted = [...statuses].sort((a, b) => a.order - b.order);
-  if (sorted.length === 0) return { unstarted: [], active: [], done: [] };
-  const unstarted = [sorted[0]];
-  const done = [sorted[sorted.length - 1]];
-  const active = sorted.slice(1, sorted.length - 1);
-  return { unstarted, active, done };
+function CategorySelect({ value, onChange, label }: { value: StatusCategory; onChange: (category: StatusCategory) => void; label: string }) {
+  return (
+    <Select value={value} onValueChange={(value) => value && onChange(value as StatusCategory)}>
+      <SelectTrigger size="sm" aria-label={label} className="min-w-32 font-sans text-xs">
+        <SelectValue>{STATUS_CATEGORY_LABELS[value]}</SelectValue>
+      </SelectTrigger>
+      <SelectContent>
+        {STATUS_CATEGORIES.map((category) => <SelectItem key={category} value={category}>{STATUS_CATEGORY_LABELS[category]}</SelectItem>)}
+      </SelectContent>
+    </Select>
+  );
 }
 
 type Props = {
@@ -68,14 +77,16 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
   const [selectedSubDepartmentId, setSelectedSubDepartmentId] = useState(defaultSubDepartmentId ?? "");
   const [statuses, setStatuses] = useState<SubDepartmentStatus[]>(initialStatuses);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [statusToDelete, setStatusToDelete] = useState<SubDepartmentStatus | null>(null);
   const [editLabel, setEditLabel] = useState("");
   const [editColor, setEditColor] = useState("");
+  const [editCategory, setEditCategory] = useState<StatusCategory>("TODO");
+  const [newCategory, setNewCategory] = useState<StatusCategory>("TODO");
   const [adding, setAdding] = useState(false);
   const [newLabel, setNewLabel] = useState("");
   const [newColor, setNewColor] = useState("#94a3b8");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const [togglingId, setTogglingId] = useState<string | null>(null);
   const dragId = useRef<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const { data: labelOptions = [], isLoading: labelsLoading } = useLabels();
@@ -127,6 +138,7 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
     setEditingId(s.id);
     setEditLabel(s.label);
     setEditColor(s.color);
+    setEditCategory(statusCategory(s));
     setError(null);
   }
 
@@ -137,27 +149,26 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
       const updated = await updateSubDepartmentStatus(selectedSubDepartmentId, id, {
         label: editLabel.trim(),
         color: editColor,
+        category: editCategory,
       }) as SubDepartmentStatus;
       setStatuses((prev) => prev.map((s) => (s.id === id ? updated : s)));
       patchSubDepartmentStatusInCaches(queryClient, selectedSubDepartmentId, id, updated);
+      invalidateTaskCaches(queryClient);
       setEditingId(null);
-    } catch {
-      setError("Failed to save");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Failed to save");
     }
   }
 
+  // Throws on failure so ConfirmDialog surfaces the error as a toast.
   async function deleteStatus(id: string) {
     setError(null);
-    try {
-      await deleteSubDepartmentStatus(selectedSubDepartmentId, id);
-      setStatuses((prev) => {
-        const next = prev.filter((s) => s.id !== id);
-        replaceSubDepartmentStatusesInCaches(queryClient, selectedSubDepartmentId, next);
-        return next;
-      });
-    } catch {
-      setError("Failed to delete");
-    }
+    await deleteSubDepartmentStatus(selectedSubDepartmentId, id);
+    setStatuses((prev) => {
+      const next = prev.filter((s) => s.id !== id);
+      replaceSubDepartmentStatusesInCaches(queryClient, selectedSubDepartmentId, next);
+      return next;
+    });
   }
 
   async function addStatus() {
@@ -167,6 +178,7 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
       const created = await createSubDepartmentStatus(selectedSubDepartmentId, {
         label: newLabel.trim(),
         color: newColor,
+        category: newCategory,
       }) as SubDepartmentStatus;
       setStatuses((prev) => {
         const next = [...prev, created];
@@ -181,30 +193,13 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
     }
   }
 
-  async function toggleComplete(id: string, current: boolean) {
-    setError(null);
-    setTogglingId(id);
-    try {
-      const updated = await updateSubDepartmentStatus(selectedSubDepartmentId, id, { isComplete: !current }) as SubDepartmentStatus;
-      setStatuses((prev) =>
-        prev.map((s) => (s.id === id ? { ...s, isComplete: updated.isComplete } : s))
-      );
-      patchSubDepartmentStatusInCaches(queryClient, selectedSubDepartmentId, id, {
-        isComplete: updated.isComplete,
-      });
-    } catch {
-      setError("Failed to update");
-    } finally {
-      setTogglingId(null);
-    }
-  }
-
   async function reorder(fromId: string, toId: string) {
     if (fromId === toId) return;
-    const sorted = [...statuses].sort((a, b) => a.order - b.order);
+    const sorted = sortStatusesByCategory(statuses);
     const fromIdx = sorted.findIndex((s) => s.id === fromId);
     const toIdx = sorted.findIndex((s) => s.id === toId);
     if (fromIdx === -1 || toIdx === -1) return;
+    if (statusCategory(sorted[fromIdx]) !== statusCategory(sorted[toIdx])) return;
     const reordered = [...sorted];
     const [moved] = reordered.splice(fromIdx, 1);
     reordered.splice(toIdx, 0, moved);
@@ -212,21 +207,33 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
     setStatuses(withNewOrders);
     replaceSubDepartmentStatusesInCaches(queryClient, selectedSubDepartmentId, withNewOrders);
 
-    await reorderSubDepartmentStatuses(
-      selectedSubDepartmentId,
-      reordered.map((s, i) => ({ id: s.id, order: i })),
-    ).catch(() => null);
+    try {
+      await reorderSubDepartmentStatuses(selectedSubDepartmentId, withNewOrders.map((s) => ({ id: s.id, order: s.order })));
+    } catch (error) {
+      setStatuses(sorted);
+      replaceSubDepartmentStatusesInCaches(queryClient, selectedSubDepartmentId, sorted);
+      toastError("Failed to reorder statuses", error);
+    }
   }
 
-  const { unstarted, active, done } = groupStatuses(statuses);
-  const sortedStatuses = [...statuses].sort((a, b) => a.order - b.order);
+  // Search only — column order is the board order (drag to reorder), so it is never re-sorted.
+  // Grouping is computed on the full list so a filtered status keeps its real category.
+  const [statusQuery, setStatusQuery] = useState("");
+  const statusTerms = statusQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const matchesQuery = (s: SubDepartmentStatus) => {
+    const hay = [s.label, ...s.allowedLabels, STATUS_CATEGORY_LABELS[statusCategory(s)]].join(" ").toLowerCase();
+    return statusTerms.every((t) => hay.includes(t));
+  };
+  const sortedStatuses = sortStatusesByCategory(statuses);
+  const filteredStatuses = sortedStatuses.filter(matchesQuery);
+  const noStatusMatches = statuses.length > 0 && filteredStatuses.length === 0;
 
   function renderRow(s: SubDepartmentStatus) {
     const isEditing = editingId === s.id;
 
     if (isEditing) {
       return (
-        <div key={s.id} className="flex h-12 items-center gap-3 border-t border-[#f0f4f8] dark:border-[#3a3a37]">
+        <div key={s.id} className="flex min-h-12 flex-wrap items-center gap-3 py-2 border-t border-[#f0f4f8] dark:border-[#3a3a37]">
           <GripVertical className="size-4 shrink-0 text-sts-subtle opacity-40" />
           {/* Color picker */}
           <div className="relative flex items-center gap-1.5">
@@ -237,6 +244,8 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
                   key={c}
                   type="button"
                   onClick={() => setEditColor(c)}
+                  aria-label={`Status color ${c}`}
+                  aria-pressed={editColor === c}
                   className={cn("size-3.5 rounded-full border-2 transition-transform", editColor === c ? "border-sts-foreground scale-110" : "border-transparent")}
                   style={{ backgroundColor: c }}
                 />
@@ -250,12 +259,17 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
             onKeyDown={(e) => { if (e.key === "Enter") saveEdit(s.id); if (e.key === "Escape") setEditingId(null); }}
             className="min-w-0 flex-1 rounded-[5px] border border-sts-card-border bg-sts-bg px-2 py-1 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue"
           />
-          <button type="button" onClick={() => saveEdit(s.id)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-green hover:bg-sts-surface">
-            <Check className="size-3.5" />
-          </button>
-          <button type="button" onClick={() => setEditingId(null)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface">
-            <X className="size-3.5" />
-          </button>
+          <CategorySelect value={editCategory} onChange={setEditCategory} label="Status category" />
+          <Tip label="Save status">
+            <button aria-label="Save status" type="button" onClick={() => saveEdit(s.id)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-green hover:bg-sts-surface">
+              <Check className="size-3.5" />
+            </button>
+          </Tip>
+          <Tip label="Cancel editing">
+            <button aria-label="Cancel editing" type="button" onClick={() => setEditingId(null)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface">
+              <X className="size-3.5" />
+            </button>
+          </Tip>
         </div>
       );
     }
@@ -330,42 +344,12 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
           </PopoverContent>
         </Popover>
         <span className="min-w-0 flex-1" />
-        {/* isComplete toggle */}
-        {togglingId === s.id ? (
-          <div className="flex h-6 shrink-0 items-center gap-1.5 rounded-full bg-sts-surface px-2.5">
-            <Loader2 className="size-3 animate-spin text-sts-subtle" />
-            <span className="font-sans text-[11px] text-sts-subtle">Saving…</span>
-          </div>
-        ) : s.isComplete ? (
-          <button
-            type="button"
-            title="Click to remove completion status"
-            onClick={() => toggleComplete(s.id, true)}
-            className="group/toggle flex h-6 shrink-0 items-center gap-1.5 rounded-full bg-sts-green/10 px-2.5 transition-colors hover:bg-sts-red/10"
-          >
-            <CheckCircle2 className="size-3 text-sts-green transition-colors group-hover/toggle:hidden" />
-            <X className="hidden size-3 text-sts-red transition-colors group-hover/toggle:block" />
-            <span className="font-sans text-[11px] font-medium text-sts-green transition-colors group-hover/toggle:text-sts-red">
-              <span className="group-hover/toggle:hidden">Complete</span>
-              <span className="hidden group-hover/toggle:inline">Remove</span>
-            </span>
-          </button>
-        ) : (
-          <button
-            type="button"
-            title="Mark as completion status"
-            onClick={() => toggleComplete(s.id, false)}
-            className="flex h-6 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-sts-subtle transition-all hover:bg-sts-green/10 hover:text-sts-green"
-          >
-            <CheckCircle2 className="size-3" />
-            <span className="font-sans text-[11px] font-medium">Set complete</span>
-          </button>
-        )}
+        {statusCategory(s) === "COMPLETE" && <CheckCircle2 className="size-3 text-sts-green" aria-label="Completion status" />}
         <div className="flex items-center gap-0.5 transition-opacity">
-          <button type="button" onClick={() => startEdit(s)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground">
+          <button type="button" aria-label={`Edit ${s.label}`} onClick={() => startEdit(s)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground">
             <Pencil className="size-3" />
           </button>
-          <button type="button" onClick={() => deleteStatus(s.id)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-red">
+          <button type="button" aria-label={`Delete ${s.label}`} onClick={() => setStatusToDelete(s)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-red">
             <Trash2 className="size-3" />
           </button>
         </div>
@@ -381,7 +365,7 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
         <div className="min-w-0 flex-1">
           <h1 className="sts-text-admin-title">Workflows & statuses</h1>
-          <p className="mt-[3px] font-sans text-[13px] text-sts-muted">Configure the status columns for each subDepartment's board.</p>
+          <p className="mt-[3px] font-sans text-[13px] text-sts-muted">Organise each sub-department’s statuses into four lifecycle categories.</p>
         </div>
       </div>
 
@@ -410,53 +394,51 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
       {/* Status list */}
       {selectedSubDepartmentId && (
         <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pb-2 pt-4">
-          <div className="pb-1.5">
-            <h2 className="font-sans text-sm font-semibold text-sts-foreground">
-              {selectedSubDepartment?.prefix} workflow
-            </h2>
-            <p className="mt-0.5 font-sans text-[11.5px] text-sts-muted">
-              Status columns shown on the board. First = starting, last = done.
-            </p>
+          <div className="flex flex-col gap-2 pb-1.5 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 className="font-sans text-sm font-semibold text-sts-foreground">
+                {selectedSubDepartment?.prefix} workflow
+              </h2>
+              <p className="mt-0.5 font-sans text-[11.5px] text-sts-muted">
+                Customise status names within To-do, In progress, Blocked and Complete. Drag to reorder within a category.
+              </p>
+            </div>
+            {statuses.length > 0 && (
+              <ListSearchInput value={statusQuery} onChange={setStatusQuery} placeholder="Search statuses…" />
+            )}
           </div>
 
           {error && (
             <p className="mt-2 rounded-[6px] bg-sts-red-tint px-3 py-2 font-sans text-[11.5px] text-sts-red">{error}</p>
           )}
 
-          {statuses.length > 0 ? (
-            <>
-              {unstarted.length > 0 && (
-                <>
-                  <CategoryLabel>UNSTARTED</CategoryLabel>
-                  {unstarted.map(renderRow)}
-                </>
-              )}
-              {active.length > 0 && (
-                <>
-                  <CategoryLabel>ACTIVE</CategoryLabel>
-                  {active.map(renderRow)}
-                </>
-              )}
-              {done.length > 0 && (
-                <>
-                  <CategoryLabel>DONE</CategoryLabel>
-                  {done.map(renderRow)}
-                </>
-              )}
-            </>
-          ) : (
-            <p className="py-4 font-sans text-[12px] text-sts-subtle">No statuses configured yet.</p>
-          )}
+          {noStatusMatches ? (
+            <p className="py-4 font-sans text-[12px] text-sts-subtle">No statuses match &ldquo;{statusQuery.trim()}&rdquo;</p>
+          ) : STATUS_CATEGORIES.map((category) => {
+            const rows = filteredStatuses.filter((status) => statusCategory(status) === category);
+            return (
+              <div key={category}>
+                <div className="flex items-center justify-between">
+                  <CategoryLabel>{STATUS_CATEGORY_LABELS[category]}</CategoryLabel>
+                  <button type="button" aria-label={`Add status to ${STATUS_CATEGORY_LABELS[category]}`} onClick={() => { setNewCategory(category); setAdding(true); setError(null); }} className="flex items-center gap-1 font-sans text-xs text-sts-muted hover:text-sts-blue">
+                    <Plus className="size-3" /> Add status
+                  </button>
+                </div>
+                {rows.length ? rows.map(renderRow) : <p className="py-2 font-sans text-xs text-sts-subtle">No statuses in this category.</p>}
+              </div>
+            );
+          })}
 
           {/* Add status row */}
           {adding ? (
-            <div className="flex h-12 items-center gap-3 border-t border-[#f0f4f8] dark:border-[#3a3a37]">
+            <div className="flex min-h-12 flex-wrap items-center gap-3 py-2 border-t border-[#f0f4f8] dark:border-[#3a3a37]">
               <GripVertical className="size-4 shrink-0 text-sts-subtle opacity-30" />
               <div className="flex items-center gap-1.5">
                 <span className="size-[9px] shrink-0 rounded-full" style={{ backgroundColor: newColor }} />
                 <div className="flex flex-wrap gap-1">
                   {PRESET_COLORS.map((c) => (
                     <button key={c} type="button" onClick={() => setNewColor(c)}
+                      aria-label={`Status color ${c}`} aria-pressed={newColor === c}
                       className={cn("size-3.5 rounded-full border-2 transition-transform", newColor === c ? "border-sts-foreground scale-110" : "border-transparent")}
                       style={{ backgroundColor: c }} />
                   ))}
@@ -470,12 +452,17 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
                 onKeyDown={(e) => { if (e.key === "Enter") addStatus(); if (e.key === "Escape") setAdding(false); }}
                 className="min-w-0 flex-1 rounded-[5px] border border-sts-card-border bg-sts-bg px-2 py-1 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-blue"
               />
-              <button type="button" onClick={addStatus} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-green hover:bg-sts-surface">
-                <Check className="size-3.5" />
-              </button>
-              <button type="button" onClick={() => setAdding(false)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface">
-                <X className="size-3.5" />
-              </button>
+              <CategorySelect value={newCategory} onChange={setNewCategory} label="New status category" />
+              <Tip label="Add status">
+                <button aria-label="Add status" type="button" onClick={addStatus} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-green hover:bg-sts-surface">
+                  <Check className="size-3.5" />
+                </button>
+              </Tip>
+              <Tip label="Cancel">
+                <button aria-label="Cancel adding status" type="button" onClick={() => setAdding(false)} className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface">
+                  <X className="size-3.5" />
+                </button>
+              </Tip>
             </div>
           ) : (
             <button
@@ -490,6 +477,16 @@ export function SettingsWorkflowsPage({ subDepartments, defaultSubDepartmentId, 
         </div>
       )}
 
+      <ConfirmDialog
+        open={statusToDelete !== null}
+        onOpenChange={(o) => { if (!o) setStatusToDelete(null); }}
+        title={`Delete "${statusToDelete?.label ?? ""}" status?`}
+        description="Tickets currently in this status may need to be moved to another column. This can't be undone."
+        successMessage="Status deleted."
+        onConfirm={async () => {
+          if (statusToDelete) await deleteStatus(statusToDelete.id);
+        }}
+      />
     </div>
   );
 }

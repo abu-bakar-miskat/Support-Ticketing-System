@@ -1,5 +1,6 @@
 "use client";
 
+import { Tip } from "@/components/ui/tooltip";
 import { useMemo, useState } from "react";
 import { Check, ChevronDown, Loader2, Search, X } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -185,13 +186,16 @@ export function TenantTemplates({
                 className="h-8 pl-8 pr-7 font-sans text-[12.5px]"
               />
               {query && (
-                <button
-                  type="button"
-                  onClick={() => setQuery("")}
-                  className="absolute right-1.5 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
-                >
-                  <X className="size-3" />
-                </button>
+                <Tip label="Clear search">
+                  <button
+                    aria-label="Clear search"
+                    type="button"
+                    onClick={() => setQuery("")}
+                    className="absolute right-1.5 top-1/2 flex size-5 -translate-y-1/2 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </Tip>
               )}
             </div>
           </div>
@@ -208,38 +212,38 @@ export function TenantTemplates({
               filtered.map((t) => {
                 const checked = selected.has(t.id);
                 return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    title={t.description ?? undefined}
-                    onClick={() => toggle(t.id)}
-                    className={cn(
-                      "group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors",
-                      checked ? "bg-sts-blue-tint" : "hover:bg-sts-surface",
-                    )}
-                  >
-                    <span
+                  <Tip key={t.id} label={t.description ?? undefined}>
+                    <button
+                      type="button"
+                      onClick={() => toggle(t.id)}
                       className={cn(
-                        "flex size-4 shrink-0 items-center justify-center rounded-[4px] border transition-colors",
-                        checked
-                          ? "border-sts-blue bg-sts-blue"
-                          : "border-sts-card-border bg-transparent group-hover:border-sts-muted",
+                        "group flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left transition-colors",
+                        checked ? "bg-sts-blue-tint" : "hover:bg-sts-surface",
                       )}
                     >
-                      {checked && <Check className="size-2.5 text-white" strokeWidth={3} />}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate font-sans text-[12.5px] text-sts-foreground">{t.name}</span>
-                      {t.description && (
-                        <span className="block truncate font-sans text-[11px] text-sts-subtle">{t.description}</span>
-                      )}
-                    </span>
-                    {t.status === "requested" && !checked && (
-                      <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 font-sans text-[10px] font-medium text-amber-600 dark:text-amber-400">
-                        Requested
+                      <span
+                        className={cn(
+                          "flex size-4 shrink-0 items-center justify-center rounded-[4px] border transition-colors",
+                          checked
+                            ? "border-sts-blue bg-sts-blue"
+                            : "border-sts-card-border bg-transparent group-hover:border-sts-muted",
+                        )}
+                      >
+                        {checked && <Check className="size-2.5 text-white" strokeWidth={3} />}
                       </span>
-                    )}
-                  </button>
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-sans text-[12.5px] text-sts-foreground">{t.name}</span>
+                        {t.description && (
+                          <span className="block truncate font-sans text-[11px] text-sts-subtle">{t.description}</span>
+                        )}
+                      </span>
+                      {t.status === "requested" && !checked && (
+                        <span className="shrink-0 rounded-full bg-amber-500/15 px-1.5 py-0.5 font-sans text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                          Requested
+                        </span>
+                      )}
+                    </button>
+                  </Tip>
                 );
               })
             )}

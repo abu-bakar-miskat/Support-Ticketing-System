@@ -1,5 +1,6 @@
 "use client";
 
+import { Tip } from "@/components/ui/tooltip";
 import { useState } from "react";
 import { X } from "lucide-react";
 import { toast } from "sonner";
@@ -12,6 +13,8 @@ export type TenantTypeRow = {
   label: string;
   description: string | null;
   tenants: number;
+  /** ISO timestamp — used to sort the catalogue by age. */
+  createdAt?: string;
 };
 
 function slugify(value: string): string {
@@ -75,14 +78,17 @@ export function TenantTypeModal({
       <div className="sts-glass-panel flex max-h-[calc(90vh/var(--sts-font-scale,1))] w-full max-w-md flex-col overflow-hidden rounded-[8px] ring-1 ring-white/35 dark:ring-white/10">
         <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-sts-card-border px-[22px]">
           <h2 className="sts-text-modal-title">{editing ? "Edit tenant type" : "Create tenant type"}</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
-            className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
-          >
-            <X size={17} strokeWidth={2} />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+            >
+              <X size={17} strokeWidth={2} />
+            </button>
+          </Tip>
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 space-y-4 overflow-y-auto px-[22px] py-5">

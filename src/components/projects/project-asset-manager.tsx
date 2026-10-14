@@ -30,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { updateProjectAssets } from "@/lib/api/projects";
 import { createClient } from "@/lib/supabase/client";
 import { contentTypeForFile } from "@/lib/mime";
+import { Tip } from "@/components/ui/tooltip";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -145,21 +146,23 @@ function AssetDownloadButton({
   if (!canDownloadAsset(node)) return null;
 
   return (
-    <button
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        downloadAsset(node);
-      }}
-      className={cn(
-        "flex items-center gap-1 rounded-full bg-sts-surface px-2.5 py-1.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:text-sts-foreground",
-        className,
-      )}
-      title={`Download ${node.name}`}
-    >
-      <Download className="size-3" />
-      {label}
-    </button>
+    <Tip label={`Download ${node.name}`}>
+      <button
+        aria-label={`Download ${node.name}`}
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          downloadAsset(node);
+        }}
+        className={cn(
+          "flex items-center gap-1 rounded-full bg-sts-surface px-2.5 py-1.5 font-sans text-[11.5px] text-sts-muted transition-colors hover:text-sts-foreground",
+          className,
+        )}
+      >
+        <Download className="size-3" />
+        {label}
+      </button>
+    </Tip>
   );
 }
 
@@ -275,13 +278,16 @@ function PreviewModal({
             {node.type === "markdown" && (
               <AssetDownloadButton node={node} label="Download" />
             )}
-            <button
-              type="button"
-              onClick={onClose}
-              className="flex size-7 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
-            >
-              <X className="size-4" />
-            </button>
+            <Tip label="Close">
+              <button
+                aria-label="Close"
+                type="button"
+                onClick={onClose}
+                className="flex size-7 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+              >
+                <X className="size-4" />
+              </button>
+            </Tip>
           </div>
         </div>
 
@@ -469,13 +475,16 @@ function AddPanel({
         <p className="flex-1 font-sans text-[13px] font-semibold text-sts-foreground">
           {titles[mode!]}
         </p>
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex size-6 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-card-border hover:text-sts-foreground"
-        >
-          <X className="size-3.5" />
-        </button>
+        <Tip label="Close">
+          <button
+            aria-label="Close"
+            type="button"
+            onClick={onClose}
+            className="flex size-6 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-card-border hover:text-sts-foreground"
+          >
+            <X className="size-3.5" />
+          </button>
+        </Tip>
       </div>
 
       {/* Body */}
@@ -503,6 +512,8 @@ function AddPanel({
                   key={c}
                   type="button"
                   onClick={() => setFolderColor(c)}
+                  aria-label={`Folder color ${c}`}
+                  aria-pressed={folderColor === c}
                   className={cn(
                     "size-6 rounded-full transition-transform hover:scale-110",
                     folderColor === c && "ring-2 ring-offset-2 ring-offset-sts-card scale-110",
@@ -982,13 +993,16 @@ function FolderCard({
       )}
       {canDelete && (
         <div className="absolute right-1 top-1 flex flex-col gap-0.5">
-          <button
-            type="button"
-            onClick={onDelete}
-            className="flex size-5 items-center justify-center rounded bg-red-500/15 text-red-500 hover:bg-red-500/25"
-          >
-            <Trash2 className="size-3" />
-          </button>
+          <Tip label={`Delete ${node.name}`}>
+            <button
+              aria-label={`Delete ${node.name}`}
+              type="button"
+              onClick={onDelete}
+              className="flex size-5 items-center justify-center rounded bg-red-500/15 text-red-500 hover:bg-red-500/25"
+            >
+              <Trash2 className="size-3" />
+            </button>
+          </Tip>
         </div>
       )}
     </div>
@@ -1057,26 +1071,31 @@ function FileCard({
       {(canDownloadAsset(node) || canDelete) && (
         <div className="absolute right-1 top-1 flex flex-col gap-0.5">
           {canDownloadAsset(node) && (
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                downloadAsset(node);
-              }}
-              className="flex size-5 items-center justify-center rounded bg-sts-blue/15 text-sts-blue hover:bg-sts-blue/25"
-              title={`Download ${node.name}`}
-            >
-              <Download className="size-3" />
-            </button>
+            <Tip label={`Download ${node.name}`}>
+              <button
+                aria-label={`Download ${node.name}`}
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  downloadAsset(node);
+                }}
+                className="flex size-5 items-center justify-center rounded bg-sts-blue/15 text-sts-blue hover:bg-sts-blue/25"
+              >
+                <Download className="size-3" />
+              </button>
+            </Tip>
           )}
           {canDelete && (
-            <button
-              type="button"
-              onClick={onDelete}
-              className="flex size-5 items-center justify-center rounded bg-red-500/15 text-red-500 hover:bg-red-500/25"
-            >
-              <Trash2 className="size-3" />
-            </button>
+            <Tip label={`Delete ${node.name}`}>
+              <button
+                aria-label={`Delete ${node.name}`}
+                type="button"
+                onClick={onDelete}
+                className="flex size-5 items-center justify-center rounded bg-red-500/15 text-red-500 hover:bg-red-500/25"
+              >
+                <Trash2 className="size-3" />
+              </button>
+            </Tip>
           )}
         </div>
       )}

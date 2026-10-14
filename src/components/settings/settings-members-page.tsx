@@ -26,6 +26,8 @@ import { updateAdminUser, deleteAdminUser, removeAdminSubDepartmentMember, remov
 import { InviteMemberModal } from "@/components/invites/invite-member-modal";
 import { MemberConfigPanel } from "@/components/settings/member-config-panel";
 import { toast } from "sonner";
+import { Tip } from "@/components/ui/tooltip";
+import { ListSearchInput, SortDropdown, useListControls, byText, byDateAsc, byDateDesc } from "@/components/ui/list-controls";
 
 export type MemberRow = {
   id: string;
@@ -50,6 +52,8 @@ export type MemberRow = {
   subDepartmentMemberships?: { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean }[];
   departments?: { id: string; name: string }[];
   memberships?: { subDepartmentId: string; subDepartmentName: string; departmentId: string; departmentName: string; doNotAssign: boolean }[];
+  /** ISO date the person's profile was created — drives the Newest / Oldest sorts. */
+  createdAt?: string | null;
 };
 
 export type InviteRow = {
@@ -64,6 +68,8 @@ export type InviteRow = {
   createdAt: string;
   expiresAt: string;
 };
+
+const ROLE_RANK: Record<Role, number> = { admin: 0, manager: 1, sub_manager: 2, agent: 3 };
 
 const INVITE_STATUS_STYLE: Record<InviteRow["status"], { label: string; className: string }> = {
   pending: { label: "Pending", className: "bg-sts-blue/10 text-sts-blue" },
@@ -276,13 +282,16 @@ export function AddMemberModal({
                 >
                   {selected.role}
                 </span>
-                <button
-                  type="button"
-                  onClick={() => setSelected(null)}
-                  className="ml-1 inline-flex size-5 shrink-0 items-center justify-center rounded text-sts-subtle hover:text-sts-foreground"
-                >
-                  <X className="size-3" />
-                </button>
+                <Tip label="Clear selection">
+                  <button
+                    aria-label="Clear selection"
+                    type="button"
+                    onClick={() => setSelected(null)}
+                    className="ml-1 inline-flex size-5 shrink-0 items-center justify-center rounded text-sts-subtle hover:text-sts-foreground"
+                  >
+                    <X className="size-3" />
+                  </button>
+                </Tip>
               </div>
             )}
 
@@ -444,6 +453,9 @@ export function SettingsMembersPage({
   // departments here; inside a specific department the column stays read-only.
   const canEditDepartment = !departmentId && isAdmin && availableDepartments.length > 0;
   const [confirmDelete, setConfirmDelete] = useState<MemberRow | null>(null);
+  // Converting an Admin to a lower role revokes their admin access (and, for
+  // Manager, moves them into DepartmentManager) — confirm before applying.
+  const [confirmAdminDemote, setConfirmAdminDemote] = useState<{ member: MemberRow; newRole: Role } | null>(null);
   const [confirmRemoveSubDepartment, setConfirmRemoveSubDepartment] = useState<MemberRow | null>(null);
   const [confirmRemoveDept, setConfirmRemoveDept] = useState<MemberRow | null>(null);
   const [confirmRemoveTenant, setConfirmRemoveTenant] = useState<MemberRow | null>(null);
@@ -522,9 +534,19 @@ export function SettingsMembersPage({
   }
 
   async function handleDepartmentChange(memberId: string, newDepartmentId: string) {
+    const dept = availableDepartments.find((d) => d.id === newDepartmentId);
+    const previous = liveMembers.find((m) => m.id === memberId);
     setLocalDepartments((prev) => ({ ...prev, [memberId]: newDepartmentId }));
     // A department move clears the sub-department; drop any stale local override.
     setLocalSubDepartments((prev) => { const n = { ...prev }; delete n[memberId]; return n; });
+    if (dept) {
+      setLiveMembers((prev) => prev.map((m) => m.id === memberId ? {
+        ...m,
+        departmentId: newDepartmentId,
+        department: dept.name,
+        departments: [{ id: dept.id, name: dept.name }],
+      } : m));
+    }
     setSaving(memberId);
     setError(null);
     try {
@@ -533,6 +555,9 @@ export function SettingsMembersPage({
     } catch {
       setError("Failed to change department");
       setLocalDepartments((prev) => { const n = { ...prev }; delete n[memberId]; return n; });
+      if (previous) {
+        setLiveMembers((prev) => prev.map((m) => m.id === memberId ? previous : m));
+      }
     } finally {
       setSaving(null);
     }
@@ -562,8 +587,8 @@ export function SettingsMembersPage({
     try {
       await addAdminSubDepartmentMember(subDepartmentId, member.id, currentRole(member));
       startTransition(() => router.refresh());
-    } catch {
-      setError("Failed to add subDepartment membership");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add subDepartment membership");
     } finally {
       setSaving(null);
     }
@@ -631,8 +656,8 @@ export function SettingsMembersPage({
         subDepartmentId: member?.subDepartmentId ?? undefined,
       });
       startTransition(() => router.refresh());
-    } catch {
-      setError("Failed to update role");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update role");
       setLocalRoles((prev) => {
         const n = { ...prev };
         delete n[memberId];
@@ -641,6 +666,18 @@ export function SettingsMembersPage({
     } finally {
       setSaving(null);
     }
+  }
+
+  // Gate role changes: converting an Admin to a lower role revokes admin access
+  // (and, for Manager, moves them into DepartmentManager), so confirm first.
+  // Everything else applies immediately.
+  function requestRoleChange(member: MemberRow, newRole: Role) {
+    if (newRole === currentRole(member)) return;
+    if (currentRole(member) === "admin" && newRole !== "admin") {
+      setConfirmAdminDemote({ member, newRole });
+      return;
+    }
+    handleRoleChange(member.id, newRole);
   }
 
   async function handleToggleActive(member: MemberRow) {
@@ -720,13 +757,49 @@ export function SettingsMembersPage({
     ];
   }, [liveMembers, filterDept]);
 
+  // Free-text search + sort, applied before the filter bar and grouping so each
+  // department group keeps the chosen order.
+  const memberList = useListControls(liveMembers, {
+    searchText: (m) =>
+      [
+        m.name,
+        m.email,
+        m.role.replace("_", " "),
+        m.location ?? "",
+        ...deptEntriesOf(m).map((d) => d.name),
+        ...(m.memberships?.map((ms) => ms.subDepartmentName) ?? m.subDepartments),
+      ].join(" "),
+    sortOptions: [
+      { id: "name", label: "Name A–Z", compare: byText((m: MemberRow) => m.name) },
+      { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((m: MemberRow) => m.name)(b, a) },
+      { id: "newest", label: "Newest first", compare: byDateDesc((m: MemberRow) => m.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((m: MemberRow) => m.createdAt) },
+      { id: "email", label: "Email", compare: byText((m: MemberRow) => m.email) },
+      {
+        id: "role",
+        label: "Role",
+        compare: (a, b) => ROLE_RANK[a.role] - ROLE_RANK[b.role] || byText((m: MemberRow) => m.name)(a, b),
+      },
+    ],
+  });
+
+  const inviteList = useListControls(liveInvites, {
+    searchText: (i) => [i.email, i.role.replace("_", " "), i.target ?? "", i.invitedBy ?? "", i.status].join(" "),
+    sortOptions: [
+      { id: "newest", label: "Newest first", compare: byDateDesc((i: InviteRow) => i.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((i: InviteRow) => i.createdAt) },
+      { id: "email", label: "Email A–Z", compare: byText((i: InviteRow) => i.email) },
+      { id: "expiring", label: "Expiring soonest", compare: byDateAsc((i: InviteRow) => i.expiresAt) },
+    ],
+  });
+
   const roleFilterOptions = [{ value: "", label: "All roles" }, ...ROLE_OPTIONS_ADMIN];
-  const hasActiveFilter = filterDept !== "" || filterSubDept !== "" || filterRole !== "";
-  const clearFilters = () => { setFilterDept(""); setFilterSubDept(""); setFilterRole(""); };
+  const hasActiveFilter = filterDept !== "" || filterSubDept !== "" || filterRole !== "" || memberList.isFiltering;
+  const clearFilters = () => { setFilterDept(""); setFilterSubDept(""); setFilterRole(""); memberList.setQuery(""); };
 
   // Apply the filter bar to the member list before grouping.
   const filteredMembers = useMemo(() => {
-    return liveMembers.filter((m) => {
+    return memberList.visible.filter((m) => {
       if (filterRole && currentRole(m) !== filterRole) return false;
       if (filterDept) {
         const entries = deptEntriesOf(m);
@@ -740,7 +813,7 @@ export function SettingsMembersPage({
       return true;
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [liveMembers, filterDept, filterSubDept, filterRole, localRoles]);
+  }, [memberList.visible, filterDept, filterSubDept, filterRole, localRoles]);
 
   // Group members department-wise. A member in several departments appears once
   // under each. Members with no department fall into a trailing "No department" group.
@@ -784,6 +857,26 @@ export function SettingsMembersPage({
         confirmLabel="Delete permanently"
         successMessage={confirmDelete ? `${confirmDelete.name} has been deleted` : undefined}
         onConfirm={async () => { if (confirmDelete) await handleDelete(confirmDelete.id); }}
+      />
+      <ConfirmDialog
+        open={!!confirmAdminDemote}
+        onOpenChange={(open) => { if (!open) setConfirmAdminDemote(null); }}
+        title={confirmAdminDemote?.member.id === currentUserId ? "Give up your admin access?" : "Remove admin access?"}
+        description={(() => {
+          if (!confirmAdminDemote) return "";
+          const { member, newRole } = confirmAdminDemote;
+          const label = ROLE_LABEL(newRole);
+          const managerNote =
+            newRole === "manager" ? " and be added as a department manager" : "";
+          if (member.id === currentUserId) {
+            return `You're about to change your own role from Admin to ${label}. You'll immediately lose administrator access to this workspace — including this Members page — and won't be able to restore it yourself. Another admin would have to promote you back.`;
+          }
+          return `${member.name} is currently an Admin. Changing them to ${label} will remove their admin access${managerNote}. Continue?`;
+        })()}
+        confirmLabel={confirmAdminDemote?.member.id === currentUserId ? "Yes, remove my admin access" : "Remove admin access"}
+        onConfirm={async () => {
+          if (confirmAdminDemote) await handleRoleChange(confirmAdminDemote.member.id, confirmAdminDemote.newRole);
+        }}
       />
       <ConfirmDialog
         open={!!confirmRemoveTenant}
@@ -861,8 +954,8 @@ export function SettingsMembersPage({
         canInvitePrivileged={isAdmin}
         departments={availableDepartments}
         subDepartments={availableSubDepartments}
-        onSent={() => {
-          toast.success("Invitation sent");
+        onSent={(delivered) => {
+          if (delivered) toast.success("Invitation sent");
           startTransition(() => router.refresh());
         }}
         onClose={() => setInviteOpen(false)}
@@ -901,29 +994,34 @@ export function SettingsMembersPage({
         </div>
         {(isAdmin || isManager) && (departmentId || availableDepartments.length > 0) && (
           <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setInviteOpen(true)}
-              disabled={!isAdmin && availableSubDepartments.length === 0}
-              title={
+            <Tip
+              wrap
+              label={
                 !isAdmin && availableSubDepartments.length === 0
                   ? "Create a sub-department before inviting"
                   : "Send an email invite to someone without an account"
               }
-              className="inline-flex h-9 items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-3.5 font-sans text-[12.5px] font-medium text-sts-foreground hover:bg-sts-bg disabled:cursor-not-allowed disabled:opacity-40"
             >
-              <Mail className="size-3.5" />
-              Invite new members
-            </button>
-            <button
-              type="button"
-              onClick={() => setAddMemberOpen(true)}
-              title="Add people who already have an account"
-              className="inline-flex items-center gap-1.5 h-9 rounded-full bg-sts-blue px-3.5 font-sans text-[12.5px] font-medium text-white hover:opacity-90"
-            >
-              <Plus className="size-3.5" />
-              Add existing members
-            </button>
+              <button
+                type="button"
+                onClick={() => setInviteOpen(true)}
+                disabled={!isAdmin && availableSubDepartments.length === 0}
+                className="inline-flex h-9 items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-3.5 font-sans text-[12.5px] font-medium text-sts-foreground hover:bg-sts-bg disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Mail className="size-3.5" />
+                Invite new members
+              </button>
+            </Tip>
+            <Tip label="Add people who already have an account">
+              <button
+                type="button"
+                onClick={() => setAddMemberOpen(true)}
+                className="inline-flex items-center gap-1.5 h-9 rounded-full bg-sts-blue px-3.5 font-sans text-[12.5px] font-medium text-white hover:opacity-90"
+              >
+                <Plus className="size-3.5" />
+                Add existing members
+              </button>
+            </Tip>
           </div>
         )}
       </div>
@@ -934,6 +1032,11 @@ export function SettingsMembersPage({
 
       {liveMembers.length > 0 && (
         <div className="flex shrink-0 flex-wrap items-center gap-2 rounded-[10px] border border-sts-card-border bg-sts-card px-3 py-2.5">
+          <ListSearchInput
+            value={memberList.query}
+            onChange={memberList.setQuery}
+            placeholder="Search name, email, team…"
+          />
           <span className="inline-flex items-center gap-1.5 pr-1 font-sans text-[11.5px] font-semibold uppercase tracking-[0.5px] text-sts-subtle">
             <SlidersHorizontal className="size-3.5" />
             Filter
@@ -989,6 +1092,9 @@ export function SettingsMembersPage({
               </button>
             </>
           )}
+          <div className={cn(!hasActiveFilter && "ml-auto")}>
+            <SortDropdown value={memberList.sortKey} onChange={memberList.setSortKey} options={memberList.sortDropdownOptions} />
+          </div>
         </div>
       )}
 
@@ -1022,7 +1128,11 @@ export function SettingsMembersPage({
                 <TableCell colSpan={colSpan} className="py-0">
                   <div className="flex h-[54px] items-center">
                     <span className="font-sans text-[11.5px] text-sts-muted">
-                      {liveMembers.length === 0 ? "No members yet" : "No members match these filters"}
+                      {liveMembers.length === 0
+                        ? "No members yet"
+                        : memberList.isFiltering
+                          ? `No members match "${memberList.query.trim()}"`
+                          : "No members match these filters"}
                     </span>
                   </div>
                 </TableCell>
@@ -1059,10 +1169,9 @@ export function SettingsMembersPage({
               // list is empty and the "Add" control is disabled (below), rather
               // than offering every department's sub-departments indiscriminately.
               //
-              // For a member with no saved department the Department dropdown acts
-              // as a filter: picking one there (held in local state) narrows the
-              // addable sub-departments so a home can be chosen — adding the
-              // sub-department is what actually assigns the department.
+              // A saved department (or a department just picked in the dropdown, held
+              // in local state until refresh) narrows which sub-departments can
+              // be added. The department itself is persisted by the dropdown.
               const scopeDeptIds = memberDeptIds.size > 0
                 ? memberDeptIds
                 : (() => { const id = currentDepartmentId(member); return id ? new Set([id]) : new Set<string>(); })();
@@ -1089,7 +1198,7 @@ export function SettingsMembersPage({
                             {member.name}
                           </p>
                           {member.isSuperAdmin && (
-                            <span title="Platform super-admin" className="shrink-0 inline-flex items-center gap-0.5 rounded-full bg-sts-purple/10 px-[6px] py-px font-sans text-[9.5px] font-semibold uppercase tracking-wide text-sts-purple">
+                            <span title="Platform super-admin" className="shrink-0 inline-flex items-center gap-0.5 rounded-full bg-sts-red/10 px-[6px] py-px font-sans text-[9.5px] font-semibold uppercase tracking-wide text-sts-red">
                               <ShieldCheck className="size-2.5" />
                               Super admin
                             </span>
@@ -1097,7 +1206,17 @@ export function SettingsMembersPage({
                           {!member.isSuperAdmin && role === "admin" && (
                             <span title="Tenant admin" className="shrink-0 inline-flex items-center gap-0.5 rounded-full bg-sts-blue/10 px-[6px] py-px font-sans text-[9.5px] font-semibold uppercase tracking-wide text-sts-blue">
                               <ShieldCheck className="size-2.5" />
-                              Admin
+                              Tenant Admin
+                            </span>
+                          )}
+                          {!member.isSuperAdmin && role === "manager" && (
+                            <span title="Department manager" className="shrink-0 inline-flex items-center rounded-full bg-sts-purple/10 px-[6px] py-px font-sans text-[9.5px] font-semibold uppercase tracking-wide text-sts-purple">
+                              Manager
+                            </span>
+                          )}
+                          {!member.isSuperAdmin && role === "sub_manager" && (
+                            <span title="Sub-department manager" className="shrink-0 inline-flex items-center rounded-full bg-sts-green/10 px-[6px] py-px font-sans text-[9.5px] font-semibold uppercase tracking-wide text-sts-green">
+                              Sub-manager
                             </span>
                           )}
                           {member.isCrossAccess && (
@@ -1143,7 +1262,7 @@ export function SettingsMembersPage({
                             {(isAdmin ? ROLE_OPTIONS_ADMIN : ROLE_OPTIONS_MANAGER).map((o) => (
                               <DropdownMenuItem
                                 key={o.value}
-                                onClick={() => handleRoleChange(member.id, o.value)}
+                                onClick={() => requestRoleChange(member, o.value)}
                                 className={cn(
                                   "gap-2 font-sans text-[12px]",
                                   role === o.value && "font-semibold",
@@ -1221,9 +1340,11 @@ export function SettingsMembersPage({
                             <span key={department.id} className="inline-flex items-center gap-1 rounded-full bg-sts-blue-tint px-[7px] py-0.5 font-sans text-[11.5px] font-semibold text-sts-id">
                               {department.name}
                               {(isAdmin || isManager) && !member.isCrossAccess && (
-                                <button type="button" title={`Remove from ${department.name}`} disabled={saving === member.id} onClick={() => setConfirmRemoveDept({ ...member, departmentId: department.id, department: department.name })} className="rounded text-sts-id/60 hover:text-red-500 disabled:opacity-50">
-                                  <X className="size-3" />
-                                </button>
+                                <Tip label={`Remove from ${department.name}`}>
+                                  <button aria-label={`Remove from ${department.name}`} type="button" disabled={saving === member.id} onClick={() => setConfirmRemoveDept({ ...member, departmentId: department.id, department: department.name })} className="rounded text-sts-id/60 hover:text-red-500 disabled:opacity-50">
+                                    <X className="size-3" />
+                                  </button>
+                                </Tip>
                               )}
                             </span>
                           ))}
@@ -1316,9 +1437,11 @@ export function SettingsMembersPage({
                           >
                             {t.name}
                             {(isAdmin || isManager) && !member.isCrossAccess && member.memberships?.some((membership) => membership.subDepartmentId === t.id) && (
-                              <button type="button" title={`Remove from ${t.name}`} disabled={saving === member.id} onClick={() => handleRemoveMembership(member, t.id)} className="rounded text-sts-subtle hover:text-red-500 disabled:opacity-50">
-                                <X className="size-3" />
-                              </button>
+                              <Tip label={`Remove from ${t.name}`}>
+                                <button aria-label={`Remove from ${t.name}`} type="button" disabled={saving === member.id} onClick={() => handleRemoveMembership(member, t.id)} className="rounded text-sts-subtle hover:text-red-500 disabled:opacity-50">
+                                  <X className="size-3" />
+                                </button>
+                              </Tip>
                             )}
                           </span>
                         ))
@@ -1357,14 +1480,16 @@ export function SettingsMembersPage({
                     <TableCell className="py-0 pr-2 text-right">
                       <div className="flex h-[54px] items-center justify-end gap-0.5">
                         {!member.isCrossAccess && (
-                          <button
-                            type="button"
-                            title="Configure availability"
-                            onClick={() => setConfigMember(member)}
-                            className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
-                          >
-                            <Settings2 className="size-3.5" />
-                          </button>
+                          <Tip label="Configure availability">
+                            <button
+                              aria-label="Configure availability"
+                              type="button"
+                              onClick={() => setConfigMember(member)}
+                              className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground"
+                            >
+                              <Settings2 className="size-3.5" />
+                            </button>
+                          </Tip>
                         )}
                         {member.id !== currentUserId && (
                           <DropdownMenu>
@@ -1454,6 +1579,13 @@ export function SettingsMembersPage({
             </p>
           </div>
 
+          {liveInvites.length > 0 && (
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <ListSearchInput value={inviteList.query} onChange={inviteList.setQuery} placeholder="Search invites…" />
+              <SortDropdown value={inviteList.sortKey} onChange={inviteList.setSortKey} options={inviteList.sortDropdownOptions} />
+            </div>
+          )}
+
           <div className="overflow-x-auto rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
             <Table className="min-w-[640px]">
               <TableHeader>
@@ -1467,16 +1599,18 @@ export function SettingsMembersPage({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {liveInvites.length === 0 ? (
+                {inviteList.visible.length === 0 ? (
                   <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
                     <TableCell colSpan={6} className="py-0">
                       <div className="flex h-[54px] items-center">
-                        <span className="font-sans text-[11.5px] text-sts-muted">No pending invitations</span>
+                        <span className="font-sans text-[11.5px] text-sts-muted">
+                          {liveInvites.length === 0 ? "No pending invitations" : `No invites match "${inviteList.query.trim()}"`}
+                        </span>
                       </div>
                     </TableCell>
                   </TableRow>
                 ) : (
-                  liveInvites.map((invite) => {
+                  inviteList.visible.map((invite) => {
                     const badge = INVITE_STATUS_STYLE[invite.status];
                     const busy = inviteBusy[invite.id];
                     return (
@@ -1514,24 +1648,28 @@ export function SettingsMembersPage({
                         </TableCell>
                         <TableCell className="py-0 pr-2 text-right">
                           <div className="flex h-[54px] items-center justify-end gap-0.5">
-                            <button
-                              type="button"
-                              title="Resend invitation email"
-                              disabled={!!busy}
-                              onClick={() => handleResendInvite(invite)}
-                              className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground disabled:cursor-not-allowed disabled:opacity-40"
-                            >
-                              {busy === "resend" ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
-                            </button>
-                            <button
-                              type="button"
-                              title="Delete invitation"
-                              disabled={!!busy}
-                              onClick={() => setConfirmDeleteInvite(invite)}
-                              className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-red-900/30"
-                            >
-                              {busy === "delete" ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
-                            </button>
+                            <Tip label="Resend invitation email">
+                              <button
+                                aria-label="Resend invitation email"
+                                type="button"
+                                disabled={!!busy}
+                                onClick={() => handleResendInvite(invite)}
+                                className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-sts-surface hover:text-sts-foreground disabled:cursor-not-allowed disabled:opacity-40"
+                              >
+                                {busy === "resend" ? <Loader2 className="size-3.5 animate-spin" /> : <RefreshCw className="size-3.5" />}
+                              </button>
+                            </Tip>
+                            <Tip label="Delete invitation">
+                              <button
+                                aria-label="Delete invitation"
+                                type="button"
+                                disabled={!!busy}
+                                onClick={() => setConfirmDeleteInvite(invite)}
+                                className="inline-flex size-7 items-center justify-center rounded-full text-sts-subtle outline-none hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-red-900/30"
+                              >
+                                {busy === "delete" ? <Loader2 className="size-3.5 animate-spin" /> : <Trash2 className="size-3.5" />}
+                              </button>
+                            </Tip>
                           </div>
                         </TableCell>
                       </TableRow>

@@ -6,6 +6,7 @@ import type { Editor } from "@tiptap/react";
 import { Table2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getPortalRoot } from "@/lib/portal-root";
+import { Tip } from "./tooltip";
 
 const GRID_MAX = 6;
 const CELL_PX = 20;
@@ -148,23 +149,27 @@ export function InsertTablePopover({ editor }: { editor: Editor }) {
 
   return (
     <>
-      <button
-        ref={triggerRef}
-        type="button"
-        title="Insert table"
-        onMouseDown={(e) => {
-          e.preventDefault();
-          setOpen((v) => !v);
-        }}
-        className={cn(
-          "flex size-6 items-center justify-center rounded transition-colors",
-          editor.isActive("table") || open
-            ? "bg-sts-blue-tint font-semibold text-sts-id"
-            : "text-sts-muted hover:bg-sts-card hover:text-sts-foreground",
-        )}
-      >
-        <Table2 className="size-3.5" />
-      </button>
+      <Tip label="Insert table">
+        <button
+          ref={triggerRef}
+          type="button"
+          aria-label="Insert table"
+          aria-haspopup="dialog"
+          aria-expanded={open}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setOpen((v) => !v);
+          }}
+          className={cn(
+            "flex size-6 items-center justify-center rounded transition-colors",
+            editor.isActive("table") || open
+              ? "bg-sts-blue-tint font-semibold text-sts-id"
+              : "text-sts-muted hover:bg-sts-card hover:text-sts-foreground",
+          )}
+        >
+          <Table2 className="size-3.5" />
+        </button>
+      </Tip>
       {portalRoot && panel ? createPortal(panel, portalRoot) : null}
     </>
   );

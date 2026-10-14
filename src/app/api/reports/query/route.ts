@@ -9,6 +9,7 @@ import { REPORT_TYPES, type ReportType } from "@/lib/reporting/export-doc";
 import type { FormFieldFilter } from "@/lib/board-search";
 import { assertFeatureEnabled } from "@/lib/feature-flags";
 import { runAsSystem } from "@/lib/request-scope";
+import { loadPerformanceOverview } from "@/lib/reporting/performance-overview";
 
 function isReportType(v: string | null): v is ReportType {
   return !!v && (REPORT_TYPES as readonly string[]).includes(v);
@@ -64,6 +65,9 @@ async function loadReport(
   end: Date,
   sp: URLSearchParams,
 ) {
+  if (reportType === "user_performance") {
+    return NextResponse.json({ reportType, ...await loadPerformanceOverview(scope, start, end, sp.get("personId") ?? "all") });
+  }
   if (reportType === "cross_department") {
     if (scope.kind !== "cross_department") {
       return NextResponse.json(

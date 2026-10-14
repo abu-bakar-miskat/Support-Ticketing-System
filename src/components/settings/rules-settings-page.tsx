@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTenantHref } from "@/hooks/use-tenant-href";
 import {
   ArrowLeft,
   ArrowUp,
@@ -22,6 +23,8 @@ import {
   type RuleFormField,
 } from "@/components/settings/rule-conditions-editor";
 import { TicketCategory, TicketPriority } from "@/generated/prisma/enums";
+import { Tip } from "@/components/ui/tooltip";
+import { ListSearchInput } from "@/components/ui/list-controls";
 
 // ── Types (mirror lib/rules-engine.ts) ───────────────────────────────────────
 type RuleActionType =
@@ -124,6 +127,7 @@ export function RulesSettingsPage({
   members?: MemberOption[];
   subDepartments?: SubDepartmentOption[];
 }) {
+  const tenantHref = useTenantHref();
   const [rules, setRules] = useState<Rule[] | null>(null);
   const [departmentFields, setDepartmentFields] = useState<RuleFormField[]>([]);
   const [slaPolicies, setSlaPolicies] = useState<SlaPolicyLite[]>([]);
@@ -136,6 +140,17 @@ export function RulesSettingsPage({
   const [testFields, setTestFields] = useState<{ key: string; value: string }[]>([{ key: "", value: "" }]);
   const [testResult, setTestResult] = useState<RulesPlan | null>(null);
   const [testing, setTesting] = useState(false);
+  // Search only — rules run top to bottom, so they are never re-sorted. Matching rules keep their real
+  // position (#n, move up/down) rather than being renumbered.
+  const [ruleQuery, setRuleQuery] = useState("");
+  const ruleTerms = ruleQuery.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const ruleMatches = (rule: Rule) => {
+    const hay = [rule.name, ...rule.actions.map((a) => actionLabel(a.type)), rule.enabled ? "enabled active" : "disabled"]
+      .join(" ")
+      .toLowerCase();
+    return ruleTerms.every((t) => hay.includes(t));
+  };
+  const visibleRuleCount = rules?.filter(ruleMatches).length ?? 0;
 
   const load = () => {
     setRules(null);
@@ -277,7 +292,7 @@ export function RulesSettingsPage({
   return (
     <div className="w-full px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <Link
-        href="/settings/departments"
+        href={tenantHref("/settings/departments")}
         className="mb-4 inline-flex items-center gap-1.5 font-sans text-[12.5px] text-sts-muted hover:text-sts-foreground"
       >
         <ArrowLeft className="size-3.5" /> Back to departments
@@ -307,13 +322,18 @@ export function RulesSettingsPage({
               </p>
             )}
           </div>
-          <button
-            type="button"
-            onClick={() => setShowNewRule(true)}
-            className="inline-flex items-center gap-1 rounded-full bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
-          >
-            <Plus className="size-3.5" /> New rule
-          </button>
+          <div className="flex items-center gap-2">
+            {rules !== null && rules.length > 0 && (
+              <ListSearchInput value={ruleQuery} onChange={setRuleQuery} placeholder="Search rules…" />
+            )}
+            <button
+              type="button"
+              onClick={() => setShowNewRule(true)}
+              className="inline-flex shrink-0 items-center gap-1 rounded-full bg-sts-blue px-2.5 py-1.5 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90"
+            >
+              <Plus className="size-3.5" /> New rule
+            </button>
+          </div>
         </div>
 
         {rules === null ? (
@@ -339,7 +359,12 @@ export function RulesSettingsPage({
           </div>
         ) : (
           <div className="flex flex-col gap-4">
-            {rules.map((rule, index) => (
+            {visibleRuleCount === 0 && (
+              <p className="py-6 text-center font-sans text-[12.5px] text-sts-muted">
+                No rules match &ldquo;{ruleQuery.trim()}&rdquo;
+              </p>
+            )}
+            {rules.map((rule, index) => !ruleMatches(rule) ? null : (
               <RuleCard
                 key={rule.id}
                 rule={rule}
@@ -431,13 +456,16 @@ export function RulesSettingsPage({
                     className={cn(inputCls, "flex-1")}
                   />
                 )}
-                <button
-                  type="button"
-                  onClick={() => setTestFields((prev) => prev.filter((_, xi) => xi !== i))}
-                  className="rounded-full p-1.5 text-sts-subtle hover:text-red-500"
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
+                <Tip label="Remove test field">
+                  <button
+                    aria-label="Remove test field"
+                    type="button"
+                    onClick={() => setTestFields((prev) => prev.filter((_, xi) => xi !== i))}
+                    className="rounded-full p-1.5 text-sts-subtle hover:text-red-500"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                </Tip>
               </div>
             );
           })}
@@ -548,14 +576,17 @@ function NewRuleModal({
       >
         <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-sts-card-border px-[22px]">
           <h2 className="sts-text-modal-title">New automation rule</h2>
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={creating}
-            className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
-          >
-            <X size={17} strokeWidth={2} />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              type="button"
+              onClick={onCancel}
+              disabled={creating}
+              className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+            >
+              <X size={17} strokeWidth={2} />
+            </button>
+          </Tip>
         </div>
 
         <div className="flex flex-col gap-4 px-[22px] py-5">
@@ -656,32 +687,38 @@ function RuleCard({
           onChange={(e) => onChange({ ...rule, name: e.target.value })}
           className={cn(inputCls, "min-w-0 flex-1 font-medium")}
         />
-        <button
-          type="button"
-          onClick={() => onMove(-1)}
-          disabled={index === 0}
-          className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground disabled:opacity-30"
-          title="Move up"
-        >
-          <ArrowUp className="size-3.5" />
-        </button>
-        <button
-          type="button"
-          onClick={() => onMove(1)}
-          disabled={index === total - 1}
-          className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground disabled:opacity-30"
-          title="Move down"
-        >
-          <ArrowDown className="size-3.5" />
-        </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          className="rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-          title="Delete rule"
-        >
-          <Trash2 className="size-3.5" />
-        </button>
+        <Tip label="Move up">
+          <button
+            aria-label="Move rule up"
+            type="button"
+            onClick={() => onMove(-1)}
+            disabled={index === 0}
+            className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground disabled:opacity-30"
+          >
+            <ArrowUp className="size-3.5" />
+          </button>
+        </Tip>
+        <Tip label="Move down">
+          <button
+            aria-label="Move rule down"
+            type="button"
+            onClick={() => onMove(1)}
+            disabled={index === total - 1}
+            className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground disabled:opacity-30"
+          >
+            <ArrowDown className="size-3.5" />
+          </button>
+        </Tip>
+        <Tip label="Delete rule">
+          <button
+            aria-label="Delete rule"
+            type="button"
+            onClick={onDelete}
+            className="rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+          >
+            <Trash2 className="size-3.5" />
+          </button>
+        </Tip>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-5">
@@ -768,13 +805,16 @@ function ActionsEditor({
               subDepartments={subDepartments}
               onChange={(params) => onChange(actions.map((x, xi) => (xi === ai ? { ...x, params } : x)))}
             />
-            <button
-              type="button"
-              onClick={() => onChange(actions.filter((_, xi) => xi !== ai))}
-              className="rounded-full p-1.5 text-sts-subtle hover:text-red-500"
-            >
-              <Trash2 className="size-3.5" />
-            </button>
+            <Tip label="Remove action">
+              <button
+                aria-label="Remove action"
+                type="button"
+                onClick={() => onChange(actions.filter((_, xi) => xi !== ai))}
+                className="rounded-full p-1.5 text-sts-subtle hover:text-red-500"
+              >
+                <Trash2 className="size-3.5" />
+              </button>
+            </Tip>
           </div>
         ))}
         <button

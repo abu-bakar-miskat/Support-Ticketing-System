@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { UserListItem } from "@/components/ui/user-list-item";
 import { formatUserListSubtitle } from "@/lib/user-list-person";
 import type { UserListPerson } from "@/lib/user-list-person";
+import { Tip } from "@/components/ui/tooltip";
 
 type Member = UserListPerson & { role: string };
 
@@ -119,13 +120,16 @@ export function ProjectMembersModal({ projectId, projectName, onClose, onChanged
             </p>
             <p className="font-sans text-[12px] text-sts-muted">{projectName}</p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex size-7 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
-          >
-            <X className="size-4" />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              type="button"
+              onClick={onClose}
+              className="flex size-7 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          </Tip>
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto">
@@ -163,17 +167,19 @@ export function ProjectMembersModal({ projectId, projectName, onClose, onChanged
                             )}
                           </p>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => removeMember(m)}
-                          disabled={saving === m.id}
-                          title="Remove from project"
-                          className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-red-50 hover:text-red-500 disabled:cursor-wait dark:hover:bg-red-950/30"
-                        >
-                          {saving === m.id
-                            ? <Loader2 className="size-3.5 animate-spin" />
-                            : <Trash2 className="size-3.5" />}
-                        </button>
+                        <Tip label={`Remove ${m.name} from project`}>
+                          <button
+                            aria-label={`Remove ${m.name} from project`}
+                            type="button"
+                            onClick={() => removeMember(m)}
+                            disabled={saving === m.id}
+                            className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-red-50 hover:text-red-500 disabled:cursor-wait dark:hover:bg-red-950/30"
+                          >
+                            {saving === m.id
+                              ? <Loader2 className="size-3.5 animate-spin" />
+                              : <Trash2 className="size-3.5" />}
+                          </button>
+                        </Tip>
                       </div>
                     ))}
                   </div>
@@ -208,20 +214,22 @@ export function ProjectMembersModal({ projectId, projectName, onClose, onChanged
                         className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-sts-surface"
                       >
                         <UserListItem person={u} avatarSize={30} className="min-w-0 flex-1" />
-                        <button
-                          type="button"
-                          onClick={() => addMember(u)}
-                          disabled={saving === u.id}
-                          title="Add to project"
-                          className={cn(
-                            "flex size-7 shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-wait",
-                            "text-sts-subtle hover:bg-sts-blue hover:text-white",
-                          )}
-                        >
-                          {saving === u.id
-                            ? <Loader2 className="size-3.5 animate-spin" />
-                            : <UserPlus className="size-3.5" />}
-                        </button>
+                        <Tip label={`Add ${u.name} to project`}>
+                          <button
+                            aria-label={`Add ${u.name} to project`}
+                            type="button"
+                            onClick={() => addMember(u)}
+                            disabled={saving === u.id}
+                            className={cn(
+                              "flex size-7 shrink-0 items-center justify-center rounded-full transition-colors disabled:cursor-wait",
+                              "text-sts-subtle hover:bg-sts-blue hover:text-white",
+                            )}
+                          >
+                            {saving === u.id
+                              ? <Loader2 className="size-3.5 animate-spin" />
+                              : <UserPlus className="size-3.5" />}
+                          </button>
+                        </Tip>
                       </div>
                     ))}
                   </div>

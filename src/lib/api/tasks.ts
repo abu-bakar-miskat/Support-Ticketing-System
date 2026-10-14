@@ -62,7 +62,7 @@ export type AllTasksFilters = {
   targetDateTo?: string;
   sort?: string;
   unassigned?: boolean;
-  source?: "intake" | "manual" | "mailbox";
+  source?: "intake" | "portal" | "manual" | "mailbox";
   /** Filter to one or more sub-departments the caller can access. */
   subDepartmentId?: string[];
   /** List personal/admin draft tickets instead of published ones */

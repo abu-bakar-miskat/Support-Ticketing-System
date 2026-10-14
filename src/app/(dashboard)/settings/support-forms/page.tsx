@@ -3,8 +3,9 @@ import { getProfile } from "@/lib/profile"
 import { getProfileDeptScope } from "@/lib/dept-scope"
 import { fetchProjectDepartmentPeople } from "@/lib/project-department-people"
 import { resolveIntakeDefaultFields } from "@/lib/intake-default-fields"
-import { readFormBranding, type FormBrandingDefaults } from "@/lib/form-branding"
+import { publicFormBrandDefaults, readFormBranding, type FormBrandingDefaults } from "@/lib/form-branding"
 import { getEmailConfig, brandingFrom } from "@/lib/email-config"
+import { getTenantBranding } from "@/lib/tenant-config"
 import { supportFormPath } from "@/lib/support-form-path"
 import { prisma } from "@/lib/db"
 import { runAsSystem } from "@/lib/request-scope"
@@ -64,6 +65,7 @@ export default async function SettingsIntakeFormsRoute() {
         },
         intakeSubDepartment: { select: { id: true, name: true, slug: true, workloadThreshold: true, assignmentMethod: true } },
         _count: { select: { intakes: true } },
+        apiKey: { select: { kind: true, revokedAt: true } },
       },
     }),
     prisma.department.findMany({
@@ -117,6 +119,8 @@ export default async function SettingsIntakeFormsRoute() {
       "ROUND_ROBIN",
     scope: f.scope === "SUB_DEPARTMENT" ? "SUB_DEPARTMENT" as const : "DEPARTMENT" as const,
     hasSlaPolicies: formsWithSla.has(f.id),
+    // Bound to a live portal API key — the form the external portal renders.
+    usedByPortal: f.apiKey?.kind === "portal" && f.apiKey.revokedAt === null,
   }))
 
   // Department members populate the per-issue "Assign to" picker (feature is
@@ -145,11 +149,17 @@ export default async function SettingsIntakeFormsRoute() {
     : null
 
   const ws = brandingFrom(await getEmailConfig(activeDeptId))
-  const workspaceBranding: FormBrandingDefaults = {
-    logoUrl: ws.logoUrl,
-    headerColor: ws.headerColor,
-    accentColor: ws.brandColor,
-  }
+  const tenantBrand = profile.activeTenantId
+    ? await getTenantBranding(profile.activeTenantId)
+    : null
+  const workspaceBranding: FormBrandingDefaults = publicFormBrandDefaults({
+    tenantLogoUrl: tenantBrand?.logoUrl,
+    tenantHideLogo: tenantBrand?.hideLogo,
+    tenantAccent: tenantBrand?.accentColor,
+    emailLogoUrl: ws.logoUrl,
+    emailHeaderColor: ws.headerColor,
+    emailAccent: ws.brandColor,
+  })
 
   return (
     <SettingsIntakeFormsPage

@@ -57,6 +57,7 @@ import type { RecruitmentStats } from "@/lib/recruitment-stats"
 import { Cell, Chip, CHIP_DOT_CLASSES, type Candidate, type Field } from "./cells"
 import { RecruitmentDashboard } from "./recruitment-dashboard"
 import { LayoutDashboard } from "lucide-react"
+import { Tip } from "@/components/ui/tooltip"
 
 export type BoardSummary = { id: string; name: string; candidateCount: number; archived: boolean }
 export type BoardDetail = { id: string; name: string; fields: Field[]; candidates: Candidate[] }
@@ -95,7 +96,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
       >
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold">{title}</h2>
-          <button type="button" onClick={onClose} className="rounded p-1 text-muted-foreground hover:bg-muted">
+          <button type="button" onClick={onClose} aria-label="Close" className="rounded p-1 text-muted-foreground hover:bg-muted">
             <X className="size-4" />
           </button>
         </div>
@@ -648,9 +649,11 @@ export function RecruitmentPage({
               className="w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-muted-foreground sm:w-40"
             />
             {query && (
-              <button type="button" onClick={() => setQuery("")} className="text-muted-foreground hover:text-foreground">
-                <X className="size-3.5" />
-              </button>
+              <Tip label="Clear search">
+                <button aria-label="Clear search" type="button" onClick={() => setQuery("")} className="text-muted-foreground hover:text-foreground">
+                  <X className="size-3.5" />
+                </button>
+              </Tip>
             )}
           </div>
           {board && (
@@ -666,24 +669,25 @@ export function RecruitmentPage({
                   e.target.value = ""
                 }}
               />
-              <Button
-                size="sm"
-                variant="outline"
-                className="shrink-0"
-                disabled={cvBusy}
-                title="Drop a CV here (or click to pick one) — the AI fills in the candidate's fields"
-                onClick={() => cvInputRef.current?.click()}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault()
-                  const file = e.dataTransfer.files?.[0]
-                  if (file && !cvBusy) void addCandidateFromCv(file)
-                }}
-              >
-                <FileUp data-icon="inline-start" />
-                <span className="hidden sm:inline">{cvBusy ? "Reading CV…" : "Drop CV"}</span>
-                <span className="sm:hidden">CV</span>
-              </Button>
+              <Tip label="Drop a CV here (or click to pick one) — the AI fills in the candidate's fields">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0"
+                  disabled={cvBusy}
+                  onClick={() => cvInputRef.current?.click()}
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    const file = e.dataTransfer.files?.[0]
+                    if (file && !cvBusy) void addCandidateFromCv(file)
+                  }}
+                >
+                  <FileUp data-icon="inline-start" />
+                  <span className="hidden sm:inline">{cvBusy ? "Reading CV…" : "Drop CV"}</span>
+                  <span className="sm:hidden">CV</span>
+                </Button>
+              </Tip>
             </>
           )}
           {board && (
@@ -826,14 +830,16 @@ export function RecruitmentPage({
               {rows.map((c) => (
                 <tr key={c.id} className="group hover:bg-muted/40">
                   <td className="border-b border-border px-1 text-center align-middle">
-                    <button
-                      type="button"
-                      onClick={() => setPanel({ mode: "edit", candidateId: c.id })}
-                      className="invisible rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground group-hover:visible"
-                      title="Open candidate"
-                    >
-                      <PanelRight className="size-3.5" />
-                    </button>
+                    <Tip label="Open candidate">
+                      <button
+                        aria-label="Open candidate"
+                        type="button"
+                        onClick={() => setPanel({ mode: "edit", candidateId: c.id })}
+                        className="invisible rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground group-hover:visible"
+                      >
+                        <PanelRight className="size-3.5" />
+                      </button>
+                    </Tip>
                   </td>
                   {visibleFields.map((f) => (
                     <td key={f.id} className="min-w-40 max-w-72 border-b border-l border-border px-2.5 py-1.5 align-middle">
@@ -885,17 +891,18 @@ export function RecruitmentPage({
             </h2>
             <div className="flex items-center gap-1">
               {panel.mode === "edit" && panelCandidate && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  aria-label="Analyze CV with AI"
-                  title="AI reads the attached CV: refreshes Highlights/Concerns, fills empty fields"
-                  disabled={analyzeBusy}
-                  onClick={() => void analyzeCandidateCv(panelCandidate.id)}
-                >
-                  <Sparkles className={cn(analyzeBusy && "animate-pulse")} />
-                  {analyzeBusy ? "Analyzing…" : "Analyze CV"}
-                </Button>
+                <Tip label="AI reads the attached CV: refreshes Highlights/Concerns, fills empty fields">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Analyze CV with AI"
+                    disabled={analyzeBusy}
+                    onClick={() => void analyzeCandidateCv(panelCandidate.id)}
+                  >
+                    <Sparkles className={cn(analyzeBusy && "animate-pulse")} />
+                    {analyzeBusy ? "Analyzing…" : "Analyze CV"}
+                  </Button>
+                </Tip>
               )}
               {panel.mode === "edit" && panelCandidate && (
                 <Button
@@ -1116,14 +1123,16 @@ function OptionsEditor({
       <div className="mb-3 max-h-64 space-y-1 overflow-y-auto">
         {options.map((o, i) => (
           <div key={o.id} className="flex items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => cycleColor(i)}
-              className="shrink-0 rounded p-1 hover:bg-muted"
-              title="Change color"
-            >
-              <span className={cn("block size-3 rounded-full", CHIP_DOT_CLASSES[o.color] ?? CHIP_DOT_CLASSES.gray)} />
-            </button>
+            <Tip label="Change color">
+              <button
+                aria-label={`Change color of ${o.label || "option"}`}
+                type="button"
+                onClick={() => cycleColor(i)}
+                className="shrink-0 rounded p-1 hover:bg-muted"
+              >
+                <span className={cn("block size-3 rounded-full", CHIP_DOT_CLASSES[o.color] ?? CHIP_DOT_CLASSES.gray)} />
+              </button>
+            </Tip>
             <input
               value={o.label}
               onChange={(e) =>
@@ -1132,14 +1141,16 @@ function OptionsEditor({
               className="w-full rounded-md border border-border bg-transparent px-2 py-1 text-sm outline-none"
             />
             <Chip option={o} className="hidden sm:inline-flex" />
-            <button
-              type="button"
-              onClick={() => setOptions((opts) => opts.filter((_, j) => j !== i))}
-              className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
-              title="Remove option"
-            >
-              <X className="size-3.5" />
-            </button>
+            <Tip label="Remove option">
+              <button
+                aria-label={`Remove ${o.label || "option"}`}
+                type="button"
+                onClick={() => setOptions((opts) => opts.filter((_, j) => j !== i))}
+                className="shrink-0 rounded p-1 text-muted-foreground hover:bg-muted hover:text-destructive"
+              >
+                <X className="size-3.5" />
+              </button>
+            </Tip>
           </div>
         ))}
       </div>

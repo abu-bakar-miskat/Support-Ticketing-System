@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
+import { invalidateProfileCache } from "@/lib/profile"
 import type { Prisma } from "@/generated/prisma/client"
 import { hasSignatureContent, sanitizeSignatureHtml } from "@/lib/sanitize-signature-html"
 
@@ -96,5 +97,8 @@ export async function PATCH(request: Request) {
     where: { id: profile.id },
     data,
   })
+  // Drop the cached profile so the router.refresh() that follows this save
+  // re-reads the new values instead of the stale (≤8s TTL) cached copy.
+  invalidateProfileCache(profile.id)
   return NextResponse.json(updated)
 }

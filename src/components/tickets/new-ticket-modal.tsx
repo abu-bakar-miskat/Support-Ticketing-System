@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -29,6 +29,7 @@ import type { DateRange } from "react-day-picker";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ExpandableDescriptionEditor } from "@/components/ui/expandable-description-editor";
 import { AiComposeButton } from "@/components/tickets/ai-compose-button";
@@ -40,6 +41,7 @@ import { UserListItem, userListPickerButtonClass } from "@/components/ui/user-li
 import { AvatarVisual } from "@/components/ui/user-avatar";
 import { matchesUserListSearch, type UserListPerson } from "@/lib/user-list-person";
 import { getPortalRoot } from "@/lib/portal-root";
+import { Tip } from "@/components/ui/tooltip";
 
 type Project = { id: string; name: string; subDepartmentId?: string | null; kind?: string };
 type SubDepartmentMember = UserListPerson;
@@ -360,19 +362,38 @@ export function NewTicketModal({
     titleRef.current?.focus();
   }, []);
 
+  // Closing an edited form asks first so a stray Escape/Cancel doesn't throw
+  // away the ticket being written (attachments included).
+  const [confirmDiscard, setConfirmDiscard] = useState(false);
+  const isDirty = () =>
+      Boolean(titleRef.current?.value.trim()) ||
+      descriptionHtml.replace(/<[^>]*>/g, "").trim() !== "" ||
+      labels.length > 0 ||
+      assetLinks.length > 0 ||
+      estInput.trim() !== "" ||
+      Object.values(customFieldValues).some((v) => String(v ?? "").trim() !== "") ||
+      Object.values(fileObjectsMap).some((m) => Object.keys(m).length > 0);
+  const requestClose = () => {
+    if (isDirty()) setConfirmDiscard(true);
+    else onClose();
+  };
+
   // Close on Escape — collapse description first, then close modal
+  const onEscape = useEffectEvent(() => {
+    if (confirmDiscard) return;
+    if (descriptionExpanded) {
+      setDescriptionExpanded(false);
+      return;
+    }
+    requestClose();
+  });
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
-      if (e.key !== "Escape") return;
-      if (descriptionExpanded) {
-        setDescriptionExpanded(false);
-        return;
-      }
-      onClose();
+      if (e.key === "Escape") onEscape();
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [onClose, descriptionExpanded]);
+  }, []);
 
   // Submit on Cmd/Ctrl+Enter
   useEffect(() => {
@@ -581,7 +602,7 @@ export function NewTicketModal({
           <div className="flex-1" />
           <button
             type="button"
-            onClick={onClose}
+            onClick={requestClose}
             aria-label="Close"
             className="flex size-7 items-center justify-center rounded-full text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
           >
@@ -814,44 +835,47 @@ export function NewTicketModal({
                                               <span className="font-sans text-[11px] text-sts-foreground text-center wrap-break-word w-full line-clamp-2">{fileObj.fileName}</span>
                                             </div>
                                           )}
-                                          <button
-                                            type="button"
-                                            disabled={isDeleting}
-                                            onClick={async () => {
-                                              setDeletingFiles((prev) => ({
-                                                ...prev,
-                                                [field.id]: { ...(prev[field.id] || {}), [fileId]: true },
-                                              }));
-                                              try {
-                                                await deleteTemplateFile(fileObj.path);
-                                                const fileIds = customFieldValues[field.id].split(",").filter(Boolean);
-                                                const newIds = fileIds.filter((id: string) => id !== fileId);
-                                                setCustomFieldValues((prev) => ({
-                                                  ...prev,
-                                                  [field.id]: newIds.join(","),
-                                                }));
-                                                setFileObjectsMap((prev) => {
-                                                  const updated = {...prev};
-                                                  if (updated[field.id]) {
-                                                    delete updated[field.id][fileId];
-                                                  }
-                                                  return updated;
-                                                });
-                                              } catch (err) {
-                                                toast.error((err as Error).message);
-                                              } finally {
+                                          <Tip label="Delete file">
+                                            <button
+                                              aria-label={`Delete ${fileObj.fileName}`}
+                                              type="button"
+                                              disabled={isDeleting}
+                                              onClick={async () => {
                                                 setDeletingFiles((prev) => ({
                                                   ...prev,
-                                                  [field.id]: { ...(prev[field.id] || {}), [fileId]: false },
+                                                  [field.id]: { ...(prev[field.id] || {}), [fileId]: true },
                                                 }));
-                                              }
-                                            }}
-                                            className="absolute -top-2 -right-2 bg-sts-red text-white w-5 h-5 rounded-full flex items-center justify-center transition-opacity disabled:opacity-50"
-                                          >
-                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                                            </svg>
-                                          </button>
+                                                try {
+                                                  await deleteTemplateFile(fileObj.path);
+                                                  const fileIds = customFieldValues[field.id].split(",").filter(Boolean);
+                                                  const newIds = fileIds.filter((id: string) => id !== fileId);
+                                                  setCustomFieldValues((prev) => ({
+                                                    ...prev,
+                                                    [field.id]: newIds.join(","),
+                                                  }));
+                                                  setFileObjectsMap((prev) => {
+                                                    const updated = {...prev};
+                                                    if (updated[field.id]) {
+                                                      delete updated[field.id][fileId];
+                                                    }
+                                                    return updated;
+                                                  });
+                                                } catch (err) {
+                                                  toast.error((err as Error).message);
+                                                } finally {
+                                                  setDeletingFiles((prev) => ({
+                                                    ...prev,
+                                                    [field.id]: { ...(prev[field.id] || {}), [fileId]: false },
+                                                  }));
+                                                }
+                                              }}
+                                              className="absolute -top-2 -right-2 bg-sts-red text-white w-5 h-5 rounded-full flex items-center justify-center transition-opacity disabled:opacity-50"
+                                            >
+                                              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                                              </svg>
+                                            </button>
+                                          </Tip>
                                         </div>
                                       );
                                     })}
@@ -1075,7 +1099,7 @@ export function NewTicketModal({
             <div className="flex-1" />
             <button
               type="button"
-              onClick={onClose}
+              onClick={requestClose}
               className="flex h-8 w-[78px] items-center justify-center rounded-full border border-sts-card-border font-sans text-[12px] font-semibold text-sts-foreground transition-colors hover:bg-sts-card-border"
             >
               Cancel
@@ -1106,6 +1130,14 @@ export function NewTicketModal({
           </div>
         </form>
       </div>
+      <ConfirmDialog
+        open={confirmDiscard}
+        onOpenChange={setConfirmDiscard}
+        title="Discard this ticket?"
+        description="You have unsaved changes. If you close now, everything you've entered will be lost."
+        confirmLabel="Discard"
+        onConfirm={async () => onClose()}
+      />
     </div>
   );
 }
@@ -1442,13 +1474,16 @@ function AssetLinksField({
               <span className="min-w-0 flex-1 truncate font-sans text-[11.5px] font-medium text-sts-blue">
                 {link.label || link.url}
               </span>
-              <button
-                type="button"
-                onClick={() => setAssetLinks((prev) => prev.filter((_, j) => j !== i))}
-                className="shrink-0 text-sts-subtle hover:text-sts-red"
-              >
-                <X size={10} />
-              </button>
+              <Tip label="Remove link">
+                <button
+                  aria-label={`Remove link ${link.label || link.url}`}
+                  type="button"
+                  onClick={() => setAssetLinks((prev) => prev.filter((_, j) => j !== i))}
+                  className="shrink-0 text-sts-subtle hover:text-sts-red"
+                >
+                  <X size={10} />
+                </button>
+              </Tip>
             </div>
           ))}
         </div>
@@ -1508,17 +1543,19 @@ function LabelsField({
     <FormField label="Labels">
       <div className="flex min-h-10 flex-wrap items-center gap-1.5 rounded-[6px] border border-dashed border-sts-card-border bg-sts-bg/40 px-3 py-2">
         {labels.map((lbl) => (
-          <button
-            key={lbl}
-            type="button"
-            onClick={() => setLabels((prev) => prev.filter((l) => l !== lbl))}
-            className="group relative inline-flex"
-          >
-            <TagPill label={lbl} size="sm" />
-            <span className="absolute -right-1 -top-1 flex size-3.5 items-center justify-center rounded-full bg-sts-red text-white opacity-0 transition-opacity group-hover:opacity-100">
-              <X size={8} />
-            </span>
-          </button>
+          <Tip key={lbl} label="Remove label">
+            <button
+              aria-label={`Remove label ${lbl}`}
+              type="button"
+              onClick={() => setLabels((prev) => prev.filter((l) => l !== lbl))}
+              className="group relative inline-flex"
+            >
+              <TagPill label={lbl} size="sm" />
+              <span className="absolute -right-1 -top-1 flex size-3.5 items-center justify-center rounded-full bg-sts-red text-white opacity-0 transition-opacity group-hover:opacity-100">
+                <X size={8} />
+              </span>
+            </button>
+          </Tip>
         ))}
         <LabelPicker current={labels} onChange={setLabels} />
       </div>

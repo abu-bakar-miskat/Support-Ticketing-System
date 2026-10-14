@@ -161,3 +161,13 @@ describe("patchTicketDetailFromActivity", () => {
     expect(entry.actorName).toBe("Alice")
   })
 })
+
+it("resets all assignees' current totals for a reopen cycle", () => {
+  const detail = baseDetail({ timeEntries: [
+    { userId: "u1", userName: "One", avatarUrl: null, totalSecs: 90, isRunning: false, runningStartedAt: null, sessions: [] },
+    { userId: "u2", userName: "Two", avatarUrl: null, totalSecs: 60, isRunning: false, runningStartedAt: null, sessions: [] },
+  ] })
+  const reset = patchTicketDetailFromActivity(detail, event("TIMER_RESET", { reopenCycle: true }), "One")
+  expect(reset.timeEntries).toEqual([])
+  expect(detail.timeEntries).toHaveLength(2)
+})

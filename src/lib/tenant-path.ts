@@ -51,8 +51,14 @@ export function parseActiveTenantCookie(
  * only the tenant slug (/<tenant>/departments), never a department slug.
  * Everything else in TENANT_SCOPED_ROOTS is department-scoped
  * (/<tenant>/<dept>/board).
+ *
+ * `profile` and `docs` are intentionally NOT here: although their content is
+ * user/tenant-level, they stay within the active department's URL
+ * (/<tenant>/<dept>/profile) so navigating to them from a workspace keeps the
+ * department context in the URL and sidebar. The dept segment is cosmetic —
+ * both resolve to the same internal /profile and /docs pages.
  */
-export const TENANT_LEVEL_ROOTS = new Set(["departments", "profile", "docs"]);
+export const TENANT_LEVEL_ROOTS = new Set(["departments"]);
 
 /**
  * Paths that also carry the active sub-department slug
@@ -136,6 +142,7 @@ const NON_TENANT_PREFIXES = new Set([
   "screen",
   "support",
   "tenant-invite",
+  "super-admin-invite",
 ]);
 
 export type TenantPathContext = {
@@ -251,6 +258,21 @@ export function firstSegment(pathname: string): string {
   return pathname.split("/")[1] ?? "";
 }
 
+/**
+ * Drop leading tenant, department, and sub-department slugs so route checks see
+ * the App Router path. `/acme/support/board` and `/acme/support/triage/board`
+ * both become `/board`. A path that already starts at a known root is unchanged.
+ */
+export function toInternalAppPath(pathname: string): string {
+  let path = pathname || "/";
+  for (;;) {
+    const segment = firstSegment(path);
+    if (!segment || TENANT_SCOPED_ROOTS.has(segment)) break;
+    path = path.slice(segment.length + 1) || "/";
+  }
+  return path.startsWith("/") ? path : `/${path}`;
+}
+
 /** A bare (un-prefixed) tenant-scoped path — the dashboard home or a scoped root. */
 export function isBareTenantScoped(pathname: string): boolean {
   if (pathname === "/") return true;
@@ -271,4 +293,37 @@ export function withTenant(slug: string, pathname: string): string {
   if (!slug) return pathname;
   if (pathname === `/${slug}` || pathname.startsWith(`/${slug}/`)) return pathname;
   return `/${slug}${pathname === "/" ? "" : pathname}` || `/${slug}`;
+}
+
+/** Build a canonical public URL from request-local tenant context. */
+export function withTenantContext(
+  context: {
+    tenantSlug?: string | null;
+    departmentSlug?: string | null;
+    subDepartmentSlug?: string | null;
+  },
+  internalPath: string,
+): string {
+  const tenantSlug = context.tenantSlug?.trim() ?? "";
+  if (!tenantSlug || !internalPath.startsWith("/")) return internalPath;
+
+  const root = firstSegment(internalPath);
+  if (internalPath !== "/" && !TENANT_SCOPED_ROOTS.has(root)) return internalPath;
+
+  let prefix = `/${tenantSlug}`;
+  const departmentSlug = context.departmentSlug?.trim() ?? "";
+  if (departmentSlug && isDeptScopedPath(internalPath)) {
+    prefix += `/${departmentSlug}`;
+    const subDepartmentSlug = context.subDepartmentSlug?.trim() ?? "";
+    if (
+      subDepartmentSlug &&
+      subDepartmentSlug !== tenantSlug &&
+      subDepartmentSlug !== departmentSlug &&
+      isSubDeptScopedPath(internalPath)
+    ) {
+      prefix += `/${subDepartmentSlug}`;
+    }
+  }
+
+  return internalPath === "/" ? prefix : `${prefix}${internalPath}`;
 }

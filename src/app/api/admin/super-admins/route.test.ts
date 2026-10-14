@@ -2,10 +2,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 
 vi.mock("server-only", () => ({}))
 vi.mock("@/lib/db", () => {
-  const profile = { findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn(), count: vi.fn() }
+  const profile = { findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn(), create: vi.fn(), count: vi.fn() }
+  const superAdminInvite = { findFirst: vi.fn(), create: vi.fn() }
   return {
     prisma: {
       profile,
+      superAdminInvite,
       // Interactive transaction: run the callback with a tx that shares the profile mock.
       $transaction: vi.fn(async (fn: (tx: unknown) => unknown) => fn({ profile })),
     },
@@ -13,17 +15,23 @@ vi.mock("@/lib/db", () => {
 })
 vi.mock("@/lib/auth", () => ({ requireSuperAdmin: vi.fn() }))
 vi.mock("@/lib/audit-log", () => ({ recordAuditEvent: vi.fn() }))
+vi.mock("@/lib/email", () => ({ sendSuperAdminInviteEmail: vi.fn() }))
 
 import { POST, DELETE } from "./route"
 import { prisma } from "@/lib/db"
 import { requireSuperAdmin } from "@/lib/auth"
 import { recordAuditEvent } from "@/lib/audit-log"
+import { sendSuperAdminInviteEmail } from "@/lib/email"
 
 const mockRequire = vi.mocked(requireSuperAdmin)
 const mockAudit = vi.mocked(recordAuditEvent)
 const mockFind = vi.mocked(prisma.profile.findFirst)
 const mockUpdate = vi.mocked(prisma.profile.update)
+const mockCreate = vi.mocked(prisma.profile.create)
 const mockCount = vi.mocked(prisma.profile.count)
+const mockInviteFind = vi.mocked(prisma.superAdminInvite.findFirst)
+const mockInviteCreate = vi.mocked(prisma.superAdminInvite.create)
+const mockSendInvite = vi.mocked(sendSuperAdminInviteEmail)
 
 function req(body: unknown) {
   return new Request("http://localhost/api/admin/super-admins", {
@@ -35,7 +43,7 @@ function req(body: unknown) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockRequire.mockResolvedValue({ profile: { id: "actor-1" }, error: null } as never)
+  mockRequire.mockResolvedValue({ profile: { id: "actor-1", name: "Actor" }, error: null } as never)
 })
 
 describe("POST /api/admin/super-admins — grant audit", () => {
@@ -71,10 +79,36 @@ describe("POST /api/admin/super-admins — grant audit", () => {
     )
   })
 
-  it("returns 404 when no account exists for the email", async () => {
+  it("emails an invite for a new address and does not create an account", async () => {
     mockFind.mockResolvedValue(null as never)
+    mockInviteFind.mockResolvedValue(null as never)
+    mockInviteCreate.mockResolvedValue({ id: "inv-1" } as never)
+    mockSendInvite.mockResolvedValue({ ok: true, id: "mail-1", via: "resend" })
+
     const res = await POST(req({ email: "nobody@x.com" }))
+    expect(res.status).toBe(201)
+    const body = await res.json()
+    expect(body.invited).toBe(true)
+    expect(body.email).toBe("nobody@x.com")
+    expect(body.acceptPath).toMatch(/^\/super-admin-invite\/[a-f0-9]+$/)
+    expect(mockCreate).not.toHaveBeenCalled()
+    expect(mockUpdate).not.toHaveBeenCalled()
+    expect(mockAudit).not.toHaveBeenCalled()
+    expect(mockInviteCreate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ email: "nobody@x.com", invitedBy: "actor-1" }),
+      }),
+    )
+    expect(mockSendInvite).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "nobody@x.com", inviterName: "Actor", inviterId: "actor-1" }),
+    )
+  })
+
+  it("returns 404 when granting by userId and that user does not exist", async () => {
+    mockFind.mockResolvedValue(null as never)
+    const res = await POST(req({ userId: "missing" }))
     expect(res.status).toBe(404)
+    expect(mockInviteCreate).not.toHaveBeenCalled()
     expect(mockUpdate).not.toHaveBeenCalled()
     expect(mockAudit).not.toHaveBeenCalled()
   })

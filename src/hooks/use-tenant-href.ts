@@ -1,7 +1,11 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { TENANT_SCOPED_ROOTS, firstSegment, isDeptScopedPath, isSubDeptScopedPath } from "@/lib/tenant-path";
+import {
+  TENANT_SCOPED_ROOTS,
+  isSubDeptScopedPath,
+  withTenantContext,
+} from "@/lib/tenant-path";
 
 /**
  * The active tenant/department slugs, read straight from the current URL (the
@@ -39,26 +43,12 @@ export function useTenantPrefix(): {
  */
 export function useTenantHref(): (internalPath: string) => string {
   const { tenantSlug, deptSlug, subDeptSlug } = useTenantPrefix();
-  return (internalPath: string) => {
-    if (!tenantSlug || !internalPath.startsWith("/")) return internalPath;
-    const root = firstSegment(internalPath);
-    // Only prefix tenant-scoped internal paths (leave /platform, /login, etc.).
-    if (internalPath !== "/" && !TENANT_SCOPED_ROOTS.has(root)) return internalPath;
-    let base = `/${tenantSlug}`;
-    if (deptSlug && isDeptScopedPath(internalPath)) {
-      base += `/${deptSlug}`;
-      // Omit the sub-dept slug when it collides with the tenant/dept slug — it
-      // would otherwise read like the tenant name repeating in the URL. The
-      // slug is cosmetic (data scope comes from the active-team cookie), so the
-      // middleware still rewrites the collapsed URL to the right page.
-      if (
-        subDeptSlug &&
-        subDeptSlug !== tenantSlug &&
-        subDeptSlug !== deptSlug &&
-        isSubDeptScopedPath(internalPath)
-      )
-        base += `/${subDeptSlug}`;
-    }
-    return internalPath === "/" ? base : `${base}${internalPath}`;
-  };
+  return (internalPath: string) => withTenantContext(
+    {
+      tenantSlug,
+      departmentSlug: deptSlug,
+      subDepartmentSlug: subDeptSlug,
+    },
+    internalPath,
+  );
 }

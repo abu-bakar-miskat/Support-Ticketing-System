@@ -29,10 +29,11 @@ const roleLabel = (r: string) =>
         : r.charAt(0).toUpperCase() + r.slice(1)
 
 /**
- * Platform-level invite: a super-admin picks any tenant, then any role /
- * department / sub-department within it. Existing users are added instantly; a
- * new email gets an invitation link. Posts to the same tenant members endpoint
- * as the tenant-scoped InviteMemberDialog, but with a tenant selector on top.
+ * Platform-level invite: a super-admin picks a role, then any tenant /
+ * department / sub-department it needs. Existing users are added instantly; a
+ * new email gets an invitation link. A Super Admin invite does not create an
+ * account until the recipient accepts. Tenant roles post to the tenant members
+ * endpoint; Super Admin posts to /api/admin/super-admins.
  */
 export function PlatformInviteMemberDialog({
   tenants,
@@ -115,11 +116,13 @@ export function PlatformInviteMemberDialog({
     const value = email.trim()
     if (!value) return
 
-    // Super-admin is granted platform-wide to an existing account — no tenant
-    // or department scope, a different endpoint from tenant members.
+    // Super-admin is platform-wide — no tenant or department. A new email gets
+    // an invitation only; the account is created when they accept.
     if (isSuperAdmin) {
       setBusy(true)
       setError(null)
+      setInviteLink(null)
+      setInviteDelivery(null)
       const res = await fetch("/api/admin/super-admins", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -128,7 +131,18 @@ export function PlatformInviteMemberDialog({
       const body = await res.json().catch(() => ({}))
       setBusy(false)
       if (!res.ok) {
-        setError(body.error ?? "Failed to grant super-admin access")
+        setError(body.error ?? "Failed to send the invitation")
+        return
+      }
+      if (body.invited) {
+        setInviteLink(body.acceptPath)
+        setInviteDelivery(
+          body.emailDelivery?.status === "sent" && (body.emailDelivery.via === "resend" || body.emailDelivery.via === "mailbox")
+            ? "resend"
+            : body.emailDelivery?.status === "sent" && body.emailDelivery.via === "mailpit"
+              ? "mailpit"
+              : "failed",
+        )
         return
       }
       toast.success(`${body.admin?.name || value} is now a super admin.`)
@@ -185,7 +199,7 @@ export function PlatformInviteMemberDialog({
     } else if (body.invited) {
       setInviteLink(body.acceptPath)
       setInviteDelivery(
-        body.emailDelivery?.status === "sent" && body.emailDelivery.via === "resend"
+        body.emailDelivery?.status === "sent" && (body.emailDelivery.via === "resend" || body.emailDelivery.via === "mailbox")
           ? "resend"
           : body.emailDelivery?.status === "sent" && body.emailDelivery.via === "mailpit"
             ? "mailpit"
@@ -287,7 +301,7 @@ export function PlatformInviteMemberDialog({
                 {isSuperAdmin && (
                   <p className="mt-1.5 font-sans text-[11.5px] text-sts-subtle">
                     Grants platform-wide access to manage every tenant, template, and feature flag.
-                    The person must already have an account (signed in at least once).
+                    A new email receives an invitation. Their account is created only after they accept.
                   </p>
                 )}
               </div>
@@ -425,7 +439,7 @@ export function PlatformInviteMemberDialog({
                     Cancel
                   </Button>
                   <Button type="submit" size="lg" disabled={busy || !email.trim() || (needsTenant && !tenantId)}>
-                    {busy ? (isSuperAdmin ? "Granting…" : "Adding…") : isSuperAdmin ? "Grant super admin" : "Add member"}
+                    {busy ? (isSuperAdmin ? "Sending…" : "Adding…") : isSuperAdmin ? "Send invite" : "Add member"}
                   </Button>
                 </div>
               )}

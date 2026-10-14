@@ -6,6 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils"
 import { parseFileValue, parseOptions, type FileCellValue, type SelectOption } from "@/lib/recruitment"
 import type { RecruitmentFieldType } from "@/generated/prisma/enums"
+import { Tip } from "@/components/ui/tooltip"
 
 export type Field = {
   id: string
@@ -231,17 +232,19 @@ function DateCell({ value, onChange }: CellProps) {
             className="rounded-md border border-border bg-transparent px-2 py-1 text-sm outline-none [color-scheme:light] dark:[color-scheme:dark]"
           />
           {current && (
-            <button
-              type="button"
-              onClick={() => {
-                onChange(null)
-                setOpen(false)
-              }}
-              className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-              title="Clear date"
-            >
-              <X className="size-3.5" />
-            </button>
+            <Tip label="Clear date">
+              <button
+                aria-label="Clear date"
+                type="button"
+                onClick={() => {
+                  onChange(null)
+                  setOpen(false)
+                }}
+                className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+              >
+                <X className="size-3.5" />
+              </button>
+            </Tip>
           )}
         </div>
       </PopoverContent>
@@ -265,15 +268,17 @@ function RatingCell({ value, onChange }: CellProps) {
   return (
     <div className="flex items-center gap-0.5">
       {[1, 2, 3, 4, 5].map((i) => (
-        <button
-          key={i}
-          type="button"
-          onClick={() => onChange(i === rating ? null : i)}
-          className="rounded p-px text-muted-foreground/40 hover:text-yellow-500"
-          title={`${i} star${i > 1 ? "s" : ""}`}
-        >
-          <Star className={cn("size-3.5", i <= rating && "fill-yellow-500 text-yellow-500")} />
-        </button>
+        <Tip key={i} label={`${i} star${i > 1 ? "s" : ""}`}>
+          <button
+            aria-label={`Rate ${i} star${i > 1 ? "s" : ""}`}
+            aria-pressed={i === rating}
+            type="button"
+            onClick={() => onChange(i === rating ? null : i)}
+            className="rounded p-px text-muted-foreground/40 hover:text-yellow-500"
+          >
+            <Star className={cn("size-3.5", i <= rating && "fill-yellow-500 text-yellow-500")} />
+          </button>
+        </Tip>
       ))}
     </div>
   )
@@ -473,17 +478,19 @@ function FileCell({ value, onChange, onUploadFile, onDeleteFile }: CellProps) {
             <Paperclip className="size-3 shrink-0 text-muted-foreground" />
             <span className="truncate">{file.name}</span>
           </a>
-          <button
-            type="button"
-            title="Remove file"
-            onClick={() => {
-              onChange(null)
-              onDeleteFile?.(file.path)
-            }}
-            className="invisible shrink-0 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground group-hover/cell:visible"
-          >
-            <X className="size-3" />
-          </button>
+          <Tip label="Remove file">
+            <button
+              aria-label={`Remove ${file.name}`}
+              type="button"
+              onClick={() => {
+                onChange(null)
+                onDeleteFile?.(file.path)
+              }}
+              className="invisible shrink-0 rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground group-hover/cell:visible"
+            >
+              <X className="size-3" />
+            </button>
+          </Tip>
         </>
       ) : (
         <button

@@ -35,6 +35,7 @@ const baseTicket = {
   creatorId: "user-1",
   closedAt: null,
   deletedAt: null,
+  labels: [] as string[],
   subDepartment: { prefix: "DEV", githubStatusMap: null },
   intake: null,
 }
@@ -112,6 +113,15 @@ describe("advanceTicketStatus", () => {
       }),
     )
     expect(mockCascade).toHaveBeenCalledWith("ticket-1")
+  })
+
+  it("drops the agent-unavailable flag when the move closes the ticket", async () => {
+    mockFindUnique.mockResolvedValue({
+      ...baseTicket,
+      labels: ["Waiting — agent unavailable", "Bug"],
+    } as never)
+    await advanceTicketStatus("ticket-1", "prMerged")
+    expect(mockUpdateMany.mock.calls[0][0].data.labels).toEqual(["Bug"])
   })
 
   it("preserves an existing closedAt", async () => {

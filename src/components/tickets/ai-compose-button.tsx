@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Wand2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { Tip } from "@/components/ui/tooltip";
 
 type Mode = "title" | "description";
 
@@ -93,35 +94,37 @@ export function AiComposeButton({
 
   if (iconOnly) {
     return (
-      <button
-        type="button"
-        onClick={run}
-        disabled={loading}
-        title={tooltip}
-        aria-label={tooltip}
-        className={cn(
-          "flex size-7 shrink-0 items-center justify-center rounded-full text-sts-blue transition-colors hover:bg-sts-blue-tint disabled:opacity-50",
-          className,
-        )}
-      >
-        {loading ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
-      </button>
+      <Tip label={tooltip}>
+        <button
+          type="button"
+          onClick={run}
+          disabled={loading}
+          aria-label={tooltip}
+          className={cn(
+            "flex size-7 shrink-0 items-center justify-center rounded-full text-sts-blue transition-colors hover:bg-sts-blue-tint disabled:opacity-50",
+            className,
+          )}
+        >
+          {loading ? <Loader2 className="size-4 animate-spin" /> : <Wand2 className="size-4" />}
+        </button>
+      </Tip>
     );
   }
 
   return (
-    <button
-      type="button"
-      onClick={run}
-      disabled={loading}
-      title={tooltip}
-      className={cn(
-        "flex h-7 items-center gap-1.5 rounded-full border border-sts-blue/40 bg-sts-blue-tint px-2.5 font-sans text-[12px] font-medium text-sts-blue transition-colors hover:bg-sts-blue/15 disabled:opacity-50",
-        className,
-      )}
-    >
-      {loading ? <Loader2 className="size-3.5 animate-spin" /> : <Wand2 className="size-3.5" />}
-      {label}
-    </button>
+    <Tip label={tooltip}>
+      <button
+        type="button"
+        onClick={run}
+        disabled={loading}
+        className={cn(
+          "flex h-7 items-center gap-1.5 rounded-full border border-sts-blue/40 bg-sts-blue-tint px-2.5 font-sans text-[12px] font-medium text-sts-blue transition-colors hover:bg-sts-blue/15 disabled:opacity-50",
+          className,
+        )}
+      >
+        {loading ? <Loader2 className="size-3.5 animate-spin" /> : <Wand2 className="size-3.5" />}
+        {label}
+      </button>
+    </Tip>
   );
 }

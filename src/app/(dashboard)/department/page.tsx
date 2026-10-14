@@ -17,7 +17,8 @@ export default async function DepartmentRoute() {
 
   const isAdmin = profile.role === "admin";
   const isManager = profile.role === "manager";
-  if (!isAdmin && !isManager) redirect("/settings");
+  const isSubManager = profile.role === "sub_manager";
+  if (!isAdmin && !isManager && !isSubManager) redirect("/settings");
 
   const profileScope = await getProfileDeptScope(profile);
   const activeDeptId = profileScope?.activeDeptId ?? null;
@@ -34,7 +35,7 @@ export default async function DepartmentRoute() {
           name: true,
           isHub: true,
           type: true,
-          _count: { select: { subDepartments: true, projects: true } },
+          _count: { select: { subDepartments: true } },
         },
       }),
       prisma.departmentManager.findMany({
@@ -117,6 +118,19 @@ export default async function DepartmentRoute() {
 
   if (!dept) redirect("/departments");
 
+  // A sub-manager is scoped to the team(s) they belong to: the roster shows only
+  // those sub-departments and their members, not the whole department. Admins and
+  // managers keep the full department view (ownSubDeptIds stays null).
+  const ownSubDeptIds = isSubManager
+    ? new Set(memberships.filter((m) => m.userId === profile.id).map((m) => m.subDepartment.id))
+    : null;
+  const scopedMemberships = ownSubDeptIds
+    ? memberships.filter((m) => ownSubDeptIds.has(m.subDepartment.id))
+    : memberships;
+  const scopedSubDepartments = ownSubDeptIds
+    ? availableSubDepartments.filter((s) => ownSubDeptIds.has(s.id))
+    : availableSubDepartments;
+
   const managerUserIds = new Set(managers.map((m) => m.userId));
 
   // SubDepartment names (within this department) per user, and their team-membership id for the
@@ -130,7 +144,7 @@ export default async function DepartmentRoute() {
   // member belongs to multiple sub-departments in this department.
   const subDepartmentRoleByUser = new Map<string, string>();
   const subDepartmentMembershipsByUser = new Map<string, { subDepartmentId: string; subDepartmentName: string; doNotAssign: boolean; accepted: boolean }[]>();
-  for (const m of memberships) {
+  for (const m of scopedMemberships) {
     const list = subDepartmentNamesByUser.get(m.userId) ?? [];
     list.push(m.subDepartment.name);
     subDepartmentNamesByUser.set(m.userId, list);
@@ -143,7 +157,7 @@ export default async function DepartmentRoute() {
     subDepartmentMembershipsByUser.set(m.userId, dna);
   }
 
-  const nativeUserIds = new Set(memberships.map((m) => m.userId));
+  const nativeUserIds = new Set(scopedMemberships.map((m) => m.userId));
 
   // Members table = people on sub-departments in this department, minus managers (shown separately).
   const memberProfilesById = new Map<string, {
@@ -157,7 +171,7 @@ export default async function DepartmentRoute() {
     timezone: string | null;
     isActive: boolean;
   }>();
-  for (const m of memberships) {
+  for (const m of scopedMemberships) {
     if (managerUserIds.has(m.userId)) continue;
     memberProfilesById.set(m.userId, {
       ...m.user,
@@ -175,18 +189,13 @@ export default async function DepartmentRoute() {
     id: dept.id,
     name: dept.name,
     isHub: dept.isHub,
-    subDepartmentCount: dept._count.subDepartments,
-    projectCount: dept._count.projects,
+    subDepartmentCount: ownSubDeptIds ? scopedSubDepartments.length : dept._count.subDepartments,
     managerCount: managerUserIds.size,
     memberCount: memberProfilesById.size,
     isAdmin,
-    availableSubDepartments,
+    isSubManager,
+    availableSubDepartments: scopedSubDepartments,
     allUsers: allUsers.map((u) => ({ ...u, avatarUrl: u.avatarUrl ?? null })),
-    // Whether the viewer may grant/revoke the department-Admin role here — a
-    // tenant admin or an Admin of this department (role-hierarchy.md). Managers
-    // may add Managers/Agents but not Admins, so the toggle is hidden for them.
-    canGrantAdmin:
-      profile.role === "admin" || (profile.departmentAdminIds ?? []).includes(activeDeptId),
     // Super Admins control any department's feature allowlist (role-hierarchy.md).
     canControlFeatures: profile.isSuperAdmin,
     managers: managers.map((m) => ({
@@ -198,7 +207,6 @@ export default async function DepartmentRoute() {
       color: avatarColorFor(m.user.name),
       location: m.user.location ?? null,
       timezone: m.user.timezone ?? null,
-      deptRole: m.role === "admin" ? "admin" as const : "manager" as const,
       subDepartmentMemberships: subDepartmentMembershipsByUser.get(m.userId) ?? [],
     })),
     members: [...memberProfilesById.values()].map((p) => ({

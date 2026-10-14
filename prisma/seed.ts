@@ -316,17 +316,6 @@ main()
 //     })
 //   }
 
-//   if ((await prisma.slaRule.count()) === 0) {
-//     await prisma.slaRule.createMany({
-//       data: [
-//         { priority: "Critical", firstResponseMins: 30,   resolutionMins: 240,  enabled: true },
-//         { priority: "High",   firstResponseMins: 120,  resolutionMins: 480,  enabled: true },
-//         { priority: "Medium", firstResponseMins: 480,  resolutionMins: 2880, enabled: true },
-//         { priority: "Low",    firstResponseMins: 1440, resolutionMins: 7200, enabled: true },
-//       ],
-//     })
-//   }
-
 //   if ((await prisma.routingRule.count()) === 0) {
 //     await prisma.routingRule.createMany({
 //       data: [

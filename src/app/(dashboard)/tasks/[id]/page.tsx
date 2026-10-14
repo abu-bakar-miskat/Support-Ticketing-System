@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { TicketDetailClient } from "@/components/tickets/ticket-detail-client";
 
+export const metadata = { title: "Ticket — Global Support Portal" };
+
 export default async function TicketPage({
   params,
 }: {

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { canReadSubDepartmentData } from "@/lib/dept-scope"
+import { isStatusCategory } from "@/lib/status-category"
 import { canManageSubDepartment } from "@/lib/sub-department-manage"
 
 export async function GET(
@@ -18,7 +19,7 @@ export async function GET(
   const statuses = await prisma.subDepartmentStatus.findMany({
     where: { subDepartmentId: id },
     orderBy: { order: "asc" },
-    select: { id: true, label: true, color: true, order: true, isComplete: true, allowedLabels: true },
+    select: { id: true, label: true, color: true, order: true, category: true, isComplete: true, allowedLabels: true },
   })
   return NextResponse.json(statuses)
 }
@@ -35,9 +36,13 @@ export async function POST(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
   const body = await request.json().catch(() => ({}))
-  const { label, color, allowedLabels } = body as { label?: string; color?: string; allowedLabels?: string[] }
+  const { label, color, category, allowedLabels } = body as { label?: string; color?: string; category?: unknown; allowedLabels?: string[] }
 
-  if (!label?.trim()) {
+  if (!isStatusCategory(category)) {
+    return NextResponse.json({ error: "Choose a category: To-do, In progress, Blocked or Complete" }, { status: 400 })
+  }
+
+  if (typeof label !== "string" || !label.trim()) {
     return NextResponse.json({ error: "Label is required" }, { status: 400 })
   }
   if (allowedLabels !== undefined && (!Array.isArray(allowedLabels) || !allowedLabels.every((l) => typeof l === "string"))) {
@@ -56,11 +61,12 @@ export async function POST(
     data: {
       subDepartmentId: id,
       label: label.trim(),
+      category,
       color: color ?? "#94a3b8",
       order: nextOrder,
       allowedLabels: allowedLabels?.map((l) => l.trim()).filter(Boolean) ?? [],
     },
-    select: { id: true, label: true, color: true, order: true, isComplete: true, allowedLabels: true },
+    select: { id: true, label: true, color: true, order: true, category: true, isComplete: true, allowedLabels: true },
   })
 
   return NextResponse.json(status, { status: 201 })
@@ -97,7 +103,7 @@ export async function PATCH(
   const updated = await prisma.subDepartmentStatus.findMany({
     where: { subDepartmentId },
     orderBy: { order: "asc" },
-    select: { id: true, label: true, color: true, order: true, isComplete: true, allowedLabels: true },
+    select: { id: true, label: true, color: true, order: true, category: true, isComplete: true, allowedLabels: true },
   })
   return NextResponse.json(updated)
 }

@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import { Plus, X, Trash2, Copy } from "lucide-react";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { Tip } from "@/components/ui/tooltip";
 
 const FIELD_TYPES = ["text", "number", "textarea", "select", "file"];
 const FIELD_TYPE_OPTIONS = FIELD_TYPES.map((t) => ({ value: t, label: t }));
@@ -70,14 +71,17 @@ export function TemplateFormModal({ template, onSave, onCancel, saving }: Templa
           <h2 className="sts-text-modal-title">
             {template ? "Edit Template" : "New Template"}
           </h2>
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={saving}
-            className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
-          >
-            <X size={17} strokeWidth={2} />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              type="button"
+              onClick={onCancel}
+              disabled={saving}
+              className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+            >
+              <X size={17} strokeWidth={2} />
+            </button>
+          </Tip>
         </div>
 
         {/* Body */}
@@ -186,16 +190,19 @@ export function TemplateFormModal({ template, onSave, onCancel, saving }: Templa
                               }}
                               className="flex-1 h-7 rounded-[5px] border border-sts-card-border bg-sts-bg px-2 font-sans text-xs text-sts-foreground outline-none focus:border-sts-blue focus:ring-1 focus:ring-sts-blue/30"
                             />
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const newOptions = (field.options ?? []).filter((_: any, i: number) => i !== optIndex);
-                                updateCustomField(index, "options", newOptions);
-                              }}
-                              className="inline-flex items-center justify-center size-6 rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-red"
-                            >
-                              <X className="size-3" />
-                            </button>
+                            <Tip label="Remove option">
+                              <button
+                                aria-label="Remove option"
+                                type="button"
+                                onClick={() => {
+                                  const newOptions = (field.options ?? []).filter((_: any, i: number) => i !== optIndex);
+                                  updateCustomField(index, "options", newOptions);
+                                }}
+                                className="inline-flex items-center justify-center size-6 rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-red"
+                              >
+                                <X className="size-3" />
+                              </button>
+                            </Tip>
                           </div>
                         ))}
                       </div>
@@ -214,48 +221,54 @@ export function TemplateFormModal({ template, onSave, onCancel, saving }: Templa
                     <label htmlFor={`required-${index}`} className="text-xs font-medium cursor-pointer text-sts-foreground flex-1">
                       Required field
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (index > 0) {
-                          const temp = customFields[index];
-                          const newFields = [...customFields];
-                          newFields[index] = newFields[index - 1];
-                          newFields[index - 1] = temp;
-                          setCustomFields(newFields);
-                        }
-                      }}
-                      disabled={index === 0}
-                      className="inline-flex items-center justify-center size-6 rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-30"
-                      title="Move up"
-                    >
-                      <span className="text-lg">↑</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (index < customFields.length - 1) {
-                          const temp = customFields[index];
-                          const newFields = [...customFields];
-                          newFields[index] = newFields[index + 1];
-                          newFields[index + 1] = temp;
-                          setCustomFields(newFields);
-                        }
-                      }}
-                      disabled={index === customFields.length - 1}
-                      className="inline-flex items-center justify-center size-6 rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-30"
-                      title="Move down"
-                    >
-                      <span className="text-lg">↓</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveCustomField(index)}
-                      className="inline-flex items-center justify-center size-6 rounded-full text-sts-subtle hover:bg-sts-red/20 hover:text-sts-red"
-                      title="Delete field"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
+                    <Tip label="Move up">
+                      <button
+                        aria-label="Move field up"
+                        type="button"
+                        onClick={() => {
+                          if (index > 0) {
+                            const temp = customFields[index];
+                            const newFields = [...customFields];
+                            newFields[index] = newFields[index - 1];
+                            newFields[index - 1] = temp;
+                            setCustomFields(newFields);
+                          }
+                        }}
+                        disabled={index === 0}
+                        className="inline-flex items-center justify-center size-6 rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-30"
+                      >
+                        <span className="text-lg">↑</span>
+                      </button>
+                    </Tip>
+                    <Tip label="Move down">
+                      <button
+                        aria-label="Move field down"
+                        type="button"
+                        onClick={() => {
+                          if (index < customFields.length - 1) {
+                            const temp = customFields[index];
+                            const newFields = [...customFields];
+                            newFields[index] = newFields[index + 1];
+                            newFields[index + 1] = temp;
+                            setCustomFields(newFields);
+                          }
+                        }}
+                        disabled={index === customFields.length - 1}
+                        className="inline-flex items-center justify-center size-6 rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-30"
+                      >
+                        <span className="text-lg">↓</span>
+                      </button>
+                    </Tip>
+                    <Tip label="Delete field">
+                      <button
+                        aria-label="Delete field"
+                        type="button"
+                        onClick={() => handleRemoveCustomField(index)}
+                        className="inline-flex items-center justify-center size-6 rounded-full text-sts-subtle hover:bg-sts-red/20 hover:text-sts-red"
+                      >
+                        <Trash2 className="size-3.5" />
+                      </button>
+                    </Tip>
                   </div>
                 </div>
               ))}

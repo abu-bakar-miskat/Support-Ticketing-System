@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Eye, Trash2, UserRound, Users, X } from "lucide-react";
+import { ArrowLeft, Eye, Link2, PlugZap, Trash2, UserRound, Users, X } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -19,6 +19,15 @@ import { BulkAssignModal } from "@/components/tickets/bulk-assign-modal";
 import type { SubDepartmentMember } from "@/lib/api/sub-departments";
 import { cn } from "@/lib/utils";
 import { BreadcrumbRegistrar } from "@/components/dashboard/breadcrumb-registrar";
+import { Tip } from "@/components/ui/tooltip";
+import {
+  ListSearchInput,
+  SortDropdown,
+  useListControls,
+  byText,
+  byDateDesc,
+  byDateAsc,
+} from "@/components/ui/list-controls";
 
 export type SubmissionRow = {
   id: string;
@@ -26,6 +35,7 @@ export type SubmissionRow = {
   submitterEmail: string;
   priority: string;
   createdAt: string;
+  source: "portal" | "public";
   ticketId: string | null;
   ticketNumber: number | null;
   ticketStatus: string | null;
@@ -43,6 +53,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 }
 
 const URGENT_PRIORITIES = new Set(["High", "Critical", "Urgent"]);
+const PRIORITY_RANK: Record<string, number> = { Urgent: 0, Critical: 1, High: 2, Medium: 3, Low: 4 };
 
 function PriorityPill({ priority }: { priority: string }) {
   const urgent = URGENT_PRIORITIES.has(priority);
@@ -57,6 +68,26 @@ function PriorityPill({ priority }: { priority: string }) {
     >
       {priority}
     </span>
+  );
+}
+
+function SourcePill({ source }: { source: SubmissionRow["source"] }) {
+  const portal = source === "portal";
+  const Icon = portal ? PlugZap : Link2;
+  return (
+    <Tip label={portal ? "Submitted through the Portal API" : "Submitted via the public form link"}>
+      <span
+        className={cn(
+          "inline-flex items-center gap-1 rounded-full px-[7px] py-0.5 font-sans text-[11.5px] font-medium",
+          portal
+            ? "bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300"
+            : "bg-sts-surface text-sts-muted",
+        )}
+      >
+        <Icon className="size-3" />
+        {portal ? "Portal" : "Public link"}
+      </span>
+    </Tip>
   );
 }
 
@@ -125,13 +156,39 @@ export function SettingsIntakeSubmissionsPage({
     return true;
   });
 
+  // Search + sort apply on top of the tab filter.
+  const list = useListControls(filtered, {
+    searchText: (s) =>
+      [
+        s.submitterName,
+        s.submitterEmail,
+        s.ticketNumber != null ? `#${s.ticketNumber} ${s.ticketNumber}` : "",
+        s.ticketStatus ?? "",
+        s.priority,
+        s.source === "portal" ? "portal" : "public link",
+        getAssignee(s).name ?? "",
+      ].join(" "),
+    sortOptions: [
+      { id: "newest", label: "Newest first", compare: byDateDesc((s) => s.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((s) => s.createdAt) },
+      { id: "name", label: "Submitter (A–Z)", compare: byText((s) => s.submitterName) },
+      {
+        id: "priority",
+        label: "Priority",
+        compare: (a, b) => (PRIORITY_RANK[a.priority] ?? 9) - (PRIORITY_RANK[b.priority] ?? 9),
+      },
+      { id: "status", label: "Ticket status", compare: byText((s) => s.ticketStatus) },
+    ],
+  });
+  const visible = list.visible;
+
   // Only count selectable rows (those with a linked ticket)
-  const selectableIds = filtered.filter((s) => s.ticketId).map((s) => s.id);
+  const selectableIds = visible.filter((s) => s.ticketId).map((s) => s.id);
   const allSelected = selectableIds.length > 0 && selectableIds.every((id) => selected.has(id));
   const someSelected = selectableIds.some((id) => selected.has(id));
 
   // Submissions currently selected that have a ticket (for assignment)
-  const selectedWithTicket = filtered.filter((s) => s.ticketId && selected.has(s.id));
+  const selectedWithTicket = visible.filter((s) => s.ticketId && selected.has(s.id));
 
   function toggleOne(id: string) {
     setSelected((prev) => {
@@ -289,6 +346,17 @@ export function SettingsIntakeSubmissionsPage({
         ))}
       </div>
 
+      {submissions.length > 0 && (
+        <div className="flex items-center justify-between gap-2">
+          <ListSearchInput
+            value={list.query}
+            onChange={(v) => { list.setQuery(v); setSelected(new Set()); }}
+            placeholder="Search submissions…"
+          />
+          <SortDropdown value={list.sortKey} onChange={list.setSortKey} options={list.sortDropdownOptions} />
+        </div>
+      )}
+
       {/* Floating action bar */}
       {someSelected && (
         <div className="flex items-center gap-2 rounded-xl border border-sts-card-border bg-sts-card px-4 py-2.5 shadow-sm">
@@ -314,18 +382,26 @@ export function SettingsIntakeSubmissionsPage({
             <Trash2 className="size-3.5" />
             Delete
           </button>
-          <button
-            type="button"
-            onClick={() => setSelected(new Set())}
-            className="rounded-full p-1.5 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground transition-colors"
-            title="Clear selection"
-          >
-            <X className="size-3.5" />
-          </button>
+          <Tip label="Clear selection">
+            <button
+              aria-label="Clear selection"
+              type="button"
+              onClick={() => setSelected(new Set())}
+              className="rounded-full p-1.5 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground transition-colors"
+            >
+              <X className="size-3.5" />
+            </button>
+          </Tip>
         </div>
       )}
 
-      {filtered.length === 0 ? (
+      {filtered.length > 0 && visible.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-[6px] border border-dashed border-sts-card-border py-16 text-center">
+          <p className="font-sans text-[13px] text-sts-muted">
+            No submissions match &ldquo;{list.query.trim()}&rdquo;
+          </p>
+        </div>
+      ) : filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-[6px] border border-dashed border-sts-card-border py-16 text-center">
           <p className="font-sans text-[13px] text-sts-muted">
             {filter === "unassigned" ? "No unassigned tickets." : filter === "assigned" ? "No assigned tickets." : "No submissions yet."}
@@ -351,16 +427,17 @@ export function SettingsIntakeSubmissionsPage({
                     className="size-3.5 cursor-pointer rounded accent-sts-blue"
                   />
                 </TableHead>
-                <TableHead className="h-8 w-[24%]"><SectionLabel>Submitter</SectionLabel></TableHead>
-                <TableHead className="h-8 w-[11%]"><SectionLabel>Priority</SectionLabel></TableHead>
+                <TableHead className="h-8 w-[21%]"><SectionLabel>Submitter</SectionLabel></TableHead>
+                <TableHead className="h-8 w-[11%]"><SectionLabel>Source</SectionLabel></TableHead>
+                <TableHead className="h-8 w-[9%]"><SectionLabel>Priority</SectionLabel></TableHead>
                 <TableHead className="h-8 w-[13%]"><SectionLabel>Submitted</SectionLabel></TableHead>
-                <TableHead className="h-8 w-[20%]"><SectionLabel>Assignee</SectionLabel></TableHead>
+                <TableHead className="h-8 w-[18%]"><SectionLabel>Assignee</SectionLabel></TableHead>
                 <TableHead className="h-8 w-[14%]"><SectionLabel>Linked ticket</SectionLabel></TableHead>
                 <TableHead className="h-8 w-[14%]" />
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((s) => (
+              {visible.map((s) => (
                 <TableRow key={s.id} className={cn("border-[#f0f4f8] hover:bg-sts-bg/40 dark:border-[#3a3a37]", selected.has(s.id) && "bg-sts-blue/[0.03]")}>
                   <TableCell className="py-0">
                     <div className="flex h-[56px] items-center">
@@ -380,6 +457,12 @@ export function SettingsIntakeSubmissionsPage({
                       <span className="truncate font-sans text-[12.5px] font-semibold text-sts-foreground">{s.submitterName}</span>
                       <span className="truncate font-sans text-[11.5px] text-sts-subtle">{s.submitterEmail}</span>
                     </Link>
+                  </TableCell>
+
+                  <TableCell className="py-0">
+                    <div className="flex h-[56px] items-center">
+                      <SourcePill source={s.source} />
+                    </div>
                   </TableCell>
 
                   <TableCell className="py-0">
@@ -442,14 +525,16 @@ export function SettingsIntakeSubmissionsPage({
 
                   <TableCell className="py-0 text-right">
                     <div className="flex h-[56px] items-center justify-end gap-1">
-                      <button
-                        type="button"
-                        onClick={() => setDeleteTarget(s)}
-                        className="cursor-pointer rounded-full p-1.5 text-sts-muted hover:bg-red-50 hover:text-sts-red transition-colors dark:hover:bg-red-950/30"
-                        title="Delete submission"
-                      >
-                        <Trash2 className="size-3.5" />
-                      </button>
+                      <Tip label="Delete submission">
+                        <button
+                          aria-label="Delete submission"
+                          type="button"
+                          onClick={() => setDeleteTarget(s)}
+                          className="cursor-pointer rounded-full p-1.5 text-sts-muted hover:bg-red-50 hover:text-sts-red transition-colors dark:hover:bg-red-950/30"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </Tip>
                       <Link
                         href={`${formsBasePath}/${formId}/submissions/${s.id}`}
                         className="flex items-center gap-1 rounded-full border border-sts-card-border bg-sts-surface px-2.5 py-1 font-sans text-[11.5px] font-semibold text-sts-foreground shadow-sm transition-colors hover:border-sts-id hover:bg-sts-blue-tint hover:text-sts-id"

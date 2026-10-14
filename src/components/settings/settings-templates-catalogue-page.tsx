@@ -7,6 +7,10 @@ import { Check, Clock, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { type TemplateFeatureKey, TEMPLATE_FEATURE_LABELS } from "@/lib/template-features";
+import { ListSearchInput, SortDropdown, byDateAsc, byDateDesc, byNumberDesc, byText, useListControls } from "@/components/ui/list-controls";
+
+const STATUS_RANK: Record<CatalogueEntry["status"], number> = { available: 0, requested: 1, active: 2 };
+const featureLabel = (key: string) => TEMPLATE_FEATURE_LABELS[key as TemplateFeatureKey] ?? key;
 
 export type CatalogueEntry = {
   id: string;
@@ -15,6 +19,8 @@ export type CatalogueEntry = {
   description: string | null;
   features: string[];
   status: "active" | "requested" | "available";
+  /** ISO date the template was added to the catalogue. */
+  createdAt?: string;
 };
 
 export function SettingsTemplatesCataloguePage({
@@ -54,6 +60,17 @@ export function SettingsTemplatesCataloguePage({
   }
 
   const active = catalogue.filter((t) => t.status === "active");
+  const list = useListControls(catalogue, {
+    searchText: (t) => [t.name, t.description ?? "", ...t.features.map(featureLabel)].join(" "),
+    sortOptions: [
+      { id: "name", label: "Name A–Z", compare: byText((t: CatalogueEntry) => t.name) },
+      { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((t: CatalogueEntry) => t.name)(b, a) },
+      { id: "newest", label: "Newest first", compare: byDateDesc((t: CatalogueEntry) => t.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((t: CatalogueEntry) => t.createdAt) },
+      { id: "status", label: "Available first", compare: (a, b) => STATUS_RANK[a.status] - STATUS_RANK[b.status] },
+      { id: "features", label: "Most features", compare: byNumberDesc((t: CatalogueEntry) => t.features.length) },
+    ],
+  });
 
   return (
     <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
@@ -78,8 +95,15 @@ export function SettingsTemplatesCataloguePage({
         </div>
       )}
 
+      {catalogue.length > 0 && (
+        <div className="flex items-center justify-between gap-2">
+          <ListSearchInput value={list.query} onChange={list.setQuery} placeholder="Search templates or features…" />
+          <SortDropdown value={list.sortKey} onChange={list.setSortKey} options={list.sortDropdownOptions} />
+        </div>
+      )}
+
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {catalogue.map((t) => (
+        {list.visible.map((t) => (
           <li
             key={t.id}
             className="flex flex-col rounded-xl border border-sts-card-border bg-sts-card p-4 shadow-sts-card"
@@ -106,7 +130,7 @@ export function SettingsTemplatesCataloguePage({
                   key={key}
                   className="rounded-full bg-sts-blue-tint px-2 py-0.5 font-sans text-[10.5px] font-medium text-sts-blue"
                 >
-                  {TEMPLATE_FEATURE_LABELS[key as TemplateFeatureKey] ?? key}
+                  {featureLabel(key)}
                 </span>
               ))}
             </div>
@@ -129,6 +153,9 @@ export function SettingsTemplatesCataloguePage({
         ))}
         {catalogue.length === 0 && (
           <p className="font-sans text-[13px] text-sts-muted">No templates are published in the marketplace yet.</p>
+        )}
+        {catalogue.length > 0 && list.visible.length === 0 && (
+          <p className="font-sans text-[13px] text-sts-muted">No templates match &ldquo;{list.query.trim()}&rdquo;.</p>
         )}
       </ul>
 

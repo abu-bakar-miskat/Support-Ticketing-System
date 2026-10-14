@@ -2,7 +2,7 @@
 
 import { useRef, useState, useEffect } from "react"
 import Link from "next/link"
-import { Pencil, Trash2, CornerDownRight, SendHorizonal, FileDown, CornerUpLeft, Paperclip, X, FileText, FileSpreadsheet, FileArchive, FileIcon } from "lucide-react"
+import { Pencil, Trash2, CornerDownRight, SendHorizonal, FileDown, ChevronDown, Paperclip, X, FileText, FileSpreadsheet, FileArchive, FileIcon } from "lucide-react"
 import { toast } from "sonner"
 import { LoadingSpinner } from "@/components/ui/loading-spinner"
 import { cn } from "@/lib/utils"
@@ -21,6 +21,7 @@ import type { MentionableUser } from "@/lib/mentionable-users"
 import { UserListItem, userListPickerButtonClass } from "@/components/ui/user-list-item"
 import { AnchoredDropdown } from "@/components/ui/anchored-dropdown"
 import { formatDateTime } from "@/lib/format"
+import { Tip } from "@/components/ui/tooltip"
 
 type ReplyFileEntry = { id: number; file: File; previewUrl: string | null }
 
@@ -51,33 +52,28 @@ type CommentData = {
   authorId: string
   authorName: string
   authorAvatarUrl: string | null
+  externalAuthor?: boolean
   attachments: CommentAttachment[]
   replies: CommentData[]
-}
-
-/** Points a reply back to the comment it answers, for the flat timeline. */
-type ParentRef = {
-  id: string
-  authorName: string
-  snippet: string
-  isDeleted: boolean
 }
 
 type Props = {
   comment: CommentData
   ticketId: string
   subDepartmentMembers?: MentionableUser[]
-  /** Set when this comment is a reply — renders the "Replying to …" reference. */
-  parentRef?: ParentRef | null
-  /** Bubbles a newly-posted reply up so the flat timeline can show it. */
+  /** Rendered inside a parent comment's thread — compact, no nested replies. */
+  isReply?: boolean
+  /** Bubbles a newly-posted reply up so the parent's thread can show it. */
   onReplySubmitted?: (reply: CommentData) => void
 }
 
-/** Smoothly scrolls to a comment and briefly highlights it. */
-function focusComment(id: string) {
+/** Threads longer than this collapse their older replies behind a toggle. */
+const COLLAPSED_REPLY_COUNT = 2
+
+/** Briefly highlights a comment, e.g. a reply that was just posted. */
+function flashComment(id: string) {
   const el = document.getElementById(`comment-${id}`)
   if (!el) return
-  el.scrollIntoView({ behavior: "smooth", block: "center" })
   el.classList.add("sts-comment-flash")
   window.setTimeout(() => el.classList.remove("sts-comment-flash"), 1600)
 }
@@ -124,17 +120,17 @@ function AttachmentList({ attachments }: { attachments: CommentAttachment[] }) {
         </Link>
       ))}
       {files.map((a) => (
-        <button
-          key={a.id}
-          type="button"
-          onClick={() => downloadFile(a.storageUrl, a.fileName)}
-          title={`Download ${a.fileName}`}
-          className="flex cursor-pointer items-center gap-2 rounded-full border border-sts-card-border bg-sts-surface px-3 py-2 text-left font-sans text-[12px] text-sts-foreground transition-colors hover:border-sts-blue/40 hover:bg-sts-blue/5"
-        >
-          <FileDown className="size-3.5 shrink-0 text-sts-blue" />
-          <span className="min-w-0 flex-1 truncate">{a.fileName}</span>
-          <span className="shrink-0 text-[11.5px] text-sts-subtle">{formatBytes(a.fileSize)}</span>
-        </button>
+        <Tip key={a.id} label={`Download ${a.fileName}`}>
+          <button
+            type="button"
+            onClick={() => downloadFile(a.storageUrl, a.fileName)}
+            className="flex cursor-pointer items-center gap-2 rounded-full border border-sts-card-border bg-sts-surface px-3 py-2 text-left font-sans text-[12px] text-sts-foreground transition-colors hover:border-sts-blue/40 hover:bg-sts-blue/5"
+          >
+            <FileDown className="size-3.5 shrink-0 text-sts-blue" />
+            <span className="min-w-0 flex-1 truncate">{a.fileName}</span>
+            <span className="shrink-0 text-[11.5px] text-sts-subtle">{formatBytes(a.fileSize)}</span>
+          </button>
+        </Tip>
       ))}
     </div>
   )
@@ -364,21 +360,22 @@ function InlineReplyBox({
   }
 
   return (
-    <div className="relative mt-2.5 flex gap-2.5">
-      <div className="flex flex-col items-center pt-1">
-        <div className="size-[7px] rounded-full bg-sts-card-border" />
+    <div className="relative mt-2 flex min-w-0 gap-2.5">
+      <div className="pt-1.5">
+        <Avatar name={currentUser?.name ?? "You"} src={currentUser?.avatarUrl} size={22} />
       </div>
-      <div ref={replyBoxRef} className="flex-1">
-        <div className="rounded-xl border border-sts-card-border bg-sts-bg px-3 py-2 focus-within:border-sts-blue/50 focus-within:ring-1 focus-within:ring-sts-blue/20 transition-all">
+      <div ref={replyBoxRef} className="min-w-0 flex-1 overflow-hidden rounded-lg border border-sts-card-border bg-sts-card transition-[border-color,box-shadow] focus-within:border-sts-blue/50 focus-within:ring-2 focus-within:ring-sts-blue/10">
+        <div className="px-3 pb-2 pt-2.5">
           <textarea
             ref={textRef}
             autoFocus
             rows={1}
             placeholder="Write a reply… use @ to mention"
+            aria-label="Reply to comment"
             onChange={handleChange}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            className="w-full resize-none bg-transparent font-sans text-[12.5px] leading-[19px] text-sts-foreground outline-none placeholder:text-sts-subtle overflow-hidden"
+            className="w-full resize-none overflow-hidden bg-transparent font-sans text-[12.5px] leading-[19px] text-sts-foreground outline-none placeholder:text-sts-subtle"
             style={{ minHeight: 26, maxHeight: 160 }}
           />
 
@@ -407,21 +404,22 @@ function InlineReplyBox({
                   <button
                     type="button"
                     onClick={() => removeFile(entry.id)}
-                    className="absolute -right-[5px] -top-[5px] flex size-[15px] items-center justify-center rounded-full bg-sts-surface text-sts-subtle shadow hover:text-sts-foreground"
+                    aria-label={`Remove ${entry.file.name}`}
+                    className="absolute -right-[5px] -top-[5px] flex size-[18px] items-center justify-center rounded-full border border-sts-card-border bg-sts-card text-sts-subtle shadow-sm transition-colors hover:text-sts-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-blue/30"
                   >
-                    <X className="size-[8px]" />
+                    <X className="size-2.5" />
                   </button>
                 </div>
               ))}
             </div>
           )}
         </div>
-        <div className="mt-1.5 flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-1.5 border-t border-sts-card-border/70 bg-sts-surface/45 px-2 py-1.5">
           <button
             type="button"
             onClick={submit}
             disabled={submitting || uploading}
-            className="flex h-6 items-center gap-1.5 rounded-full bg-sts-blue px-2.5 font-sans text-[11.5px] font-medium text-white dark:text-gray-900 disabled:opacity-50"
+            className="flex h-7 items-center gap-1.5 rounded-md bg-sts-blue px-2.5 font-sans text-[11.5px] font-semibold text-white transition-[opacity,transform] hover:opacity-90 active:translate-y-px disabled:pointer-events-none disabled:opacity-50 dark:text-gray-900"
           >
             {submitting || uploading ? <LoadingSpinner className="size-3" /> : <SendHorizonal className="size-[11px]" />}
             {uploading ? "Uploading…" : submitting ? "Posting…" : "Reply"}
@@ -440,19 +438,22 @@ function InlineReplyBox({
               e.target.value = ""
             }}
           />
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            title="Attach files"
-            className="flex h-6 items-center gap-1 rounded-full px-2 font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-muted"
-          >
-            <Paperclip className="size-[11px]" />
-            Attach
-          </button>
-          <button type="button" onClick={onCancel} className="font-sans text-[11.5px] text-sts-subtle hover:text-sts-muted">
+          <Tip label="Attach files">
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              className="flex h-7 items-center gap-1 rounded-md px-2 font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-bg hover:text-sts-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-blue/30"
+            >
+              <Paperclip className="size-[11px]" />
+              Attach
+            </button>
+          </Tip>
+          <button type="button" onClick={onCancel} className="h-7 rounded-md px-2 font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-bg hover:text-sts-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-blue/30">
             Cancel
           </button>
-          <span className="font-sans text-[11.5px] text-sts-subtle/50">↵ to send · ⇧↵ for newline</span>
+          <span className="ml-auto hidden font-sans text-[10.5px] text-sts-subtle/70 sm:inline">
+            Enter to send · Shift + Enter for new line
+          </span>
         </div>
       </div>
       <AnchoredDropdown
@@ -488,13 +489,14 @@ function InlineReplyBox({
   )
 }
 
-export function CommentItem({ comment, ticketId, subDepartmentMembers, parentRef, onReplySubmitted }: Props) {
+export function CommentItem({ comment, ticketId, subDepartmentMembers, isReply = false, onReplySubmitted }: Props) {
   const currentUser = useCurrentUser()
   const [localComment, setLocalComment] = useState(comment)
   const [mode, setMode] = useState<"view" | "editing">("view")
   const [editValue, setEditValue] = useState(comment.body)
   const [saving, setSaving] = useState(false)
   const [replying, setReplying] = useState(false)
+  const [showAllReplies, setShowAllReplies] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const editRef = useRef<HTMLTextAreaElement>(null)
@@ -601,10 +603,11 @@ export function CommentItem({ comment, ticketId, subDepartmentMembers, parentRef
     })
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [comment.attachments, comment.body, comment.deletedAt])
-  const isAuthor = localComment.authorId === currentUser?.id
+  const isAuthor = !localComment.externalAuthor && localComment.authorId === currentUser?.id
   const isDeleted = !!localComment.deletedAt
-  const isReply = !!parentRef
-  const replyCount = comment.replies.length
+  const replies = isReply ? [] : comment.replies
+  const hiddenReplyCount = showAllReplies ? 0 : Math.max(0, replies.length - COLLAPSED_REPLY_COUNT)
+  const visibleReplies = replies.slice(hiddenReplyCount)
 
   async function saveEdit() {
     const trimmed = editValue.trim()
@@ -636,17 +639,20 @@ export function CommentItem({ comment, ticketId, subDepartmentMembers, parentRef
   function handleReplySubmitted(reply: CommentData) {
     onReplySubmitted?.(reply)
     setReplying(false)
+    requestAnimationFrame(() => flashComment(reply.id))
   }
 
-  const avatarSize = isReply ? 24 : 30
+  const avatarSize = isReply ? 22 : 30
 
   return (
     <>
     <div
       id={`comment-${localComment.id}`}
       className={cn(
-        "flex gap-3 rounded-lg transition-colors duration-500",
-        isReply && "border-l-2 border-sts-card-border/60 pl-3",
+        "flex transition-colors duration-500",
+        isReply
+          ? "relative gap-2.5 rounded-md py-2 before:absolute before:-left-[17px] before:top-[22px] before:h-px before:w-3 before:bg-sts-card-border"
+          : "gap-3 rounded-lg",
       )}
     >
       {/* Avatar */}
@@ -656,33 +662,16 @@ export function CommentItem({ comment, ticketId, subDepartmentMembers, parentRef
 
       {/* Main content */}
       <div className="min-w-0 flex-1">
-        {/* Replying-to reference — a compact one-line quote of the original */}
-        {parentRef && (
-          <button
-            type="button"
-            onClick={() => focusComment(parentRef.id)}
-            title={`Go to ${parentRef.authorName}'s comment`}
-            className="mb-1 flex max-w-full items-center gap-1 rounded border-l-2 border-sts-blue/40 bg-sts-surface/50 py-0.5 pl-1.5 pr-2 text-[11px] leading-tight text-sts-subtle transition-colors hover:border-sts-blue hover:bg-sts-blue/5"
-          >
-            <CornerUpLeft className="size-2.5 shrink-0 text-sts-subtle" />
-            <span className="truncate">
-              <span className="font-semibold text-sts-foreground">
-                {parentRef.authorName}
-              </span>
-              {parentRef.isDeleted ? (
-                <span className="italic text-sts-subtle/60"> · deleted comment</span>
-              ) : parentRef.snippet ? (
-                <span className="text-sts-subtle">: {parentRef.snippet}</span>
-              ) : null}
-            </span>
-          </button>
-        )}
-
         {/* Name + meta row */}
         <div className="group/c flex min-w-0 items-baseline gap-2">
           <span className="font-sans text-[12.5px] font-semibold leading-none text-sts-foreground">
             {localComment.authorName}
           </span>
+          {localComment.externalAuthor && (
+            <span className="inline-flex shrink-0 items-center rounded-full border border-sts-blue/20 bg-sts-blue/10 px-1.5 py-0.5 font-sans text-[9px] font-semibold leading-none tracking-[0.04em] text-sts-blue uppercase">
+              Portal user
+            </span>
+          )}
           <span className="font-sans text-[11.5px] text-sts-subtle shrink-0">
             {formatDateTime(new Date(localComment.createdAt))}
           </span>
@@ -692,14 +681,18 @@ export function CommentItem({ comment, ticketId, subDepartmentMembers, parentRef
           {/* Actions on hover */}
           {isAuthor && !isDeleted && mode === "view" && (
             <div className="ml-auto flex shrink-0 items-center gap-0.5 transition-opacity">
-              <button onClick={beginEditing}
-                className="flex size-6 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground" title="Edit">
-                <Pencil className="size-[11px]" />
-              </button>
-              <button onClick={() => setConfirmingDelete(true)}
-                className="flex size-6 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-red/10 hover:text-sts-red" title="Delete">
-                <Trash2 className="size-[11px]" />
-              </button>
+              <Tip label="Edit">
+                <button aria-label="Edit comment" onClick={beginEditing}
+                  className="flex size-6 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground">
+                  <Pencil className="size-[11px]" />
+                </button>
+              </Tip>
+              <Tip label="Delete">
+                <button aria-label="Delete comment" onClick={() => setConfirmingDelete(true)}
+                  className="flex size-6 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-red/10 hover:text-sts-red">
+                  <Trash2 className="size-[11px]" />
+                </button>
+              </Tip>
             </div>
           )}
         </div>
@@ -800,30 +793,67 @@ export function CommentItem({ comment, ticketId, subDepartmentMembers, parentRef
           )}
         </div>
 
-        {/* Reply button */}
-        {!isDeleted && !isReply && mode === "view" && (
+        {/* Reply action */}
+        {!isDeleted && !isReply && mode === "view" && !replying && (
           <button
             type="button"
-            onClick={() => setReplying((v) => !v)}
+            onClick={() => setReplying(true)}
             className="mt-1.5 flex items-center gap-1 font-sans text-[11.5px] font-medium text-sts-subtle transition-colors hover:text-sts-blue"
           >
             <CornerDownRight className="size-[11px]" />
-            {replying ? "Cancel reply" : "Reply"}
-            {replyCount > 0 && !replying && (
-              <span className="ml-0.5 text-[11.5px] text-sts-subtle/60">· {replyCount}</span>
-            )}
+            Reply
           </button>
         )}
 
-        {/* Inline reply input */}
-        {replying && (
-          <InlineReplyBox
-            ticketId={ticketId}
-            parentId={localComment.id}
-            subDepartmentMembers={subDepartmentMembers}
-            onSubmitted={handleReplySubmitted}
-            onCancel={() => setReplying(false)}
-          />
+        {/* Thread — replies stay grouped under the comment they answer */}
+        {(replies.length > 0 || replying) && (
+          <div className="relative ml-1 mt-3 border-l border-sts-card-border pl-4">
+            {replies.length > 0 && (
+              <div className="mb-0.5 flex min-h-6 items-center justify-between gap-2">
+                <span className="font-sans text-[11px] font-semibold text-sts-muted">
+                  {replies.length} {replies.length === 1 ? "reply" : "replies"}
+                </span>
+                {hiddenReplyCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowAllReplies(true)}
+                    className="flex h-6 items-center gap-0.5 rounded-md px-1.5 font-sans text-[11px] font-medium text-sts-blue transition-colors hover:bg-sts-blue/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-blue/30"
+                  >
+                    Show {hiddenReplyCount} earlier
+                    <ChevronDown className="size-3" />
+                  </button>
+                )}
+              </div>
+            )}
+            {visibleReplies.map((r) => (
+              <CommentItem
+                key={r.id}
+                comment={r}
+                ticketId={ticketId}
+                subDepartmentMembers={subDepartmentMembers}
+                isReply
+              />
+            ))}
+            {replying ? (
+              <InlineReplyBox
+                ticketId={ticketId}
+                parentId={localComment.id}
+                subDepartmentMembers={subDepartmentMembers}
+                onSubmitted={handleReplySubmitted}
+                onCancel={() => setReplying(false)}
+              />
+            ) : !isDeleted && (
+              <button
+                type="button"
+                onClick={() => setReplying(true)}
+                className="group mt-1.5 flex w-full items-center gap-2 rounded-lg border border-sts-card-border/80 bg-sts-card px-2 py-1.5 text-left font-sans text-[12px] text-sts-subtle transition-[border-color,background-color,color] hover:border-sts-blue/25 hover:bg-sts-blue/[0.03] hover:text-sts-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-blue/20"
+              >
+                <Avatar name={currentUser?.name ?? "You"} src={currentUser?.avatarUrl} size={20} />
+                <span className="flex-1">Write a reply…</span>
+                <CornerDownRight className="size-3.5 text-sts-subtle/70 transition-colors group-hover:text-sts-blue" />
+              </button>
+            )}
+          </div>
         )}
       </div>
     </div>

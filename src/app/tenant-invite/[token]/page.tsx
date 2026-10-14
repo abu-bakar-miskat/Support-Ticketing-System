@@ -15,9 +15,9 @@ export const dynamic = "force-dynamic"
 export const metadata = { title: "Invitation — Global Support Portal" }
 
 const STATUS_MESSAGE: Record<string, string> = {
-  revoked: "This invitation has been revoked.",
+  revoked: "This invitation has been revoked. If you still need access, ask the person who invited you to send a new one.",
   already_accepted: "This invitation has already been used.",
-  expired: "This invitation has expired.",
+  expired: "This invitation has expired. Ask the person who invited you to send a new one.",
 }
 
 function InviteShell({ children }: { children: React.ReactNode }) {
@@ -94,6 +94,24 @@ export default async function TenantInvitePage({
   // and auto-sending here handed those bots an OTP before the human ever clicked,
   // so the invitee saw a stray sign-in code instead of their invitation. Bots
   // don't submit the form; a real click sends the code and lands on code entry.
+  // A used invite opened while signed out: there's nothing left to accept, so
+  // send them to sign in rather than offering a fresh "Accept invitation".
+  if (invite && invite.status === "already_accepted" && !signedInEmail) {
+    return (
+      <InviteShell>
+        <h1 className="text-center text-[18px] font-semibold text-sts-foreground">
+          Already accepted
+        </h1>
+        <p className="mt-2 text-center text-[13.5px] text-sts-muted">
+          This invitation has already been used. Sign in as {invite.email} to open your dashboard.
+        </p>
+        <Link href="/login" className="mt-6 text-[13px] font-medium text-sts-blue hover:underline">
+          Go to sign in
+        </Link>
+      </InviteShell>
+    )
+  }
+
   if (
     invite &&
     invite.status !== "revoked" &&

@@ -11,6 +11,7 @@ import { matchesUserListSearch, type UserListPerson } from "@/lib/user-list-pers
 import { addCoAssignee, removeCoAssignee } from "@/lib/api/tickets";
 import { toast } from "sonner";
 import { toastError } from "@/lib/toast-error";
+import { Tip } from "@/components/ui/tooltip";
 
 type Member = UserListPerson;
 
@@ -139,18 +140,21 @@ export function CoAssigneeSelect({
                 <UserAvatar name={m.name} avatarUrl={m.avatarUrl} userId={m.id} size={20} />
                 <span className="font-sans text-[11.5px] text-sts-foreground">{m.name.split(" ")[0]}</span>
                 {!disabled && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const newList = coAssignees.filter((c) => c.id !== m.id);
-                      removeCoAssignee(ticketId, m.id)
-                        .then(() => { onCoAssigneesChange?.(newList); router.refresh(); })
-                        .catch((e) => toastError("Failed to remove co-assignee", e));
-                    }}
-                    className="ml-0.5 text-sts-subtle hover:text-sts-red"
-                  >
-                    <X className="size-3" />
-                  </button>
+                  <Tip label="Remove co-assignee">
+                    <button
+                      aria-label={`Remove ${m.name} as co-assignee`}
+                      type="button"
+                      onClick={() => {
+                        const newList = coAssignees.filter((c) => c.id !== m.id);
+                        removeCoAssignee(ticketId, m.id)
+                          .then(() => { onCoAssigneesChange?.(newList); router.refresh(); })
+                          .catch((e) => toastError("Failed to remove co-assignee", e));
+                      }}
+                      className="ml-0.5 text-sts-subtle hover:text-sts-red"
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </Tip>
                 )}
               </div>
             ))}

@@ -34,6 +34,13 @@ enum StatusType {
   RESOLVED
 }
 
+enum StatusCategory {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  COMPLETE
+}
+
 enum TicketType {
   Bug
   Feature
@@ -151,6 +158,8 @@ enum NotificationType {
   agreement_expiring
   template_request_submitted
   template_request_reviewed
+  feature_request_submitted
+  feature_request_reviewed
   ticket_transferred
   domain_request_submitted
   domain_request_reviewed
@@ -236,9 +245,11 @@ model Tenant {
   agreements Agreement[]
   tenantTemplates  TenantTemplate[]
   templateRequests TemplateRequest[]
+  featureRequests  FeatureRequest[]
   ruleExecutionLogs RuleExecutionLog[]
   emailDomains EmailDomain[]
   emailDomainRequests EmailDomainRequest[]
+  apiKeys ApiKey[]
 }
 
 // A sending domain (e.g. mail.acme.com) a tenant has registered in Resend and
@@ -365,6 +376,25 @@ model TenantInvite {
   @@index([expiresAt])
 }
 
+// Pending platform super-admin invitation. No Profile or auth user exists until
+// the invitee accepts and signs in; accepting sets Profile.isSuperAdmin.
+model SuperAdminInvite {
+  id             String    @id @default(cuid())
+  token          String    @unique
+  email          String
+  invitedBy      String    @db.Uuid
+  createdAt      DateTime  @default(now())
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  revokedAt      DateTime?
+  reminderSentAt DateTime?
+
+  inviter Profile @relation("SuperAdminInvitesSent", fields: [invitedBy], references: [id])
+
+  @@index([email])
+  @@index([expiresAt])
+}
+
 // ─── Org Structure ────────────────────────────────────────────────────────────
 
 model Department {
@@ -382,11 +412,10 @@ model Department {
   // Slug of the catalogue Template a department was created from (board type +
   // the initial seed for featureKeys). Reference only.
   templateSlug      String?
-  // Effective feature-key allowlist for THIS department, controllable per
-  // department by a Super Admin (grant/revoke). Seeded from templateSlug's
-  // template at creation. `null` = uncontrolled → every feature visible
-  // (fail-open); a JSON string[] = exactly those features are enabled, and the
-  // department + its sub-departments reflect it everywhere. See
+  // Marketplace features granted to THIS department (timeline, reports, …).
+  // `null` = legacy department, every marketplace feature already on.
+  // `[]` = a new department, none of them — a tenant admin requests one and a
+  // super admin approves it. Other features are always available. See
   // getDepartmentActiveFeatureKeys.
   featureKeys       Json?
   isHub             Boolean              @default(false)
@@ -402,6 +431,11 @@ model Department {
   // MemberSchedule row (or the ticket is unassigned): { timezone, workingDays,
   // workStartTime, workEndTime }. DepartmentHoliday supplies the holiday half.
   businessHours     Json?
+  // Shared-mailbox SLA: flat targets applied to every ticket created from one of
+  // the department's mailboxes (form policies never apply to those). Both null
+  // = no SLA for mailbox tickets.
+  mailboxFirstResponseMins Int?
+  mailboxResolutionMins    Int?
   // Ticket-assignment method (slice 11, ASG-01). Default preserves the
   // pre-existing round-robin-ish behavior of lib/rota.ts's resolveAssignee().
   assignmentMethod  AssignmentMethod     @default(ROUND_ROBIN)
@@ -432,6 +466,7 @@ model Department {
   assignmentRules   AssignmentRule[]
   rules             Rule[]
   mailboxConnections MailboxConnection[]
+  featureRequests    FeatureRequest[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
@@ -611,6 +646,8 @@ model SubDepartmentStatus {
   label         String
   color         String   @default("#94a3b8")
   order         Int
+  category      StatusCategory @default(TODO)
+  // Compatibility mirror; the database keeps this in sync with category.
   isComplete    Boolean  @default(false)
   allowedLabels String[] @default([])
 
@@ -675,6 +712,7 @@ model Profile {
   holidays              MemberHoliday[]
   tenantMemberships     TenantMembership[]  @relation("TenantMemberships")
   tenantInvitesSent     TenantInvite[]      @relation("TenantInvitesSent")
+  superAdminInvitesSent SuperAdminInvite[]  @relation("SuperAdminInvitesSent")
   roleAssignments       RoleAssignment[]    @relation("UserRoleAssignments")
 
   @@index([name])
@@ -989,6 +1027,9 @@ model Comment {
   body        String
   ticketId    String
   authorId    String       @db.Uuid
+  // True only for the requester-visible thread on Portal API tickets.
+  // Ordinary comments and message notes remain staff-only by default.
+  portalVisible Boolean    @default(false)
   parentId    String?
   // When set, this comment is an internal note attached to a specific customer
   // email message rather than a general ticket comment. See lib/message notes.
@@ -1130,11 +1171,14 @@ model TicketAccessGrant {
 enum MailboxScopeType {
   DEPARTMENT
   SUB_DEPARTMENT
+  // Send-only tenant-wide mailbox: the fallback sender for tenant email when no
+  // department / sub-department mailbox applies (lib/mailbox-outbound.ts).
+  TENANT
 }
 
-// RESEND is the only functional provider today; the others are the D-10
-// provider-abstraction seam OAuth (M365/Google) and IMAP land behind later
-// (EM-05) — see lib/mail-providers.
+// OAUTH_M365 is the only provider in use. RESEND rows are legacy forwarding
+// mailboxes (ignored since mail moved to Microsoft 365); OAUTH_GOOGLE / IMAP
+// are unused enum values.
 enum MailboxAuthType {
   RESEND
   OAUTH_M365
@@ -1148,20 +1192,21 @@ enum MailboxConnectionStatus {
   UNREACHABLE
 }
 
-// A department/sub-department inbound mailbox (slice 14, EM-01/02/03).
-// `teamId` is always the concrete sub-department (Team) new tickets are filed
-// into — even a DEPARTMENT-scoped connection needs one, since Team is the only
+// A tenant / department / sub-department mailbox (slice 14, EM-01/02/03).
+// For DEPARTMENT and SUB_DEPARTMENT scope, `teamId` is the concrete
+// sub-department (Team) new tickets are filed into — even a DEPARTMENT-scoped
+// connection needs one, since Team is the only
 // unit with a board/ticket counter (slice 04/05). `scopeType` is a management/
 // visibility attribute (who may edit it), mirroring the DEPARTMENT/
 // SUB_DEPARTMENT split already established by RoleAssignment (slice 01).
-// `credentialsRef` is an opaque AES-256-GCM-encrypted blob (lib/mailbox-credentials.ts,
-// NFR-03) — null for RESEND, which still uses the platform-wide RESEND_API_KEY.
-// Never selected/returned by any API response.
+// TENANT scope has neither (send-only). `credentialsRef` is an opaque
+// AES-256-GCM-encrypted blob (lib/mailbox-credentials.ts, NFR-03). Never
+// selected/returned by any API response.
 model MailboxConnection {
   id               String                  @id @default(cuid())
   tenantId         String
-  departmentId     String
-  subDepartmentId  String                  @map("teamId")
+  departmentId     String?
+  subDepartmentId  String?                 @map("teamId")
   scopeType        MailboxScopeType
   address          String                  @unique
   authType         MailboxAuthType         @default(RESEND)
@@ -1171,6 +1216,9 @@ model MailboxConnection {
   // is the hand-picked roster used when assignmentMethod is MANUAL_SELECT.
   assignmentMethod  AssignmentMethod?
   manualAssigneeIds String[]               @default([])
+  // Null pair inherits department mailbox targets, then tenant SLA defaults.
+  slaFirstResponseMins Int?
+  slaResolutionMins    Int?
   // Manual on/off switch, independent of health `status`. When false the mailbox
   // is paused: the inbound router skips it so no new tickets are created, but
   // existing tickets are untouched. `status` stays health-only (ACTIVE/AUTH_ERROR/
@@ -1183,12 +1231,19 @@ model MailboxConnection {
   lastErrorAt      DateTime?
   lastErrorMessage String?
   nextCheckAt      DateTime?
+  // Pull-provider sync state (OAUTH_M365 / OAUTH_GOOGLE / IMAP — RESEND is
+  // webhook-pushed and leaves these null). `syncCursor` is the provider's
+  // opaque "seen up to here" marker (lib/mailbox-sync.ts); `syncLockedUntil`
+  // is a lease so overlapping cron runs never sync one mailbox twice at once.
+  syncCursor       Json?
+  lastSyncedAt     DateTime?
+  syncLockedUntil  DateTime?
   createdAt        DateTime                @default(now())
   updatedAt        DateTime                @updatedAt
 
   tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  department    Department    @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-  subDepartment SubDepartment @relation(fields: [subDepartmentId], references: [id], onDelete: Cascade)
+  department    Department?    @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  subDepartment SubDepartment? @relation(fields: [subDepartmentId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([departmentId])
@@ -1571,6 +1626,7 @@ model ReportExportJob {
 enum ReportScheduleFrequency {
   DAILY
   WEEKLY
+  MONTHLY
 }
 
 // RPT-06: periodic exportable reports. A Project Admin configures a recurring
@@ -1588,6 +1644,8 @@ model ReportSchedule {
   frequency    ReportScheduleFrequency
   // Rolling window length (days back from run time) the report covers.
   rangeDays    Int                     @default(30)
+  // Scoped filters, calendar period, local run time, and timezone.
+  settings     Json?
   enabled      Boolean                 @default(true)
   lastRunAt    DateTime?
   nextRunAt    DateTime
@@ -1804,6 +1862,36 @@ model TemplateRequest {
   @@index([templateId, status])
 }
 
+enum FeatureRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// A tenant admin's request to turn on one marketplace feature for a department.
+// Stays pending until a super admin approves; approval writes the key onto
+// Department.featureKeys.
+model FeatureRequest {
+  id            String               @id @default(cuid())
+  tenantId      String
+  departmentId  String
+  featureKey    String
+  status        FeatureRequestStatus @default(PENDING)
+  message       String?
+  requestedById String               @db.Uuid
+  requestedAt   DateTime             @default(now())
+  reviewedById  String?              @db.Uuid
+  reviewedAt    DateTime?
+  reviewNote    String?
+
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, status])
+  @@index([departmentId, status])
+  @@index([status])
+}
+
 // One row per ticket that matched an SlaPolicy at creation (slice 10, SLA-03).
 // Deliberately stores only start/stop instants, never accumulated pause
 // counters — elapsed *working* time is computed lazily and purely from
@@ -1815,6 +1903,11 @@ model SlaTimer {
   ticketId                       String    @unique
   tenantId                       String
   policyId                       String?
+  // "mailbox" for timers started from the department's shared-mailbox SLA;
+  // null for form-policy timers.
+  source                         String?
+  // Mailbox tickets freeze their calendar, warnings and qualifying active statuses.
+  mailboxConfig                  Json?
   firstResponseTargetMins        Int
   resolutionTargetMins           Int
   firstResponseStartedAt         DateTime
@@ -1883,15 +1976,24 @@ model ApiKey {
   keySuffix    String
   hashedKey    String      @unique
   scope        ApiKeyScope @default(read)
+  kind         String      @default("general")
+  // Tenant boundary for tenant-wide integrations. Legacy department keys may
+  // derive this through Department; every newly-created key sets it directly.
+  tenantId     String?
   departmentId String?
+  formConfigId String?     @unique
   createdById  String      @db.Uuid
   lastUsedAt   DateTime?
   revokedAt    DateTime?
   createdAt    DateTime    @default(now())
 
   createdBy  Profile      @relation(fields: [createdById], references: [id])
+  tenant     Tenant?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   department Department?  @relation(fields: [departmentId], references: [id])
+  formConfig IntakeFormConfig? @relation(fields: [formConfigId], references: [id], onDelete: Restrict)
+  intakes    Intake[]
 
+  @@index([tenantId])
   @@index([departmentId])
 }
 
@@ -1944,6 +2046,7 @@ model IntakeFormConfig {
   pendingIntakes PendingIntake[]
   assignmentRules AssignmentRule[]
   rules      Rule[]
+  apiKey     ApiKey?
 }
 
 model IntakeFormField {
@@ -2025,12 +2128,23 @@ model Intake {
   schemaVersion  Int?
   fieldSnapshot  Json?
   ticketId       String?        @unique
+  // Set when the submission was created by the tenant portal API. This is the
+  // capability boundary used to prevent one integration key from reading
+  // submissions or tickets created by another key.
+  apiKeyId       String?
+  // Hashed Portal API Idempotency-Key. Kept outside responses so PostgreSQL can
+  // enforce exactly one submission for a key even when requests race.
+  portalIdempotencyKey String?
   replyToken     String?        @unique
   resolutionNote String?
   createdAt      DateTime       @default(now())
 
   formConfig IntakeFormConfig @relation(fields: [formConfigId], references: [id])
   ticket     Ticket?          @relation(fields: [ticketId], references: [id])
+  apiKey     ApiKey?          @relation(fields: [apiKeyId], references: [id], onDelete: SetNull)
+
+  @@index([apiKeyId])
+  @@unique([apiKeyId, portalIdempotencyKey])
 }
 
 // A support submission awaiting email verification (double opt-in). The ticket

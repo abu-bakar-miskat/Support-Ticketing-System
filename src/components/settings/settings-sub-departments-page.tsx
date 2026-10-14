@@ -59,6 +59,8 @@ import { deriveSubDepartmentPrefix } from "@/lib/sub-department-prefix";
 import { toastError } from "@/lib/toast-error";
 import { toast } from "sonner";
 import { notifEvents } from "@/store";
+import { Tip } from "@/components/ui/tooltip";
+import { ListSearchInput, SortDropdown, useListControls, byText, byDateAsc, byDateDesc, byNumberDesc } from "@/components/ui/list-controls";
 
 export type SubDepartmentRow = {
   id: string;
@@ -134,14 +136,16 @@ function SubManagersList({
             <span className="truncate font-sans text-[12.5px] text-sts-foreground">{lead.name}</span>
           </div>
           {canManage && lead.isExplicit && (
-            <button
-              type="button"
-              onClick={() => onRemove(lead.userId)}
-              title="Remove sub-manager"
-              className="shrink-0 rounded-full p-1 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-            >
-              <X className="size-3.5" />
-            </button>
+            <Tip label="Remove sub-manager">
+              <button
+                aria-label="Remove sub-manager"
+                type="button"
+                onClick={() => onRemove(lead.userId)}
+                className="shrink-0 rounded-full p-1 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+              >
+                <X className="size-3.5" />
+              </button>
+            </Tip>
           )}
         </div>
       ))}
@@ -271,13 +275,16 @@ function SubDepartmentModal({
           <h2 className="sts-text-modal-title">
             {isEdit ? "Edit sub-department" : "New sub-department"}
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
-          >
-            <X className="size-4" />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              type="button"
+              onClick={onClose}
+              className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          </Tip>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -391,6 +398,8 @@ function SubDepartmentModal({
 
 // ── Sub Department Members Modal ────────────────────────────────────────────────────────
 
+const MEMBER_ROLE_RANK: Record<string, number> = { admin: 0, manager: 1, sub_manager: 2, agent: 3 };
+
 type MemberEntry = {
   membershipId: string;
   userId: string;
@@ -400,6 +409,8 @@ type MemberEntry = {
   nickname: string | null;
   isActive: boolean;
   avatarUrl: string | null;
+  /** ISO date they joined this sub-department. */
+  joinedAt: string | null;
 };
 
 function SubDepartmentMembersModal({
@@ -422,6 +433,23 @@ function SubDepartmentMembersModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmRemove, setConfirmRemove] = useState<{ userId: string; name: string } | null>(null);
+  const memberList = useListControls(members, {
+    searchText: (m) => [m.name, m.nickname ?? "", m.email, m.role.replace("_", " ")].join(" "),
+    sortOptions: [
+      { id: "name", label: "Name A–Z", compare: byText((m: MemberEntry) => m.nickname ?? m.name) },
+      { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((m: MemberEntry) => m.nickname ?? m.name)(b, a) },
+      { id: "newest", label: "Newest first", compare: byDateDesc((m: MemberEntry) => m.joinedAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((m: MemberEntry) => m.joinedAt) },
+      {
+        id: "role",
+        label: "Role",
+        compare: (a, b) =>
+          (MEMBER_ROLE_RANK[a.role] ?? 9) - (MEMBER_ROLE_RANK[b.role] ?? 9) ||
+          byText((m: MemberEntry) => m.nickname ?? m.name)(a, b),
+      },
+      { id: "active", label: "Active first", compare: (a, b) => Number(b.isActive) - Number(a.isActive) },
+    ],
+  });
 
   useEffect(() => {
     getAdminSubDepartmentMembers(subDepartment.id)
@@ -436,6 +464,7 @@ function SubDepartmentMembersModal({
             nickname: m.nickname,
             isActive: m.isActive,
             avatarUrl: m.user?.avatarUrl ?? m.avatarUrl,
+            joinedAt: m.joinedAt ?? null,
           })),
         );
         setLoading(false);
@@ -540,13 +569,16 @@ function SubDepartmentMembersModal({
           <span className="font-sans text-[11.5px] text-sts-subtle">
             {members.length} member{members.length !== 1 ? "s" : ""}
           </span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
-          >
-            <X className="size-4" />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              type="button"
+              onClick={onClose}
+              className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          </Tip>
         </div>
 
         {/* Body */}
@@ -563,6 +595,10 @@ function SubDepartmentMembersModal({
             </div>
           ) : (
             <div>
+              <div className="flex flex-wrap items-center justify-between gap-2 px-6 pt-3 pb-2">
+                <ListSearchInput value={memberList.query} onChange={memberList.setQuery} placeholder="Search members…" />
+                <SortDropdown value={memberList.sortKey} onChange={memberList.setSortKey} options={memberList.sortDropdownOptions} />
+              </div>
               {/* Column headers */}
               <div className="grid grid-cols-[1fr_120px_140px_32px] gap-3 border-b border-sts-card-border px-6 py-2">
                 <span className="font-sans text-[11.5px] font-medium tracking-[0.9px] text-sts-subtle uppercase">
@@ -577,7 +613,12 @@ function SubDepartmentMembersModal({
                 <span />
               </div>
 
-              {members.map((m) =>
+              {memberList.visible.length === 0 && (
+                <p className="px-6 py-8 text-center font-sans text-[12.5px] text-sts-subtle">
+                  No members match &ldquo;{memberList.query.trim()}&rdquo;
+                </p>
+              )}
+              {memberList.visible.map((m) =>
                 editingId === m.userId ? (
                   // ── Edit row ──────────────────────────────────────────
                   <div
@@ -889,13 +930,16 @@ function AssignMemberModal({
               </span>
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
-          >
-            <X className="size-4" />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              type="button"
+              onClick={onClose}
+              className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          </Tip>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 ">
@@ -914,13 +958,16 @@ function AssignMemberModal({
                     <span className="font-sans text-[11.5px] text-sts-foreground">
                       {p.name}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => toggle(id)}
-                      className="text-sts-subtle hover:text-sts-foreground"
-                    >
-                      <X className="size-2.5" />
-                    </button>
+                    <Tip label={`Remove ${p.name}`}>
+                      <button
+                        aria-label={`Remove ${p.name}`}
+                        type="button"
+                        onClick={() => toggle(id)}
+                        className="text-sts-subtle hover:text-sts-foreground"
+                      >
+                        <X className="size-2.5" />
+                      </button>
+                    </Tip>
                   </span>
                 );
               })}
@@ -1084,6 +1131,16 @@ function JoinRequestsSection({
     });
   }, []);
 
+  const requestList = useListControls(requests, {
+    searchText: (r) => [r.userName, r.userEmail, r.departmentName, ...r.subDepartments.map((sd) => sd.name)].join(" "),
+    sortOptions: [
+      { id: "newest", label: "Newest first", compare: byDateDesc((r: PendingRequest) => r.requestedAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((r: PendingRequest) => r.requestedAt) },
+      { id: "name", label: "Name A–Z", compare: byText((r: PendingRequest) => r.userName) },
+      { id: "department", label: "Department", compare: byText((r: PendingRequest) => r.departmentName) },
+    ],
+  });
+
   if (requests.length === 0) return null;
 
   const needsSubDepartment = selectedRole === "sub_manager" || selectedRole === "agent";
@@ -1139,10 +1196,19 @@ function JoinRequestsSection({
         <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-sts-id px-1.5 font-sans text-[11.5px] font-semibold text-white">
           {requests.length}
         </span>
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+          <ListSearchInput value={requestList.query} onChange={requestList.setQuery} placeholder="Search requests…" />
+          <SortDropdown value={requestList.sortKey} onChange={requestList.setSortKey} options={requestList.sortDropdownOptions} />
+        </div>
       </div>
 
       <div className="overflow-hidden rounded-xl border border-sts-card-border bg-sts-card">
-        {requests.map((req, i) => (
+        {requestList.visible.length === 0 && (
+          <p className="px-5 py-6 text-center font-sans text-[12.5px] text-sts-subtle">
+            No requests match &ldquo;{requestList.query.trim()}&rdquo;
+          </p>
+        )}
+        {requestList.visible.map((req, i) => (
           <div
             key={req.id}
             className={cn(
@@ -1368,30 +1434,36 @@ function SubDepartmentCard({
         </div>
         {canManage && (
           <div className="flex shrink-0 items-center gap-0.5">
-            <button
-              type="button"
-              onClick={onInvite}
-              title="Invite new members (email invite for people without an account)"
-              className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-            >
-              <UserPlus className="size-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={onEdit}
-              title="Edit sub-department"
-              className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-            >
-              <Pencil className="size-3.5" />
-            </button>
-            <button
-              type="button"
-              onClick={onDelete}
-              title="Delete sub-department"
-              className="rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-            >
-              <Trash2 className="size-3.5" />
-            </button>
+            <Tip label="Invite new members (email invite for people without an account)">
+              <button
+                aria-label="Invite new members"
+                type="button"
+                onClick={onInvite}
+                className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+              >
+                <UserPlus className="size-3.5" />
+              </button>
+            </Tip>
+            <Tip label="Edit sub-department">
+              <button
+                aria-label="Edit sub-department"
+                type="button"
+                onClick={onEdit}
+                className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+              >
+                <Pencil className="size-3.5" />
+              </button>
+            </Tip>
+            <Tip label="Delete sub-department">
+              <button
+                aria-label="Delete sub-department"
+                type="button"
+                onClick={onDelete}
+                className="rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+              >
+                <Trash2 className="size-3.5" />
+              </button>
+            </Tip>
           </div>
         )}
       </div>
@@ -1521,6 +1593,21 @@ export function SettingsSubDepartmentsPage({
   const [modal, setModal] = useState<ModalMode | null>(null);
   const [isPending, startTransition] = useTransition();
   const [confirmDelete, setConfirmDelete] = useState<SubDepartmentRow | null>(null);
+  const memberCount = (sd: SubDepartmentRow) => (sd.members?.length ?? sd.memberColors.length) + sd.extraMembers;
+  const subDeptList = useListControls(subDepartments, {
+    searchText: (sd) => [sd.name, sd.prefix, sd.department, ...sd.leads.map((l) => l.name)].join(" "),
+    sortOptions: [
+      { id: "name", label: "Name A–Z", compare: byText((sd: SubDepartmentRow) => sd.name) },
+      { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((sd: SubDepartmentRow) => sd.name)(b, a) },
+      { id: "members", label: "Most members", compare: byNumberDesc(memberCount) },
+      {
+        id: "department",
+        label: "Department",
+        compare: (a, b) =>
+          byText((sd: SubDepartmentRow) => sd.department)(a, b) || byText((sd: SubDepartmentRow) => sd.name)(a, b),
+      },
+    ],
+  });
 
   function refresh() {
     setModal(null);
@@ -1617,8 +1704,18 @@ export function SettingsSubDepartmentsPage({
             <p className="font-sans text-[12.5px] text-sts-muted">No sub-departments yet.</p>
           </div>
         ) : (
+          <>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <ListSearchInput value={subDeptList.query} onChange={subDeptList.setQuery} placeholder="Search sub-departments, leads…" />
+            <SortDropdown value={subDeptList.sortKey} onChange={subDeptList.setSortKey} options={subDeptList.sortDropdownOptions} />
+          </div>
+          {subDeptList.visible.length === 0 ? (
+            <p className="py-8 text-center font-sans text-[12.5px] text-sts-muted">
+              No sub-departments match &ldquo;{subDeptList.query.trim()}&rdquo;
+            </p>
+          ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {subDepartments.map((subDepartment) => (
+            {subDeptList.visible.map((subDepartment) => (
               <SubDepartmentCard
                 key={subDepartment.id}
                 subDepartment={subDepartment}
@@ -1633,6 +1730,8 @@ export function SettingsSubDepartmentsPage({
               />
             ))}
           </div>
+          )}
+          </>
         )}
 
         {pendingRequests.length > 0 && (

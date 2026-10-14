@@ -30,7 +30,7 @@ export type AuditTicketRef = {
 export type AuditTargetRef = {
   type: string;
   id: string;
-  /** Resolved display name for Profile-typed targets; null otherwise. */
+  /** Resolved display name (a person, template, or feature). Null when unknown. */
   name: string | null;
 };
 
@@ -58,4 +58,5 @@ export type AuditFeedResponse = {
   nextCursor: string | null;
 };
 
-export type AuditFilterOption = { id: string; name: string };
+/** `tenantId` is set on platform department options so the list can follow the tenant filter. */
+export type AuditFilterOption = { id: string; name: string; tenantId?: string };

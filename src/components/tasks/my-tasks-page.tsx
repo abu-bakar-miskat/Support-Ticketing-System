@@ -1,7 +1,10 @@
-"use client";
+"use client"
+
+import { statusCategory, categoryForStatus, sortStatusesByCategory, STATUS_CATEGORY_LABELS } from "@/lib/status-category";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePersistedView, VIEW_KEYS } from "@/hooks/use-persisted-view";
+import { useFeatureEnabled } from "@/components/dashboard/dashboard-context";
 import Link from "next/link";
 import { useDrag, useDrop } from "react-dnd";
 import { BoardDndProvider } from "@/components/board/board-dnd-provider";
@@ -24,6 +27,7 @@ import {
 import { avatarColorFor } from "@/lib/avatar";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import {
   normalizeStatus,
@@ -38,7 +42,7 @@ import { PriorityPill } from "@/components/board/priority-indicator";
 import { StatusPill } from "@/components/board/status-pill";
 import { NewTicketModal } from "@/components/tickets/new-ticket-modal";
 import { DrawerLink } from "@/components/tickets/drawer-link";
-import { FilterDropdown, FilterVisibilityMenu, SortDropdown, type SortKey } from "@/components/tasks/task-filter-dropdown";
+import { FilterDropdown, FilterVisibilityMenu, RefreshButton, SortDropdown, type SortKey } from "@/components/tasks/task-filter-dropdown";
 import { usePersistedHiddenFilters } from "@/hooks/use-persisted-hidden-filters";
 import { collectModules } from "@/components/board/board-filters";
 import { TagPill } from "@/components/board/tag-pill";
@@ -60,14 +64,15 @@ import { moveTicket, updateTicket } from "@/lib/api/tickets";
 import { InlineStatusPicker, InlineAssigneePicker } from "@/components/ui/inline-pickers";
 import { toast } from "sonner";
 import { toastError } from "@/lib/toast-error";
-import { useQueryClient } from "@tanstack/react-query";
+import { useIsFetching, useQueryClient } from "@tanstack/react-query";
 import { invalidateTaskCaches } from "@/hooks/queries/invalidate-task-caches";
+import { taskKeys } from "@/hooks/queries/keys";
 import { useLinkedLabelMovePrompt } from "@/hooks/use-linked-label-move-prompt";
 import { ProjectAvatar, ProjectDot } from "@/components/projects/project-avatar";
 import type { AssignedSubtask } from "@/lib/board-data";
 import type { TasksMetaResponse } from "@/lib/api/tasks";
 import { TaskTimeCell } from "@/components/tasks/task-time-cell";
-import { CardModuleSegment, ModuleCell } from "@/components/board/module-label";
+import { CardModuleSegment } from "@/components/board/module-label";
 import {
   LIST_TD,
   ListCreatedCell,
@@ -82,13 +87,13 @@ import {
   COL_ASSIGNEE,
   COL_CREATED,
   COL_CREATOR,
-  COL_MODULE,
   COL_PROJECT,
   COL_STATUS,
   COL_TIME,
   TITLE_CELL_CLASS,
   TITLE_INNER_CLASS,
 } from "@/components/tasks/task-list-cells";
+import { Tip } from "@/components/ui/tooltip";
 
 const DRAG_TYPE = "MY_TASK_CARD";
 type DragItem = { dbId: string; fromStatus: string };
@@ -139,7 +144,7 @@ function DraggableBoardCard({ task, statuses }: { task: BoardCardData; statuses:
   const elapsedSecs = useLiveTimer(isRunning ? timerStartedAtMs : null);
   const displaySecs = task.userLoggedSecs + (isRunning ? elapsedSecs : 0);
   const canTrack =
-    normalizeStatus(task.status) === "In Progress" &&
+    statusCategory({ label: task.status, category: task.statusCategory }) === "IN_PROGRESS" &&
     !!userId &&
     (task.assigneeId === userId || task.coAssignees.some((a) => a.id === userId));
 
@@ -306,31 +311,36 @@ function DraggableBoardCard({ task, statuses }: { task: BoardCardData; statuses:
           </span>
         </div>
         {isRunning ? (
-          <button
-            type="button"
-            title="Pause timer"
-            onClick={handleStopTimer}
-            disabled={stoppingTimer}
-            className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-red transition-colors hover:bg-sts-red/10 disabled:cursor-wait"
-          >
-            <Pause className="size-[9px] fill-current" />
-          </button>
+          <Tip label="Pause timer">
+            <button
+              aria-label="Pause timer"
+              type="button"
+              onClick={handleStopTimer}
+              disabled={stoppingTimer}
+              className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-red transition-colors hover:bg-sts-red/10 disabled:cursor-wait"
+            >
+              <Pause className="size-[9px] fill-current" />
+            </button>
+          </Tip>
         ) : canTrack ? (
-          <button
-            type="button"
-            title="Start timer"
-            onClick={handleStartTimer}
-            disabled={startingTimer}
-            className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-subtle transition-opacity hover:bg-sts-surface hover:text-sts-blue disabled:cursor-wait"
-          >
-            <Play className="size-[10px]" />
-          </button>
+          <Tip label="Start timer">
+            <button
+              aria-label="Start timer"
+              type="button"
+              onClick={handleStartTimer}
+              disabled={startingTimer}
+              className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-subtle transition-opacity hover:bg-sts-surface hover:text-sts-blue disabled:cursor-wait"
+            >
+              <Play className="size-[10px]" />
+            </button>
+          </Tip>
         ) : null}
         <span className="flex-1" />
         {subTotal > 0 && (
           <button
             type="button"
             onClick={toggleExpanded}
+            aria-expanded={expanded}
             className={cn(
               "flex items-center gap-1 rounded px-1 py-0.5 font-sans text-[11.5px] font-medium transition-colors hover:bg-sts-surface",
               subtasksDone ? "text-sts-green" : "text-sts-muted",
@@ -340,15 +350,16 @@ function DraggableBoardCard({ task, statuses }: { task: BoardCardData; statuses:
             {subDone}/{subTotal} sub-tickets
           </button>
         )}
-        <button
-          type="button"
-          title="Add sub-task"
-          onClick={openSubTicketModal}
-          className="flex items-center gap-1 rounded px-1 py-0.5 font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-blue"
-        >
-          <Plus className="size-[11px] shrink-0" />
-          <span>Sub-task</span>
-        </button>
+        <Tip label="Add sub-task">
+          <button
+            type="button"
+            onClick={openSubTicketModal}
+            className="flex items-center gap-1 rounded px-1 py-0.5 font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-blue"
+          >
+            <Plus className="size-[11px] shrink-0" />
+            <span>Sub-task</span>
+          </button>
+        </Tip>
       </div>
       {subTotal > 0 && expanded && (
         <div className="mx-3 mb-2 border-t border-sts-card-border pt-1">
@@ -533,7 +544,7 @@ function TaskListRow({ task, colorMap, statuses }: { task: BoardCardData; colorM
         <td className={cn(TITLE_CELL_CLASS, LIST_TD)}>
           <div className={TITLE_INNER_CLASS}>
             {hasChildren && (
-              <button type="button" onClick={() => setExpanded((v) => !v)} className="flex shrink-0 items-center justify-center text-sts-muted hover:text-sts-foreground">
+              <button type="button" onClick={() => setExpanded((v) => !v)} aria-expanded={expanded} aria-label={expanded ? "Collapse sub-tasks" : "Expand sub-tasks"} className="flex shrink-0 items-center justify-center text-sts-muted hover:text-sts-foreground">
                 <ChevronRight className={cn("size-[13px] transition-transform", expanded && "rotate-90")} />
               </button>
             )}
@@ -589,19 +600,18 @@ function TaskListRow({ task, colorMap, statuses }: { task: BoardCardData; colorM
             <span className="min-w-0 truncate whitespace-nowrap font-sans text-[11.5px] text-sts-muted">{task.project}</span>
           </div>
         </td>
-        <td className={cn(COL_MODULE, "overflow-hidden", LIST_TD)}>
-          <ModuleCell moduleName={task.moduleName} />
-        </td>
         <td className={cn(COL_TIME, "overflow-hidden", LIST_TD)}>
           <TaskTimeCell
             ticketDbId={task.dbId}
             humanId={task.humanId}
             title={task.title}
             status={liveStatus}
+            category={categoryForStatus(liveStatus, statuses)}
             assigneeId={liveAssigneeId}
             coAssigneeIds={task.coAssignees.map((a) => a.id)}
             userLoggedSecs={task.userLoggedSecs}
-            estimatedTime={task.estimatedTime}
+            estimatedTime={task.slaResolutionTargetMins ?? task.estimatedTime}
+            slaResolution={task.slaResolution}
           />
         </td>
         <td className={cn(COL_CREATED, "overflow-hidden", LIST_TD)}>
@@ -642,7 +652,6 @@ function TaskListRow({ task, colorMap, statuses }: { task: BoardCardData; colorM
               )}
             </td>
             <td className={cn(COL_PROJECT, "py-2")} />
-            <td className={cn(COL_MODULE, "py-2")} />
             <td className={cn(COL_TIME, "py-2")} />
             <td className={cn(COL_CREATED, "py-2")} />
             <td className="py-2 pr-4" />
@@ -723,7 +732,6 @@ function SubtaskListRow({ task, colorMap, statuses }: { task: AssignedSubtask; c
           <span className="min-w-0 truncate font-sans text-[11.5px] text-sts-muted max-w-[110px]">{task.project}</span>
         </div>
       </td>
-      <td className={cn(COL_MODULE, "py-2.5")} />
       <td className={cn(COL_TIME, "py-2.5")} />
       <td className={cn(COL_CREATED, "py-2.5")} />
       <td className={cn("pr-4", LIST_TD)}>
@@ -772,6 +780,7 @@ function BoardColumn({
       )}
       style={isActive ? ({ "--tw-ring-color": status.color } as React.CSSProperties) : undefined}
     >
+      <p className="font-sans text-[10px] font-medium text-sts-muted uppercase tracking-wide">{STATUS_CATEGORY_LABELS[statusCategory(status)]}</p>
       <div className="flex h-6 shrink-0 items-center gap-2">
         <span className="block size-[7px] shrink-0 rounded-full" style={{ backgroundColor: status.color }} />
         <span className="font-sans text-[12px] font-semibold text-sts-foreground">{status.label}</span>
@@ -837,7 +846,9 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
   const [localTasks, setLocalTasks] = useState<BoardCardData[]>(initialTasks);
   const [sortKey, setSortKey] = useState<SortKey>("created");
   const [view, setView] = usePersistedView(VIEW_KEYS.boardLayout, "list", ["board", "list"] as const);
-  const [page, setPage] = useState(1);
+  const boardEnabled = useFeatureEnabled("board");
+  const viewMode = boardEnabled ? view : "list";
+  const [rawPage, setPage] = useState(1);
   const [createForStatus, setCreateForStatus] = useState<string | null>(null);
   // Managers see a subDepartment review/PR list — kept collapsed by default and below
   // their own tasks so the view leads with what's assigned to them.
@@ -848,6 +859,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
   const { data: fetchedMeta } = useTasksMeta(!taskMeta && !!createForStatus);
   const meta = taskMeta ?? fetchedMeta;
   const queryClient = useQueryClient();
+  const myTasksFetching = useIsFetching({ queryKey: taskKeys.my() });
   const boardTimerTicketDbId = useTimerStore((s) => s.ticketDbId);
   const boardTimerEntryId = useTimerStore((s) => s.entryId);
   const { stopTimer: stopTimerOnMove } = useTimerActions();
@@ -879,7 +891,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
 
   const sortedStatuses = useMemo(() => {
     const allStatuses = Object.values(subDepartmentStatusMap).flat()
-    if (allStatuses.length === 0) return [...subDepartmentStatuses].sort((a, b) => a.order - b.order)
+    if (allStatuses.length === 0) return sortStatusesByCategory(subDepartmentStatuses)
     // Deduplicate by label — keep first occurrence
     const seen = new Set<string>()
     const merged: SubDepartmentStatusConfig[] = []
@@ -889,7 +901,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
         merged.push(s)
       }
     }
-    return merged.sort((a, b) => a.order - b.order)
+    return sortStatusesByCategory(merged)
   }, [subDepartmentStatuses, subDepartmentStatusMap]);
 
   const colorMap = useMemo(() => {
@@ -1072,13 +1084,29 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
   ], [filteredTasks, subtasks]);
 
   const totalPages = Math.max(1, Math.ceil(allFlatRows.length / PAGE_SIZE));
+  // Realtime row-count changes only clamp the page, so the agent isn't thrown
+  // back to page 1 mid-list; filter/sort changes reset it (below).
+  const page = Math.min(rawPage, totalPages);
   const pagedRows = useMemo(
     () => allFlatRows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
     [allFlatRows, page],
   );
 
-  // Reset to page 1 whenever filters change
-  useEffect(() => { setPage(1); }, [allFlatRows.length]);
+  // Reset to page 1 whenever filters/sort change (adjusting state during
+  // render rather than in an effect).
+  const [pageResetDeps, setPageResetDeps] = useState({ filterStatus, filterProject, filterPriority, filterDue, filterLabels, filterModule, sortKey });
+  if (
+    pageResetDeps.filterStatus !== filterStatus ||
+    pageResetDeps.filterProject !== filterProject ||
+    pageResetDeps.filterPriority !== filterPriority ||
+    pageResetDeps.filterDue !== filterDue ||
+    pageResetDeps.filterLabels !== filterLabels ||
+    pageResetDeps.filterModule !== filterModule ||
+    pageResetDeps.sortKey !== sortKey
+  ) {
+    setPageResetDeps({ filterStatus, filterProject, filterPriority, filterDue, filterLabels, filterModule, sortKey });
+    setPage(1);
+  }
   const totalSubtickets = useMemo(() => {
     const ids = new Set<string>();
     for (const s of subtasks) ids.add(s.dbId);
@@ -1114,17 +1142,25 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
   );
 
   const doMove = useCallback((dbId: string, toStatus: string, chosenLabel?: string) => {
-    if (boardTimerTicketDbId === dbId && normalizeStatus(toStatus) !== "In Progress") {
+    if (boardTimerTicketDbId === dbId && categoryForStatus(toStatus, resolveStatusesForCard(localTasks.find((t) => t.dbId === dbId)?.subDepartmentId ?? "")) !== "IN_PROGRESS") {
       stopTimerOnMove(boardTimerEntryId).catch(() => undefined);
     }
-    setLocalTasks((prev) => {
-      const snapshot = prev;
-      moveTicket(dbId, { status: toStatus, chosenLabel })
-        .then(() => invalidateTaskCaches(queryClient))
-        .catch(() => setLocalTasks(snapshot));
-      return prev.map((c) => (c.dbId === dbId ? { ...c, status: toStatus } : c));
-    });
-  }, [queryClient, boardTimerTicketDbId, boardTimerEntryId, stopTimerOnMove]);
+    const previous = localTasks.find((c) => c.dbId === dbId);
+    if (!previous || previous.status === toStatus) return;
+    const category = categoryForStatus(toStatus, resolveStatusesForCard(previous.subDepartmentId));
+    setLocalTasks((prev) => prev.map((c) => (c.dbId === dbId ? { ...c, status: toStatus, statusCategory: category, isComplete: category === "COMPLETE" } : c)));
+    // API call lives outside the state updater (StrictMode runs updaters twice).
+    moveTicket(dbId, { status: toStatus, chosenLabel })
+      .then(() => invalidateTaskCaches(queryClient))
+      .catch((err: unknown) => {
+        setLocalTasks((prev) =>
+          prev.map((c) =>
+            c.dbId === dbId && c.status === toStatus ? { ...c, status: previous.status, statusCategory: previous.statusCategory, isComplete: previous.isComplete } : c,
+          ),
+        );
+        toastError(`Couldn't move ${previous.humanId}`, err);
+      });
+  }, [queryClient, boardTimerTicketDbId, boardTimerEntryId, stopTimerOnMove, localTasks, resolveStatusesForCard]);
 
   const getCardSubDepartmentId = useCallback(
     (dbId: string) => localTasks.find((c) => c.dbId === dbId)?.subDepartmentId,
@@ -1158,6 +1194,10 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
           )}
         >
           <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none] max-xl:-mx-4 max-xl:px-4 sm:max-xl:-mx-6 sm:max-xl:px-6 xl:overflow-visible xl:px-0 [&::-webkit-scrollbar]:hidden">
+            <RefreshButton
+              onRefresh={() => queryClient.refetchQueries({ queryKey: taskKeys.my() })}
+              refreshing={myTasksFetching > 0}
+            />
             <p className="shrink-0 font-sans text-[12px] text-sts-muted sm:text-[12.5px]">
               <span className="font-semibold text-sts-foreground">{filteredTasks.length}</span>
               {" of "}
@@ -1303,7 +1343,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
           <div className="flex shrink-0 items-center gap-2">
             <SortDropdown value={sortKey} onChange={(v) => setSortKey(v as SortKey)} />
 
-            {view === "board" && (
+            {viewMode === "board" && (
               <div className="flex h-7 shrink-0 overflow-hidden rounded-full border border-sts-card-border bg-sts-card">
                 <button
                   type="button"
@@ -1325,6 +1365,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
               </div>
             )}
 
+            {boardEnabled && (
             <div className="flex h-7 shrink-0 overflow-hidden rounded-full border border-sts-card-border bg-sts-card">
               <button
                 type="button"
@@ -1332,7 +1373,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                 aria-label="List view"
                 className={cn(
                   "flex h-[26px] items-center gap-1.5 px-2.5 font-sans text-[11.5px] font-medium transition-colors sm:px-3",
-                  view === "list"
+                  viewMode === "list"
                     ? "rounded-full bg-sts-blue-tint font-semibold text-sts-id"
                     : "text-sts-muted hover:text-sts-foreground",
                 )}
@@ -1346,7 +1387,7 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                 aria-label="Board view"
                 className={cn(
                   "flex h-[26px] items-center gap-1.5 px-2.5 font-sans text-[11.5px] font-medium transition-colors sm:px-3",
-                  view === "board"
+                  viewMode === "board"
                     ? "rounded-full bg-sts-blue-tint font-semibold text-sts-id"
                     : "text-sts-muted hover:text-sts-foreground",
                 )}
@@ -1355,13 +1396,14 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                 <span className="hidden sm:inline">Board</span>
               </button>
             </div>
+            )}
           </div>
         </div>
       </div>{/* end shrink-0 header */}
 
         {/* Content */}
         <div className="min-h-0 flex-1 overflow-hidden">
-        {view === "list" ? (
+        {viewMode === "list" ? (
           <div className="h-full min-h-0 overflow-x-auto overflow-y-auto">
             {/* Unified tasks + subtasks table — the manager's own work first */}
             <table className={MY_TASKS_TABLE_CLASS}>
@@ -1372,8 +1414,36 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
               <tbody>
                 {pagedRows.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-20 text-center font-sans text-[13px] text-sts-subtle">
-                      No tasks match the current filters.
+                    <td colSpan={9}>
+                      {activeExtraFilters > 0 ? (
+                        <EmptyState
+                          icon={ListTodo}
+                          title="No tasks match these filters"
+                          description="Try removing a filter to see more of your work."
+                          action={
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFilterStatus(new Set());
+                                setFilterProject(new Set());
+                                setFilterPriority(new Set());
+                                setFilterDue(new Set());
+                                setFilterLabels(new Set());
+                                setFilterModule(new Set());
+                              }}
+                              className="h-8 rounded-full border border-sts-card-border px-3.5 font-sans text-[12px] font-medium text-sts-foreground transition-colors hover:bg-sts-surface"
+                            >
+                              Clear filters
+                            </button>
+                          }
+                        />
+                      ) : (
+                        <EmptyState
+                          icon={ListTodo}
+                          title="You're all caught up"
+                          description="Nothing is assigned to you right now. New tickets assigned to you will show up here."
+                        />
+                      )}
                     </td>
                   </tr>
                 ) : pagedRows.map((row) =>
@@ -1394,8 +1464,9 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
+                    onClick={() => setPage(Math.max(1, page - 1))}
                     disabled={page === 1}
+                    aria-label="Previous page"
                     className="flex h-7 w-7 items-center justify-center rounded-full border border-sts-card-border font-sans text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <ChevronLeft className="size-3.5" />
@@ -1415,6 +1486,8 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                           key={p}
                           type="button"
                           onClick={() => setPage(p as number)}
+                          aria-label={`Page ${p}`}
+                          aria-current={page === p ? "page" : undefined}
                           className={cn(
                             "flex h-7 w-7 items-center justify-center rounded-full font-sans text-[11.5px] font-medium transition-colors",
                             page === p
@@ -1428,8 +1501,9 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                     )}
                   <button
                     type="button"
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                    onClick={() => setPage(Math.min(totalPages, page + 1))}
                     disabled={page === totalPages}
+                    aria-label="Next page"
                     className="flex h-7 w-7 items-center justify-center rounded-full border border-sts-card-border font-sans text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     <ChevronRight className="size-3.5" />
@@ -1523,7 +1597,8 @@ export function MyTasksPage({ tasks: initialTasks, subDepartmentStatuses, subDep
                   label,
                   color: "#64748b",
                   order: 999,
-                  isComplete: ["Live", "Done", "Completed", "Closed"].includes(label),
+                  category: filteredByStatus.get(label)?.[0]?.statusCategory ?? "TODO",
+                  isComplete: filteredByStatus.get(label)?.[0]?.statusCategory === "COMPLETE",
                 }}
                 cards={filteredByStatus.get(label) ?? []}
                 statusesForCard={resolveStatusesForCard}

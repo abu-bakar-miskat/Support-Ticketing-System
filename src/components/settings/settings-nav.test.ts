@@ -10,13 +10,15 @@ const hrefs = (
     .flatMap((group) => group.items)
     .map((item) => item.href)
 
-describe("template marketplace nav", () => {
-  it("shows the marketplace to a tenant admin in and out of a department", () => {
-    expect(hrefs("admin", false)).toContain("/settings/templates-catalogue")
-    expect(hrefs("admin", true)).toContain("/settings/templates-catalogue")
+describe("features marketplace nav", () => {
+  it("shows the features marketplace to a tenant admin or manager in the organization view", () => {
+    expect(hrefs("admin", false)).toContain("/settings/features")
+    expect(hrefs("manager", false)).toContain("/settings/features")
+    expect(hrefs("admin", false)).not.toContain("/settings/templates-catalogue")
   })
 
-  it("hides the marketplace from department heads", () => {
-    expect(hrefs("manager", true, true)).not.toContain("/settings/templates-catalogue")
+  it("hides it inside a department and from staff", () => {
+    expect(hrefs("admin", true)).not.toContain("/settings/features")
+    expect(hrefs("agent", false)).not.toContain("/settings/features")
   })
 })

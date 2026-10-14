@@ -257,7 +257,7 @@ export function patchTicketDetailFromActivity(
       return {
         ...detail,
         activity,
-        timeEntries: actorId
+        timeEntries: payload.reopenCycle ? [] : actorId
           ? (detail.timeEntries ?? []).filter((e) => e.userId !== actorId)
           : detail.timeEntries,
       }

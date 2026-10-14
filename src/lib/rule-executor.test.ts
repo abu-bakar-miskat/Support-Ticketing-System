@@ -115,3 +115,35 @@ describe("applyRulesToTicket — assign_agent availability (WH-03)", () => {
     })
   })
 })
+
+
+describe("applyRulesToTicket — SLA eligibility", () => {
+  it.each([false, true])("allows SLA actions only for eligible tickets (allowSla: %s)", async allowSla => {
+    const slaAction = { type: "apply_sla", params: { slaPolicyId: "sla-1" } }
+    const priorityAction = { type: "set_priority", params: { priority: "High" } }
+    mockRuleFindMany.mockResolvedValue([{
+      id: "r1", name: "Set SLA and priority", order: 0, enabled: true, stopProcessing: false,
+      conditions: { combinator: "AND", conditions: [] }, actions: [slaAction, priorityAction],
+    }] as never)
+    vi.mocked(prisma.slaPolicy.findFirst).mockResolvedValue({
+      id: "sla-1", firstResponseMins: 30, resolutionMins: 120,
+    } as never)
+    vi.mocked(prisma.slaTimer.upsert).mockResolvedValue({} as never)
+
+    // Intake callers omit allowSla and retain the existing default behavior.
+    const result = await applyRulesToTicket(allowSla ? ticket : { ...ticket, allowSla: false }, {})
+
+    expect(mockTicketUpdate).toHaveBeenCalledWith({ where: { id: "t1" }, data: { priority: "High" } })
+    expect(result.firedCount).toBe(allowSla ? 2 : 1)
+    expect(mockLogCreateMany).toHaveBeenCalledWith({ data: [expect.objectContaining({
+      actionsApplied: allowSla ? [slaAction, priorityAction] : [priorityAction],
+    })] })
+    if (allowSla) expect(prisma.slaTimer.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      create: expect.objectContaining({ ticketId: "t1", policyId: "sla-1" }),
+    }))
+    else {
+      expect(prisma.slaPolicy.findFirst).not.toHaveBeenCalled()
+      expect(prisma.slaTimer.upsert).not.toHaveBeenCalled()
+    }
+  })
+})

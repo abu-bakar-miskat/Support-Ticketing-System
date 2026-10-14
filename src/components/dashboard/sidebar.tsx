@@ -10,6 +10,7 @@ import { DepartmentIcon } from "@/components/icons/department-icon";
 import { getDepartmentIcon } from "@/lib/department-icons";
 import { SidebarNavIcon } from "@/components/dashboard/sidebar-nav-icon";
 import { UserProfileMenu } from "@/components/dashboard/user-profile-menu";
+import { TenantLogo } from "@/components/theme/tenant-logo";
 
 import {
   LayoutDashboard,
@@ -62,6 +63,43 @@ import { ProjectModal } from "@/components/projects/project-modal";
 // import { InstallAppButton } from "@/components/pwa/install-app-button";
 
 import type { LucideIcon } from "lucide-react";
+import { Tip } from "@/components/ui/tooltip";
+import {
+  DEPT_SIDEBAR_GROUP_KEYS,
+  DEPT_SIDEBAR_GROUP_LABELS,
+  type DeptSidebarColors,
+  type DeptSidebarGroupKey,
+} from "@/lib/sidebar-colors";
+import {
+  GROUP_CARD_CLASS,
+  GROUP_ITEM_IDLE_CLASS,
+  GROUP_LABEL_CLASS,
+  GROUP_NAV_ACTIVE_CLASS as NAV_ITEM_ACTIVE_CLASS,
+  GROUP_NAV_ROW_CLASS,
+  groupStyle,
+} from "@/components/dashboard/sidebar-group-styles";
+
+/** Which tinted card each nav href lives in. */
+const NAV_GROUP_OF: Record<string, DeptSidebarGroupKey> = {
+  "/departments": "workspace",
+  "/": "operations",
+  "/manager": "operations",
+  "/tasks": "operations",
+  "/projects": "operations",
+  "/inbox": "operations",
+  "/time": "operations",
+  "/activity": "operations",
+  "/department": "team",
+  "/mailboxes": "team",
+  "/sub-departments": "team",
+  "/board": "views",
+  "/timeline": "views",
+  "/reports": "views",
+  "/calendar": "views",
+  "/profile": "account",
+  "/settings": "account",
+  "/docs": "account",
+};
 
 export type SidebarProject = {
   id: string;
@@ -96,8 +134,6 @@ type NavItem = {
   icon: LucideIcon;
   badge?: number;
   requiresModulesAccess?: boolean;
-  /** Hidden in support departments (dev-planning views). */
-  hideForSupport?: boolean;
   /** Only shown in support departments. */
   supportOnly?: boolean;
   /** Hidden unless the tenant's active templates include this feature key (Template Catalogue) */
@@ -119,7 +155,6 @@ const navViews: NavItem[] = [
     label: "Timeline",
     href: "/timeline",
     icon: GanttChart,
-    hideForSupport: true,
     templateFeatureKey: "timeline",
   },
   // {
@@ -173,10 +208,14 @@ type SidebarProps = {
   /** Active tenant branding — overrides the default PEN logo/name when set. */
   brandingName?: string | null;
   brandingLogoUrl?: string | null;
+  /** Logo variant for the dark theme; falls back to brandingLogoUrl. */
+  brandingLogoUrlDark?: string | null;
   /** Hide the branded logo; the display name fills the width. */
   brandingHideLogo?: boolean;
   /** Hide the display name; the branded logo fills the width. */
   brandingHideDisplayName?: boolean;
+  /** Accent per nav group card (tenant Branding page). */
+  sidebarColors: DeptSidebarColors;
 };
 
 function SidebarNavLink({
@@ -203,11 +242,12 @@ function SidebarNavLink({
           // prefetches an empty shell — this caches the whole RSC payload for
           // instant transitions (fresh for staleTimes.dynamic seconds).
           prefetch={true}
+          aria-current={active ? "page" : undefined}
           className={cn(
-            "sts-nav-link relative flex min-w-0 flex-1 items-center gap-2 rounded-full px-2.5 font-sans text-[13px] text-sts-muted hover:bg-sts-blue/10 hover:text-sts-blue",
-            active && "sts-nav-active bg-sts-blue/10 font-semibold text-sts-blue",
+            GROUP_NAV_ROW_CLASS,
+            "min-w-0 flex-1",
+            active ? NAV_ITEM_ACTIVE_CLASS : GROUP_ITEM_IDLE_CLASS,
           )}
-          style={{ height: "28px" }}
         >
           <SidebarNavIcon icon={Icon} />
           <span className="truncate">{item.label}</span>
@@ -220,55 +260,59 @@ function SidebarNavLink({
             </>
           )}
         </Link>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.preventDefault();
-            onQuickAdd();
-          }}
-          aria-label={`New ${item.label}`}
-          title={`New ${item.label.toLowerCase()}`}
-          className="flex size-5 shrink-0 items-center justify-center rounded text-sts-subtle hover:bg-sts-surface hover:text-sts-id"
-        >
-          <Plus className="size-3" aria-hidden="true" />
-        </button>
+        <Tip label={`New ${item.label.toLowerCase()}`}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              onQuickAdd();
+            }}
+            aria-label={`New ${item.label}`}
+            className="flex size-5 shrink-0 items-center justify-center rounded text-sts-subtle hover:bg-sts-surface hover:text-sts-id"
+          >
+            <Plus className="size-3" aria-hidden="true" />
+          </button>
+        </Tip>
       </div>
     );
   }
 
   return (
-    <Link
-      href={href(item.href)}
-      prefetch={true}
-      title={collapsed ? item.label : undefined}
-      className={cn(
-        "sts-nav-link relative flex h-7 items-center rounded-full font-sans text-[13px] text-sts-muted hover:bg-sts-blue/10 hover:text-sts-blue",
-        collapsed ? "justify-center px-0" : "gap-2 px-2.5",
-        active && "sts-nav-active bg-sts-blue/10 font-semibold text-sts-blue",
-      )}
-    >
-      <span className="relative shrink-0">
-        <SidebarNavIcon icon={Icon} />
-        {collapsed && item.badge != null && item.badge > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-sts-blue px-0.5 font-sans text-[11.5px] font-semibold text-white dark:text-gray-900">
-            {item.badge > 9 ? "9+" : item.badge}
-          </span>
+    <Tip label={collapsed ? item.label : null} side="right">
+      <Link
+        href={href(item.href)}
+        prefetch={true}
+        aria-label={collapsed ? item.label : undefined}
+        aria-current={active ? "page" : undefined}
+        className={cn(
+          GROUP_NAV_ROW_CLASS,
+          collapsed && "justify-center px-0",
+          active ? NAV_ITEM_ACTIVE_CLASS : GROUP_ITEM_IDLE_CLASS,
         )}
-      </span>
-      {!collapsed && (
-        <>
-          <span className="truncate">{item.label}</span>
-          {item.badge != null && (
-            <>
-              <span className="flex-1" />
-              <span className="text-[11.5px] text-sts-subtle">
-                {item.badge}
-              </span>
-            </>
+      >
+        <span className="relative shrink-0">
+          <SidebarNavIcon icon={Icon} />
+          {collapsed && item.badge != null && item.badge > 0 && (
+            <span className="absolute -right-1 -top-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-sts-blue px-0.5 font-sans text-[11.5px] font-semibold text-white dark:text-gray-900">
+              {item.badge > 9 ? "9+" : item.badge}
+            </span>
           )}
-        </>
-      )}
-    </Link>
+        </span>
+        {!collapsed && (
+          <>
+            <span className="truncate">{item.label}</span>
+            {item.badge != null && (
+              <>
+                <span className="flex-1" />
+                <span className="text-[11.5px] text-sts-subtle">
+                  {item.badge}
+                </span>
+              </>
+            )}
+          </>
+        )}
+      </Link>
+    </Tip>
   );
 }
 
@@ -328,8 +372,10 @@ export function Sidebar({
   isDrawer = false,
   brandingName = null,
   brandingLogoUrl = null,
+  brandingLogoUrlDark = null,
   brandingHideLogo = false,
   brandingHideDisplayName = false,
+  sidebarColors,
 }: SidebarProps) {
   const {
     projects,
@@ -427,7 +473,7 @@ export function Sidebar({
   }
 
   const deptContextClassName = cn(
-    "flex w-full items-center rounded-lg border border-sts-card-border bg-sts-surface text-left outline-none transition-colors",
+    "flex w-full items-center rounded-lg border border-sts-card-border bg-sts-surface text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-sts-accent/60",
     "hover:border-sts-card-border hover:bg-sts-surface data-popup-open:border-sts-card-border data-popup-open:bg-sts-surface",
   );
 
@@ -460,91 +506,110 @@ export function Sidebar({
 
   const navMainBase: NavItem[] = isCrossAccessDept
     ? [
-          ...(hasMultiDeptAccess && !isAgent
-            ? [
-                {
-                  label: "My Departments",
-                  href: "/departments",
-                  icon: DepartmentIcon,
-                },
-              ]
-            : []),
-          {
-            label: "Tasks",
-            href: "/tasks",
-            icon: ListChecks,
-            templateFeatureKey: "tasks",
-          },
-          {
-            label: "Projects",
-            href: "/projects",
-            icon: Layers,
-            templateFeatureKey: "projects",
-          },
-          {
-            label: "Notifications",
-            href: "/inbox",
-            icon: Bell,
-            badge: notifCount ?? undefined,
-          },
-          {
-            label: "Activity",
-            href: "/activity",
-            icon: Activity,
-            templateFeatureKey: "activity",
-            hideForAgent: true,
-          },
-        ]
-      : [
-          ...(hasMultiDeptAccess && !isAgent
-            ? [
-                {
-                  label: "My Departments",
-                  href: "/departments",
-                  icon: DepartmentIcon,
-                },
-              ]
-            : []),
-          {
-            label: "Home",
-            href: isManagerOfActiveDept ? "/manager" : "/",
-            icon: LayoutDashboard,
-          },
-          {
-            label: "Tasks",
-            href: "/tasks",
-            icon: ListChecks,
-            templateFeatureKey: "tasks",
-            badge: isManagerOfActiveDept
-              ? undefined
-              : myTasksCount || undefined,
-          },
-          {
-            label: "Projects",
-            href: "/projects",
-            icon: Layers,
-            templateFeatureKey: "projects",
-          },
-          {
-            label: "Notifications",
-            href: "/inbox",
-            icon: Bell,
-            badge: notifCount ?? undefined,
-          },
-          {
-            label: "My Time",
-            href: "/time",
-            icon: Clock,
-            templateFeatureKey: "myTime",
-          },
-          {
-            label: "Activity",
-            href: "/activity",
-            icon: Activity,
-            templateFeatureKey: "activity",
-            hideForAgent: true,
-          },
-          ...(isAdmin || isManager
+        ...(hasMultiDeptAccess && !isAgent
+          ? [
+              {
+                label: "My Departments",
+                href: "/departments",
+                icon: DepartmentIcon,
+              },
+            ]
+          : []),
+        {
+          label: "Tasks",
+          href: "/tasks",
+          icon: ListChecks,
+          templateFeatureKey: "tasks",
+        },
+        {
+          label: "Projects",
+          href: "/projects",
+          icon: Layers,
+          templateFeatureKey: "projects",
+        },
+        {
+          label: "Notifications",
+          href: "/inbox",
+          icon: Bell,
+          badge: notifCount ?? undefined,
+        },
+        {
+          label: "Activity",
+          href: "/activity",
+          icon: Activity,
+          templateFeatureKey: "activity",
+          hideForAgent: true,
+        },
+      ]
+    : [
+        ...(hasMultiDeptAccess && !isAgent
+          ? [
+              {
+                label: "My Departments",
+                href: "/departments",
+                icon: DepartmentIcon,
+              },
+            ]
+          : []),
+        {
+          label: "Home",
+          href: isManagerOfActiveDept ? "/manager" : "/",
+          icon: LayoutDashboard,
+        },
+        {
+          label: "Tasks",
+          href: "/tasks",
+          icon: ListChecks,
+          templateFeatureKey: "tasks",
+          badge: isManagerOfActiveDept ? undefined : myTasksCount || undefined,
+        },
+        {
+          label: "Projects",
+          href: "/projects",
+          icon: Layers,
+          templateFeatureKey: "projects",
+        },
+        {
+          label: "Notifications",
+          href: "/inbox",
+          icon: Bell,
+          badge: notifCount ?? undefined,
+        },
+        {
+          label: "My Time",
+          href: "/time",
+          icon: Clock,
+          templateFeatureKey: "myTime",
+        },
+        {
+          label: "Activity",
+          href: "/activity",
+          icon: Activity,
+          templateFeatureKey: "activity",
+          hideForAgent: true,
+        },
+        ...(isAdmin || isManager
+          ? [
+              {
+                label: "Members",
+                href: "/department",
+                icon: UsersRound,
+                templateFeatureKey: "members" as const,
+              },
+              {
+                label: "Shared Mailboxes",
+                href: "/mailboxes",
+                icon: Inbox,
+                templateFeatureKey: "sharedMailboxes" as const,
+              },
+              {
+                label: "Sub Departments",
+                href: "/sub-departments",
+                icon: Network,
+                templateFeatureKey: "subDepartmentReports" as const,
+              },
+            ]
+          : isSubManager
             ? [
                 {
                   label: "Members",
@@ -558,24 +623,9 @@ export function Sidebar({
                   icon: Inbox,
                   templateFeatureKey: "sharedMailboxes" as const,
                 },
-                {
-                  label: "Sub Departments",
-                  href: "/sub-departments",
-                  icon: Network,
-                  templateFeatureKey: "subDepartmentReports" as const,
-                },
               ]
-            : isSubManager
-              ? [
-                  {
-                    label: "Shared Mailboxes",
-                    href: "/mailboxes",
-                    icon: Inbox,
-                    templateFeatureKey: "sharedMailboxes" as const,
-                  },
-                ]
-              : []),
-        ];
+            : []),
+      ];
 
   const navMain: NavItem[] = navMainBase;
 
@@ -583,51 +633,71 @@ export function Sidebar({
     <>
       <aside
         className={cn(
-          "sts-glass-panel flex h-full shrink-0 flex-col gap-0.5 overflow-x-hidden overflow-y-auto border-r py-3.5 transition-[width,padding] duration-200 ease-in-out",
-          isCollapsed ? "w-[68px] px-2" : "w-[220px] px-3",
+          "sts-glass-panel flex h-full shrink-0 flex-col gap-0.5 overflow-hidden border-r py-3.5 transition-[width,padding] duration-200 ease-in-out",
+          isCollapsed ? "w-[68px] px-2" : "w-[240px] px-3",
           className,
         )}
       >
         {/* Logo row */}
         <div
           className={cn(
-            "flex h-14 items-center",
+            "flex h-12 items-center",
             isCollapsed ? "justify-center" : "pl-1",
           )}
         >
           {isCollapsed ? (
-            <button
-              type="button"
-              onClick={onToggleCollapse}
-              className="flex size-10 items-center justify-center rounded-full hover:bg-sts-surface"
-              aria-label="Expand sidebar"
-              title="Expand sidebar"
-            >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/images/support-icon.png"
-                alt="Global Support Portal"
-                width={40}
-                height={40}
-                className="size-10 dark:hidden"
-              />
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/images/support-icon-white.png"
-                alt=""
-                width={40}
-                height={40}
-                className="hidden size-10 dark:block"
-              />
-            </button>
+            <Tip label="Expand sidebar" side="right">
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                className="flex size-10 items-center justify-center rounded-full hover:bg-sts-surface"
+                aria-label="Expand sidebar"
+              >
+                {brandingLogoUrl && !brandingHideLogo ? (
+                  <TenantLogo
+                    src={brandingLogoUrl}
+                    darkSrc={brandingLogoUrlDark}
+                    alt={brandingName ?? ""}
+                    width={40}
+                    height={40}
+                    className="size-10 object-contain"
+                  />
+                ) : brandingName ? (
+                  <span
+                    aria-hidden="true"
+                    className="flex size-9 items-center justify-center rounded-lg bg-sts-foreground text-sm font-semibold uppercase text-sts-bg"
+                  >
+                    {brandingName.charAt(0)}
+                  </span>
+                ) : (
+                  <>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/images/support-icon.png"
+                      alt="Global Support Portal"
+                      width={40}
+                      height={40}
+                      className="size-10 dark:hidden"
+                    />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/images/support-icon-white.png"
+                      alt=""
+                      width={40}
+                      height={40}
+                      className="hidden size-10 dark:block"
+                    />
+                  </>
+                )}
+              </button>
+            </Tip>
           ) : brandingLogoUrl || brandingName ? (
             <div className="flex min-w-0 items-center gap-2">
               {!brandingHideLogo &&
                 (brandingLogoUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <TenantLogo
                     src={brandingLogoUrl}
-                    alt=""
+                    darkSrc={brandingLogoUrlDark}
                     height={36}
                     className={cn(
                       "w-auto shrink-0 object-contain",
@@ -679,15 +749,16 @@ export function Sidebar({
             </button>
           )}
           {!isCollapsed && onToggleCollapse && !onClose && (
-            <button
-              type="button"
-              onClick={onToggleCollapse}
-              className="ml-auto rounded p-1 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-              aria-label="Collapse sidebar"
-              title="Collapse sidebar"
-            >
-              <PanelLeftClose className="size-4" />
-            </button>
+            <Tip label="Collapse sidebar">
+              <button
+                type="button"
+                onClick={onToggleCollapse}
+                className="ml-auto rounded p-1 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+                aria-label="Collapse sidebar"
+              >
+                <PanelLeftClose className="size-4" />
+              </button>
+            </Tip>
           )}
         </div>
 
@@ -697,22 +768,24 @@ export function Sidebar({
         {(isAdmin || isManager || allDepts.length > 0) && activeDept && (
           <div className="flex flex-col gap-0.5">
             {isAdmin && isCollapsed && (
-              <button
-                type="button"
-                disabled={switchingDept}
-                title="All Departments"
-                onClick={async () => {
-                  await fetch("/api/active-dept", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ deptId: null }),
-                  });
-                  window.location.href = "/departments";
-                }}
-                className="flex h-7 w-full items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
-              >
-                <ArrowLeft className="size-3.5" />
-              </button>
+              <Tip label="All Departments" side="right">
+                <button
+                  type="button"
+                  disabled={switchingDept}
+                  aria-label="All Departments"
+                  onClick={async () => {
+                    await fetch("/api/active-dept", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ deptId: null }),
+                    });
+                    window.location.href = "/departments";
+                  }}
+                  className="flex h-7 w-full items-center justify-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+                >
+                  <ArrowLeft className="size-3.5" />
+                </button>
+              </Tip>
             )}
             {isAdmin && !isCollapsed && (
               <button
@@ -743,12 +816,17 @@ export function Sidebar({
                       ? `${isCrossAccessDept ? "Guest access · " : ""}${deptHeaderName}`
                       : undefined
                   }
+                  aria-label={
+                    isCollapsed
+                      ? `${isCrossAccessDept ? "Guest access · " : ""}${deptHeaderName}`
+                      : undefined
+                  }
                   className={cn(
                     deptContextClassName,
                     switchingDept && "opacity-60",
                     isCollapsed
                       ? "justify-center p-2"
-                      : "items-center gap-2 px-2.5 py-2",
+                      : "items-center gap-2 px-2.5 py-1.5",
                   )}
                 >
                   <DeptContextIcon name={deptHeaderName} id={deptHeaderId} />
@@ -806,7 +884,7 @@ export function Sidebar({
                   deptContextClassName,
                   isCollapsed
                     ? "justify-center p-2"
-                    : "items-center gap-2 px-2.5 py-2",
+                    : "items-center gap-2 px-2.5 py-1.5",
                 )}
                 title={
                   isCollapsed
@@ -826,21 +904,23 @@ export function Sidebar({
           </div>
         )}
         {isSuperAdmin && !activeDeptId && (
-          <Link
-            href="/platform"
-            title={isCollapsed ? "Platform" : undefined}
-            className={cn(
-              "flex items-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground",
-              isCollapsed ? "justify-center p-2" : "gap-2 px-2.5 py-1.5",
-            )}
-          >
-            <SidebarNavIcon icon={Building2} size="sm" className="shrink-0" />
-            {!isCollapsed && (
-              <span className="font-sans text-[11.5px] font-medium">
-                Platform
-              </span>
-            )}
-          </Link>
+          <Tip label={isCollapsed ? "Platform" : null} side="right">
+            <Link
+              href="/platform"
+              aria-label={isCollapsed ? "Platform" : undefined}
+              className={cn(
+                "flex items-center rounded-full text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground",
+                isCollapsed ? "justify-center p-2" : "gap-2 px-2.5 py-1.5",
+              )}
+            >
+              <SidebarNavIcon icon={Building2} size="sm" className="shrink-0" />
+              {!isCollapsed && (
+                <span className="font-sans text-[11.5px] font-medium">
+                  Platform
+                </span>
+              )}
+            </Link>
+          </Tip>
         )}
         {isAdmin && !activeDeptId && (
           <div
@@ -849,6 +929,7 @@ export function Sidebar({
               isCollapsed ? "justify-center p-2" : "gap-2 px-2.5 py-2",
             )}
             title={isCollapsed ? "All Departments" : undefined}
+            aria-label={isCollapsed ? "All Departments" : undefined}
           >
             <SidebarNavIcon
               icon={DepartmentIcon}
@@ -870,7 +951,7 @@ export function Sidebar({
               deptContextClassName,
               isCollapsed
                 ? "justify-center p-2"
-                : "items-center gap-2 px-2.5 py-2",
+                : "items-center gap-2 px-2.5 py-1.5",
             )}
             title={
               isCollapsed
@@ -893,157 +974,11 @@ export function Sidebar({
 
         <div className="h-2" />
 
-        {/* Personal nav items — not department-scoped */}
-        {navMain
-          .filter((item) =>
-            isFeatureVisible(item.templateFeatureKey, activeFeatureKeys),
-          )
-          .filter((item) => isPathEnabledByFlags(item.href, platformFlags))
-          .filter((item) => !(item.hideForAgent && isAgent))
-          .map((item) => {
-            const active =
-              item.href === "/"
-                ? pathname === "/"
-                : pathname.startsWith(item.href);
-            const onQuickAdd =
-              item.label === "Tasks"
-                ? onCreateTask
-                : item.label === "Projects" && isPrivileged
-                  ? () => setShowCreateProject(true)
-                  : undefined;
-            return (
-              <SidebarNavLink
-                key={item.href}
-                item={item}
-                active={active}
-                collapsed={isCollapsed}
-                onQuickAdd={onQuickAdd}
-              />
-            );
-          })}
-
-        {/* Pinned projects */}
-        {!isCollapsed &&
-          (() => {
-            const sorted = sidebarProjectPool
-              .filter((p) => pins.has(p.id))
-              .sort((a, b) => a.label.localeCompare(b.label));
-            if (sorted.length === 0) return null;
-
-            return (
-              <>
-                <div className="h-3.5" />
-                <div className="flex items-center gap-0.5">
-                  <button
-                    type="button"
-                    onClick={() => setProjectsExpanded((v) => !v)}
-                    aria-expanded={projectsExpanded}
-                    aria-label={
-                      projectsExpanded
-                        ? "Collapse pinned projects"
-                        : "Expand pinned projects"
-                    }
-                    className="flex min-w-0 flex-1 items-center gap-1 rounded-md px-0.5 py-0.5 text-left transition-colors hover:bg-sts-surface"
-                  >
-                    <ChevronRight
-                      className={cn(
-                        "size-3 shrink-0 text-sts-subtle transition-transform",
-                        projectsExpanded && "rotate-90",
-                      )}
-                    />
-                    <p className="min-w-0 flex-1 font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle">
-                      PINNED PROJECTS
-                    </p>
-                    <span className="font-sans text-[11.5px] text-sts-subtle">
-                      {sorted.length}
-                    </span>
-                  </button>
-                  {isPrivileged && (
-                    <button
-                      type="button"
-                      onClick={() => setShowCreateProject(true)}
-                      aria-label="New project"
-                      className="flex size-4 shrink-0 items-center justify-center rounded text-sts-subtle hover:bg-sts-surface hover:text-sts-id"
-                    >
-                      <Plus className="size-3" aria-hidden="true" />
-                    </button>
-                  )}
-                </div>
-                {projectsExpanded && (
-                  <>
-                    <div className="h-1" />
-                    {sorted.map((p) => {
-                      const isPinned = pins.has(p.id);
-                      return (
-                        <Link
-                          key={p.id}
-                          href={p.href}
-                          className={cn(
-                            "group sts-nav-link flex h-7 items-center gap-2 rounded-full px-2.5 font-sans text-[13px] text-sts-muted hover:bg-sts-surface hover:text-sts-foreground",
-                            pathname === p.href &&
-                              "bg-sts-surface font-semibold text-sts-foreground",
-                          )}
-                        >
-                          <ProjectDot
-                            color={p.color}
-                            avatarUrl={p.avatarUrl}
-                            name={p.label}
-                            size={16}
-                          />
-                          <span className="min-w-0 flex-1 truncate">
-                            {p.label}
-                          </span>
-                          {/* Pin button — always visible */}
-                          <button
-                            type="button"
-                            onClick={(e) => togglePin(e, p.id)}
-                            aria-label={
-                              isPinned
-                                ? `Unpin ${p.label}`
-                                : `Pin ${p.label} to top`
-                            }
-                            className={cn(
-                              "flex size-4 shrink-0 items-center justify-center rounded transition-colors",
-                              isPinned
-                                ? "text-sts-blue hover:text-red-400"
-                                : "text-sts-subtle hover:text-sts-id",
-                            )}
-                          >
-                            {isPinned ? (
-                              <PinOff className="size-3" aria-hidden="true" />
-                            ) : (
-                              <Pin className="size-3" aria-hidden="true" />
-                            )}
-                          </button>
-                          {!isPinned && (
-                            <span className="text-[11.5px] text-sts-subtle">
-                              {p.count}
-                            </span>
-                          )}
-                          {isPinned && (
-                            <span className="text-[11.5px] text-sts-blue">
-                              {p.count}
-                            </span>
-                          )}
-                        </Link>
-                      );
-                    })}
-                  </>
-                )}
-              </>
-            );
-          })()}
-
-        <div className="h-3.5" />
-        {!isCollapsed && (
-          <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle">
-            VIEWS
-          </p>
-        )}
-        <div className="h-1" />
-
-        {navViews
-            .filter((item) => {
+        {/* Nav — tinted group cards (colours from tenant Branding). Only this
+            region scrolls; the logo/department header and user footer stay put. */}
+        <div className="-mx-1 min-h-0 flex-1 overflow-y-auto overscroll-contain px-1 scrollbar-none">
+          {(() => {
+            const isVisibleView = (item: NavItem) => {
               if (!isFeatureVisible(item.templateFeatureKey, activeFeatureKeys))
                 return false;
               if (!isPathEnabledByFlags(item.href, platformFlags)) return false;
@@ -1051,11 +986,7 @@ export function Sidebar({
               if (item.requiresDeptAdmin && !canAdminActiveDeptSettings)
                 return false;
               if (item.requiresModulesAccess && !canAccessModules) return false;
-              // Per-department-type interface: support departments hide dev-planning
-              // views (Timeline, Modules) and surface Support forms; other types
-              // hide the support-only item.
               const isSupportDept = activeDeptType === "support";
-              if (item.hideForSupport && isSupportDept) return false;
               if (item.supportOnly && !isSupportDept) return false;
               if (isCrossAccessDept) {
                 // Full-access guests can also see Reports (read-only, dept-wide).
@@ -1065,24 +996,218 @@ export function Sidebar({
                 return allowed.includes(item.href);
               }
               return true;
-            })
-            .map((item) => {
-              const active =
-                item.href === "/settings"
-                  ? pathname.startsWith("/settings")
-                  : pathname === item.href;
-              return (
-                <SidebarNavLink
-                  key={item.href}
-                  item={item}
-                  active={active}
-                  collapsed={isCollapsed}
-                />
-              );
-            })}
+            };
 
-        {/* Spacer */}
-        <div className="flex-1" />
+            const entries = [
+              // Personal nav items — not department-scoped
+              ...navMain
+                .filter((item) =>
+                  isFeatureVisible(item.templateFeatureKey, activeFeatureKeys),
+                )
+                .filter((item) =>
+                  isPathEnabledByFlags(item.href, platformFlags),
+                )
+                .filter((item) => !(item.hideForAgent && isAgent))
+                .map((item) => ({
+                  item,
+                  active:
+                    item.href === "/"
+                      ? pathname === "/"
+                      : pathname.startsWith(item.href),
+                  onQuickAdd:
+                    item.label === "Tasks"
+                      ? onCreateTask
+                      : item.label === "Projects" && isPrivileged
+                        ? () => setShowCreateProject(true)
+                        : undefined,
+                })),
+              ...navViews.filter(isVisibleView).map((item) => ({
+                item,
+                active:
+                  item.href === "/settings"
+                    ? pathname.startsWith("/settings")
+                    : pathname === item.href,
+                onQuickAdd: undefined,
+              })),
+            ];
+
+            return (
+              <nav aria-label="Main" className="flex flex-col gap-1.5">
+                {DEPT_SIDEBAR_GROUP_KEYS.map((groupKey) => {
+                  const groupEntries = entries.filter(
+                    (e) =>
+                      (NAV_GROUP_OF[e.item.href] ?? "operations") === groupKey,
+                  );
+                  if (groupEntries.length === 0) return null;
+                  return (
+                    <div key={groupKey} className="flex flex-col gap-1.5">
+                      <div
+                        role="group"
+                        aria-label={DEPT_SIDEBAR_GROUP_LABELS[groupKey]}
+                        style={groupStyle(sidebarColors[groupKey])}
+                        className={cn(
+                          GROUP_CARD_CLASS,
+                          "flex flex-col gap-px rounded-xl p-1",
+                        )}
+                      >
+                        {!isCollapsed && (
+                          <p className={GROUP_LABEL_CLASS}>
+                            {DEPT_SIDEBAR_GROUP_LABELS[groupKey]}
+                          </p>
+                        )}
+                        {groupEntries.map(({ item, active, onQuickAdd }) => (
+                          <SidebarNavLink
+                            key={item.href}
+                            item={item}
+                            active={active}
+                            collapsed={isCollapsed}
+                            onQuickAdd={onQuickAdd}
+                          />
+                        ))}
+                      </div>
+                      {groupKey === "operations" &&
+                        !isCollapsed &&
+                        (() => {
+                          const sorted = sidebarProjectPool
+                            .filter((p) => pins.has(p.id))
+                            .sort((a, b) => a.label.localeCompare(b.label));
+                          if (sorted.length === 0) return null;
+
+                          return (
+                            <div
+                              role="group"
+                              aria-label="Pinned projects"
+                              style={groupStyle(sidebarColors.operations)}
+                              className={cn(
+                                GROUP_CARD_CLASS,
+                                "flex flex-col gap-px rounded-xl p-1",
+                              )}
+                            >
+                              <div className="flex items-center gap-0.5 px-1 pt-0.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setProjectsExpanded((v) => !v)}
+                                  aria-expanded={projectsExpanded}
+                                  aria-label={
+                                    projectsExpanded
+                                      ? "Collapse pinned projects"
+                                      : "Expand pinned projects"
+                                  }
+                                  className="flex min-w-0 flex-1 items-center gap-1 rounded-md px-0.5 py-0.5 text-left transition-colors hover:bg-sts-surface"
+                                >
+                                  <ChevronRight
+                                    className={cn(
+                                      "size-3 shrink-0 text-sts-subtle transition-transform",
+                                      projectsExpanded && "rotate-90",
+                                    )}
+                                  />
+                                  <p className="min-w-0 flex-1 font-sans text-[9.5px] font-semibold tracking-[0.9px] text-sts-subtle">
+                                    PINNED PROJECTS
+                                  </p>
+                                  <span className="font-sans text-[11.5px] text-sts-subtle">
+                                    {sorted.length}
+                                  </span>
+                                </button>
+                                {isPrivileged && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowCreateProject(true)}
+                                    aria-label="New project"
+                                    className="flex size-4 shrink-0 items-center justify-center rounded text-sts-subtle hover:bg-sts-surface hover:text-sts-id"
+                                  >
+                                    <Plus
+                                      className="size-3"
+                                      aria-hidden="true"
+                                    />
+                                  </button>
+                                )}
+                              </div>
+                              {projectsExpanded && (
+                                <>
+                                  <div className="h-0.5" />
+                                  {sorted.map((p) => {
+                                    const isPinned = pins.has(p.id);
+                                    return (
+                                      <Link
+                                        key={p.id}
+                                        href={p.href}
+                                        aria-current={
+                                          pathname === p.href
+                                            ? "page"
+                                            : undefined
+                                        }
+                                        className={cn(
+                                          "group",
+                                          GROUP_NAV_ROW_CLASS,
+                                          pathname === p.href
+                                            ? NAV_ITEM_ACTIVE_CLASS
+                                            : GROUP_ITEM_IDLE_CLASS,
+                                        )}
+                                      >
+                                        <ProjectDot
+                                          color={p.color}
+                                          avatarUrl={p.avatarUrl}
+                                          name={p.label}
+                                          size={16}
+                                        />
+                                        <span className="min-w-0 flex-1 truncate">
+                                          {p.label}
+                                        </span>
+                                        {/* Pin button — always visible */}
+                                        <button
+                                          type="button"
+                                          onClick={(e) => togglePin(e, p.id)}
+                                          aria-label={
+                                            isPinned
+                                              ? `Unpin ${p.label}`
+                                              : `Pin ${p.label} to top`
+                                          }
+                                          className={cn(
+                                            "flex size-4 shrink-0 items-center justify-center rounded transition-colors",
+                                            isPinned
+                                              ? "text-sts-blue hover:text-red-400"
+                                              : "text-sts-subtle hover:text-sts-id",
+                                          )}
+                                        >
+                                          {isPinned ? (
+                                            <PinOff
+                                              className="size-3"
+                                              aria-hidden="true"
+                                            />
+                                          ) : (
+                                            <Pin
+                                              className="size-3"
+                                              aria-hidden="true"
+                                            />
+                                          )}
+                                        </button>
+                                        {!isPinned && (
+                                          <span className="text-[11.5px] text-sts-subtle">
+                                            {p.count}
+                                          </span>
+                                        )}
+                                        {isPinned && (
+                                          <span className="text-[11.5px] text-sts-blue">
+                                            {p.count}
+                                          </span>
+                                        )}
+                                      </Link>
+                                    );
+                                  })}
+                                </>
+                              )}
+                            </div>
+                          );
+                        })()}
+                    </div>
+                  );
+                })}
+              </nav>
+            );
+          })()}
+        </div>
+
+        <div className="h-2 shrink-0" />
 
         {/* <InstallAppButton collapsed={isCollapsed} /> */}
 

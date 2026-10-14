@@ -23,7 +23,13 @@ export function isGenericLandingPath(next: string): boolean {
   const path = safeNextPath(next);
   if (path === "/") return true;
   if (path.startsWith("/api/") || path === "/manifest.webmanifest") return true;
-  if (path.startsWith("/invite/") || path.startsWith("/tenant-invite/")) return false;
+  if (
+    path.startsWith("/invite/") ||
+    path.startsWith("/tenant-invite/") ||
+    path.startsWith("/super-admin-invite/")
+  ) {
+    return false;
+  }
   const segs = path.split("/").filter(Boolean);
   const last = segs[segs.length - 1];
   if (!last) return true;

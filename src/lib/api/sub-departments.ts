@@ -1,3 +1,4 @@
+import type { StatusCategory } from "@/lib/status-category"
 export type SubDepartmentMember = {
   id: string
   name: string
@@ -12,6 +13,7 @@ export type SubDepartmentStatus = {
   label: string
   color: string
   order: number
+  category: StatusCategory
   isComplete: boolean
   allowedLabels: string[]
 }
@@ -30,7 +32,7 @@ export async function getSubDepartmentStatuses(subDepartmentId: string): Promise
 
 export async function createSubDepartmentStatus(
   subDepartmentId: string,
-  body: { label: string; color: string; order?: number; allowedLabels?: string[] },
+  body: { category: StatusCategory; label: string; color: string; order?: number; allowedLabels?: string[] },
 ) {
   const res = await fetch(`/api/sub-departments/${subDepartmentId}/statuses`, {
     method: "POST",
@@ -44,14 +46,17 @@ export async function createSubDepartmentStatus(
 export async function updateSubDepartmentStatus(
   subDepartmentId: string,
   statusId: string,
-  body: { label?: string; color?: string; order?: number; isComplete?: boolean; allowedLabels?: string[] },
+  body: { category?: StatusCategory; label?: string; color?: string; order?: number; allowedLabels?: string[] },
 ) {
   const res = await fetch(`/api/sub-departments/${subDepartmentId}/statuses/${statusId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error("Failed to update status")
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}))
+    throw new Error(body.error ?? "Failed to update status")
+  }
   return res.json()
 }
 

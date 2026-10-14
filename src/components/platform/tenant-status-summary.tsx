@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronUp, ChevronDown, ListFilter } from "lucide-react";
+import { format } from "date-fns";
 import {
   Table,
   TableBody,
@@ -51,6 +52,10 @@ type SummaryRow = {
 };
 
 type SortField = "tenantName" | "tenantStatus" | "tenantCreatedAt" | "agreementEndDate" | "renewalStatus" | "departmentCount" | "activeUserCount";
+
+const NUMERIC_COLUMNS = new Set<SortField>(["departmentCount", "activeUserCount"]);
+
+const formatDate = (iso: string) => format(new Date(iso), "d MMM yyyy");
 
 const COLUMNS: { key: SortField; label: string }[] = [
   { key: "tenantName", label: "Tenant" },
@@ -175,18 +180,24 @@ export function TenantStatusSummary() {
               {COLUMNS.map((col) => (
                 <TableHead
                   key={col.key}
-                  className="cursor-pointer select-none"
-                  onClick={() => toggleSort(col.key)}
+                  className={cn(NUMERIC_COLUMNS.has(col.key) && "text-right")}
+                  aria-sort={
+                    sortBy === col.key ? (sortDir === "asc" ? "ascending" : "descending") : undefined
+                  }
                 >
-                  <span className="inline-flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => toggleSort(col.key)}
+                    className="inline-flex items-center gap-1 rounded outline-none select-none hover:text-sts-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                  >
                     {col.label}
                     {sortBy === col.key &&
                       (sortDir === "asc" ? (
-                        <ChevronUp className="size-3" />
+                        <ChevronUp className="size-3" aria-hidden />
                       ) : (
-                        <ChevronDown className="size-3" />
+                        <ChevronDown className="size-3" aria-hidden />
                       ))}
-                  </span>
+                  </button>
                 </TableHead>
               ))}
             </TableRow>
@@ -225,12 +236,12 @@ export function TenantStatusSummary() {
                     </span>
                   </TableCell>
                   <TableCell className="font-sans text-[12.5px] text-sts-muted">
-                    {new Date(r.tenantCreatedAt).toLocaleDateString()}
+                    {formatDate(r.tenantCreatedAt)}
                   </TableCell>
                   <TableCell className="font-sans text-[12.5px] text-sts-muted">
                     {r.agreementEndDate ? (
                       <span className="flex flex-wrap items-center gap-2">
-                        {new Date(r.agreementEndDate).toLocaleDateString()}
+                        {formatDate(r.agreementEndDate)}
                         {(() => {
                           const flag = getAgreementExpiry(r.agreementEndDate, r.renewalStatus);
                           if (flag.state === "ok") return null;
@@ -261,8 +272,12 @@ export function TenantStatusSummary() {
                       "—"
                     )}
                   </TableCell>
-                  <TableCell className="font-sans text-[12.5px] text-sts-muted">{r.departmentCount}</TableCell>
-                  <TableCell className="font-sans text-[12.5px] text-sts-muted">{r.activeUserCount}</TableCell>
+                  <TableCell className="text-right font-mono text-[12.5px] text-sts-muted tabular-nums">
+                    {r.departmentCount}
+                  </TableCell>
+                  <TableCell className="text-right font-mono text-[12.5px] text-sts-muted tabular-nums">
+                    {r.activeUserCount}
+                  </TableCell>
                 </TableRow>
               ))
             )}

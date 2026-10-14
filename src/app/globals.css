@@ -77,7 +77,7 @@
   --color-sts-secondary-bg: var(--sts-secondary-bg);
   --color-sts-secondary-fg: var(--sts-secondary-fg);
   --color-sts-accent: var(--sts-accent);
-  --color-sts-brand: #f84201;
+  --color-sts-brand: var(--sts-accent);
   --shadow-sts-card: var(--sts-card-shadow);
   /* Semantic action tokens */
   --color-sts-blue: var(--sts-blue);
@@ -191,6 +191,15 @@
     --sts-green-tint: #f0fdf4;
     --sts-purple: #7c3aed;
     --sts-purple-tint: #f5f3ff;
+    /* Aurora backdrop (.sts-ambient-bg): the accent plus two neighbours. The
+       fallback mixes toward fixed hues; browsers with relative color syntax
+       rotate the accent's own hue instead (see @supports below). */
+    --sts-aurora-1: var(--sts-accent);
+    --sts-aurora-2: color-mix(in oklch, var(--sts-accent) 55%, #f0abfc);
+    --sts-aurora-3: color-mix(in oklch, var(--sts-accent) 55%, #fde047);
+    --sts-aurora-strength: 20%;
+    --sts-aurora-bottom: 0.65;
+    --sts-aurora-filter: blur(40px) saturate(1.1);
     /* Soft diagonal gradient wash (body + .sts-ambient-bg) so glass panels read. */
     --sts-bg-gradient:
       linear-gradient(
@@ -251,35 +260,35 @@
 
   html.dark,
   html[data-theme="dark"] {
-    /* Clean dark theme with frosted-glass panels over an ambient gradient wash:
-       translucent slate cards + backdrop blur read as glass against the gradient. */
-    --sts-card-solid: #1e293b;
-    --sts-bg: #0f172a;
-    --sts-bg-tint: rgba(255, 255, 255, 0.02);
+    /* Warm charcoal, not pure black. The canvas is lifted, but type stays
+       bright enough to read: near-white body, light gray secondary text. */
+    --sts-card-solid: #1c1b19;
+    --sts-bg: #141311;
+    --sts-bg-tint: rgba(255, 255, 255, 0.03);
     --sts-glass-blur: 16px;
-    --sts-glass-saturate: 1.2;
+    --sts-glass-saturate: 1.15;
     --sts-glass-shadow:
       inset 0 1px 0 rgba(255, 255, 255, 0.05),
-      0 6px 24px rgba(0, 0, 0, 0.32);
+      0 8px 24px rgba(0, 0, 0, 0.28);
     --sts-glass-highlight: rgba(255, 255, 255, 0.06);
-    --sts-card: rgba(30, 41, 59, 0.62);
-    --sts-card-border: #334155;
-    --sts-foreground: #f1f5f9;
-    --sts-muted: #a3aec0;
-    --sts-subtle: #8b95a6;
+    --sts-card: rgba(28, 27, 25, 0.94);
+    --sts-card-border: #322f2c;
+    --sts-foreground: #f7f5f2;
+    --sts-muted: #c9c3bb;
+    --sts-subtle: #aea89f;
     --sts-button: #f84201;
     --sts-button-fg: #ffffff;
-    --sts-secondary-bg: #1e293b;
-    --sts-secondary-fg: #f1f5f9;
+    --sts-secondary-bg: #221f1d;
+    --sts-secondary-fg: #f7f5f2;
     --sts-accent: #f84201;
-    --sts-card-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --sts-card-shadow: none;
     /* Action / semantic tokens — dark overrides */
     --sts-blue: #f84201;
     --sts-blue-fg: #ffffff;
     --sts-blue-tint: rgba(248, 66, 1, 0.16);
-    --sts-surface: #26334a;
-    --sts-settings-subnav: #172033;
-    --sts-settings-subnav-active: #1e293b;
+    --sts-surface: #262421;
+    --sts-settings-subnav: #181716;
+    --sts-settings-subnav-active: #242220;
 
     --sts-id: #ff8a5c;
     --sts-red: #f87171;
@@ -288,65 +297,79 @@
     --sts-green-tint: rgba(74, 222, 128, 0.14);
     --sts-purple: #a78bfa;
     --sts-purple-tint: rgba(167, 139, 250, 0.14);
-    /* Soft diagonal gradient wash (body + .sts-ambient-bg) so glass panels read. */
+    /* A quiet warm wash, not a neon aurora. */
+    --sts-aurora-strength: 12%;
+    --sts-aurora-bottom: 0;
+    --sts-aurora-filter: blur(72px);
     --sts-bg-gradient:
-      linear-gradient(
-        135deg,
-        color-mix(in srgb, var(--sts-accent) 12%, transparent) 0%,
-        transparent 45%,
-        color-mix(in srgb, var(--sts-blue) 9%, transparent) 100%
-      ),
       radial-gradient(
-        70% 60% at 0% 0%,
-        color-mix(in srgb, var(--sts-accent) 10%, transparent) 0%,
-        transparent 72%
-      ),
-      radial-gradient(
-        64% 56% at 100% 100%,
-        color-mix(in srgb, var(--sts-blue) 8%, transparent) 0%,
-        transparent 74%
+        90% 55% at 0% 0%,
+        color-mix(in srgb, var(--sts-accent) 7%, transparent) 0%,
+        transparent 58%
       ),
       var(--sts-bg);
-    --background: oklch(0.22 0.03 258);
-    --foreground: oklch(0.97 0.005 258);
-    --card: oklch(0.28 0.03 258);
-    --card-foreground: oklch(0.97 0.005 258);
-    --popover: oklch(0.28 0.03 258);
-    --popover-foreground: oklch(0.97 0.005 258);
+    --background: oklch(0.18 0.004 60);
+    --foreground: oklch(0.97 0.004 60);
+    --card: oklch(0.22 0.004 60);
+    --card-foreground: oklch(0.97 0.004 60);
+    --popover: oklch(0.23 0.004 60);
+    --popover-foreground: oklch(0.97 0.004 60);
     --primary: oklch(0.646 0.225 35.2);
     --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.32 0.03 258);
-    --secondary-foreground: oklch(0.97 0.005 258);
-    --muted: oklch(0.32 0.03 258);
-    --muted-foreground: oklch(0.72 0.03 258);
-    --accent: oklch(0.32 0.03 258);
-    --accent-foreground: oklch(0.97 0.005 258);
+    --secondary: oklch(0.24 0.004 60);
+    --secondary-foreground: oklch(0.97 0.004 60);
+    --muted: oklch(0.24 0.004 60);
+    --muted-foreground: oklch(0.82 0.008 60);
+    --accent: oklch(0.24 0.004 60);
+    --accent-foreground: oklch(0.97 0.004 60);
     --destructive: oklch(0.704 0.191 22.216);
-    --border: oklch(0.37 0.03 258);
-    --input: oklch(0.37 0.03 258);
+    --border: oklch(0.3 0.005 60);
+    --input: oklch(0.32 0.005 60);
     --ring: oklch(0.646 0.225 35.2);
     --chart-1: oklch(0.646 0.225 35.2);
     --chart-2: oklch(0.7 0.15 220);
     --chart-3: oklch(0.75 0.13 190);
     --chart-4: oklch(0.72 0.15 160);
     --chart-5: oklch(0.68 0.19 25);
-    --sidebar: oklch(0.2 0.03 258);
-    --sidebar-foreground: oklch(0.97 0.005 258);
+    --sidebar: oklch(0.16 0.004 60);
+    --sidebar-foreground: oklch(0.97 0.004 60);
     --sidebar-primary: oklch(0.646 0.225 35.2);
     --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.32 0.03 258);
-    --sidebar-accent-foreground: oklch(0.97 0.005 258);
-    --sidebar-border: oklch(0.37 0.03 258);
+    --sidebar-accent: oklch(0.24 0.004 60);
+    --sidebar-accent-foreground: oklch(0.97 0.004 60);
+    --sidebar-border: oklch(0.3 0.005 60);
     --sidebar-ring: oklch(0.646 0.225 35.2);
   }
 
+  /* Thin, theme-aware scrollbars everywhere so mouse/trackpad users can see
+     that a panel scrolls. Opt out per element with `scrollbar-none` (or
+     `sts-header-scroll` for horizontal header strips). */
   * {
     @apply border-border outline-ring/50;
-    scrollbar-width: none;
+    scrollbar-width: thin;
+    scrollbar-color: color-mix(in oklab, var(--border) 85%, transparent)
+      transparent;
   }
 
   *::-webkit-scrollbar {
-    display: none;
+    width: 10px;
+    height: 10px;
+  }
+
+  *::-webkit-scrollbar-track,
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: color-mix(in oklab, var(--border) 85%, transparent);
+    background-clip: content-box;
+    border: 2px solid transparent;
+    border-radius: 9999px;
+  }
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: var(--muted-foreground);
   }
   body {
     @apply text-foreground;
@@ -409,6 +432,31 @@
       150% at var(--sts-theme-origin-x, 50%) var(--sts-theme-origin-y, 0%)
     );
     opacity: 1;
+  }
+}
+
+/* Relative color syntax: aurora neighbours are the accent's hue rotated ±50°,
+   so any tenant color gets a harmonious aurora rather than fixed pink/yellow. */
+@supports (color: oklch(from red l c h)) {
+  :root {
+    --sts-aurora-2: oklch(from var(--sts-accent) l c calc(h - 50));
+    --sts-aurora-3: oklch(from var(--sts-accent) calc(l + 0.06) c calc(h + 50));
+  }
+  html.dark {
+    --sts-aurora-2: oklch(from var(--sts-accent) calc(l * 0.8) calc(c * 0.8) calc(h - 35));
+    --sts-aurora-3: oklch(from var(--sts-accent) calc(l * 0.75) calc(c * 0.75) calc(h + 30));
+  }
+}
+
+@keyframes sts-aurora-drift {
+  0% {
+    transform: translate3d(-2%, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(1%, 1.5%, 0) scale(1.03);
+  }
+  100% {
+    transform: translate3d(2.5%, -1%, 0) scale(1.01);
   }
 }
 
@@ -514,11 +562,19 @@
 
 @layer utilities {
   /*
-   * Solid sts-blue fills use a bright cyan in dark/AMOLED. `text-white` on those
-   * surfaces fails contrast — force the theme's on-blue ink (beats `.text-white`
-   * via higher specificity: html.dark + class).
+   * Solid sts-blue fills take the tenant's accent, which may be light (e.g. a
+   * yellow brand). `text-white` / `dark:text-gray-900` on those surfaces would
+   * then fail contrast — force the theme's on-accent ink in every mode (beats
+   * the text utilities via higher specificity: html + class). Covers the
+   * hover/group-hover/checked fills that swap to a solid accent too.
    */
-  html.dark .bg-sts-blue {
+  html .bg-sts-blue,
+  html [class~="hover:bg-sts-blue"]:hover,
+  html .group:hover [class~="group-hover:bg-sts-blue"],
+  html [class~="dark:hover:bg-sts-blue"]:hover,
+  html .group:hover [class~="dark:group-hover:bg-sts-blue"],
+  html [class~="data-checked:bg-sts-blue"][data-checked],
+  html [class~="data-popup-open:bg-sts-blue"][data-popup-open] {
     color: var(--sts-blue-fg);
   }
 
@@ -639,9 +695,18 @@
     display: none;
   }
 
+  /* Explicit opt-out of the global thin scrollbar (chip strips, carousels). */
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Theme-aware thin scrollbar. Colors derive from theme tokens, so it adapts
-     to light/dark and every custom palette automatically. Overrides the global
-     scrollbar-hiding rule. */
+     to light/dark and every custom palette automatically. Now identical to
+     the global default; kept so existing usages stay explicit. */
   .sts-scroll {
     scrollbar-width: thin;
     scrollbar-color: color-mix(in oklab, var(--border) 85%, transparent)
@@ -692,8 +757,70 @@
     transform: none;
   }
 
+  /* Aurora backdrop: soft ribbons of the accent (plus two hue-shifted
+     neighbours) drifting slowly behind the shell. Driven by --sts-accent, so a
+     tenant's brand color retints it automatically. The layer is oversized and
+     only its transform animates, so the drift stays cheap to composite. */
   .sts-ambient-bg {
-    background: var(--sts-bg-gradient);
+    position: relative;
+    isolation: isolate;
+    background: var(--sts-bg);
+  }
+
+  .sts-ambient-bg::before {
+    content: "";
+    position: absolute;
+    inset: -20% -15% -10%;
+    z-index: -1;
+    pointer-events: none;
+    /* Multi-stop eased falloff + a blur pass: no visible ring edges or
+       banding. The blur is rasterized once; only transform animates. */
+    background-image:
+      radial-gradient(
+        55% 46% at 18% 14%,
+        color-mix(in oklab, var(--sts-aurora-1) calc(var(--sts-aurora-strength) * 1), transparent) 0%,
+        color-mix(in oklab, var(--sts-aurora-1) calc(var(--sts-aurora-strength) * 0.82), transparent) 18%,
+        color-mix(in oklab, var(--sts-aurora-1) calc(var(--sts-aurora-strength) * 0.55), transparent) 36%,
+        color-mix(in oklab, var(--sts-aurora-1) calc(var(--sts-aurora-strength) * 0.28), transparent) 54%,
+        color-mix(in oklab, var(--sts-aurora-1) calc(var(--sts-aurora-strength) * 0.1), transparent) 68%,
+        transparent 82%
+      ),
+      radial-gradient(
+        48% 40% at 52% 6%,
+        color-mix(in oklab, var(--sts-aurora-2) calc(var(--sts-aurora-strength) * 1), transparent) 0%,
+        color-mix(in oklab, var(--sts-aurora-2) calc(var(--sts-aurora-strength) * 0.82), transparent) 18%,
+        color-mix(in oklab, var(--sts-aurora-2) calc(var(--sts-aurora-strength) * 0.55), transparent) 36%,
+        color-mix(in oklab, var(--sts-aurora-2) calc(var(--sts-aurora-strength) * 0.28), transparent) 54%,
+        color-mix(in oklab, var(--sts-aurora-2) calc(var(--sts-aurora-strength) * 0.1), transparent) 68%,
+        transparent 82%
+      ),
+      radial-gradient(
+        52% 46% at 86% 18%,
+        color-mix(in oklab, var(--sts-aurora-3) calc(var(--sts-aurora-strength) * 1), transparent) 0%,
+        color-mix(in oklab, var(--sts-aurora-3) calc(var(--sts-aurora-strength) * 0.82), transparent) 18%,
+        color-mix(in oklab, var(--sts-aurora-3) calc(var(--sts-aurora-strength) * 0.55), transparent) 36%,
+        color-mix(in oklab, var(--sts-aurora-3) calc(var(--sts-aurora-strength) * 0.28), transparent) 54%,
+        color-mix(in oklab, var(--sts-aurora-3) calc(var(--sts-aurora-strength) * 0.1), transparent) 68%,
+        transparent 82%
+      ),
+      radial-gradient(
+        70% 42% at 50% 100%,
+        color-mix(in oklab, var(--sts-aurora-1) calc(calc(var(--sts-aurora-strength) * var(--sts-aurora-bottom)) * 1), transparent) 0%,
+        color-mix(in oklab, var(--sts-aurora-1) calc(calc(var(--sts-aurora-strength) * var(--sts-aurora-bottom)) * 0.82), transparent) 18%,
+        color-mix(in oklab, var(--sts-aurora-1) calc(calc(var(--sts-aurora-strength) * var(--sts-aurora-bottom)) * 0.55), transparent) 36%,
+        color-mix(in oklab, var(--sts-aurora-1) calc(calc(var(--sts-aurora-strength) * var(--sts-aurora-bottom)) * 0.28), transparent) 54%,
+        color-mix(in oklab, var(--sts-aurora-1) calc(calc(var(--sts-aurora-strength) * var(--sts-aurora-bottom)) * 0.1), transparent) 68%,
+        transparent 82%
+      );
+    filter: var(--sts-aurora-filter);
+    will-change: transform;
+    animation: sts-aurora-drift 48s cubic-bezier(0.45, 0, 0.55, 1) infinite alternate;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sts-ambient-bg::before {
+      animation: none;
+    }
   }
 
   .sts-page-enter {
@@ -848,7 +975,7 @@
    it wins over the Tailwind tint utilities. */
 html.dark .sts-nav-active,
 html.dark .sts-nav-active:hover {
-  background-color: color-mix(in srgb, var(--sts-blue) 46%, var(--sts-card-solid));
+  background-color: color-mix(in srgb, var(--grp, var(--sts-blue)) 46%, var(--sts-card-solid));
   color: #fff8f5;
 }
 
@@ -926,6 +1053,38 @@ html.dark .sts-nav-active:hover {
 
   .dark .sts-field-dropdown {
     box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  }
+
+  /* Modals, drawers & dialogs — solid panels. In-page glass/card surfaces keep
+     the frosted look, but a translucent modal lets the page bleed through and
+     hurts legibility. Covers panels inside or right after a scrim, and Base UI
+     dialog popups. */
+  :is(
+    .sts-overlay-backdrop .sts-glass-panel,
+    .sts-overlay-backdrop + .sts-glass-panel,
+    .sts-glass-panel[role="dialog"],
+    .sts-glass-panel[role="alertdialog"],
+    .sts-overlay-backdrop > .bg-sts-card,
+    .sts-overlay-backdrop + .bg-sts-card
+  ) {
+    /* !important: .sts-glass-panel sets a translucent background from
+       @layer utilities, which otherwise beats this components-layer rule. */
+    background: var(--sts-card-solid) !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    box-shadow: 0 24px 48px -12px rgba(6, 71, 111, 0.22);
+  }
+
+  .dark
+    :is(
+      .sts-overlay-backdrop .sts-glass-panel,
+      .sts-overlay-backdrop + .sts-glass-panel,
+      .sts-glass-panel[role="dialog"],
+      .sts-glass-panel[role="alertdialog"],
+      .sts-overlay-backdrop > .bg-sts-card,
+      .sts-overlay-backdrop + .bg-sts-card
+    ) {
+    box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.6);
   }
 
   .sts-field-dropdown-item:hover,

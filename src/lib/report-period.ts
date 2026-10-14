@@ -7,7 +7,8 @@ export function resolveReportRange(
   from: string | null,
   to: string | null,
 ): { start: Date; end: Date } {
-  const end = to ? new Date(`${to}T23:59:59.999`) : new Date()
+  const end = to ? new Date(`${to}T00:00:00`) : new Date()
+  if (to) end.setDate(end.getDate() + 1)
   const start = from
     ? new Date(`${from}T00:00:00`)
     : new Date(end.getTime() - 30 * 86_400_000)

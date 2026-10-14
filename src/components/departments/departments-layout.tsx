@@ -15,6 +15,7 @@ import { TabTitleBadge } from "@/components/realtime/tab-title-badge";
 import { NotificationSidebar } from "@/components/dashboard/notification-sidebar";
 import { DashboardProvider } from "@/components/dashboard/dashboard-context";
 import { useSidebarState } from "@/hooks/use-sidebar-state";
+import type { TenantSidebarColors } from "@/lib/sidebar-colors";
 
 const EMPTY: LayoutData = {
   projects: [],
@@ -48,15 +49,19 @@ export function DepartmentsLayout({
   initialLayoutData,
   brandingName = null,
   brandingLogoUrl = null,
+  brandingLogoUrlDark = null,
   brandingHideLogo = false,
   brandingHideDisplayName = false,
+  sidebarColors,
 }: {
   children: React.ReactNode;
   initialLayoutData?: LayoutData;
   brandingName?: string | null;
   brandingLogoUrl?: string | null;
+  brandingLogoUrlDark?: string | null;
   brandingHideLogo?: boolean;
   brandingHideDisplayName?: boolean;
+  sidebarColors: TenantSidebarColors;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -74,7 +79,9 @@ export function DepartmentsLayout({
     },
     staleTime: 60_000,
     initialData: initialLayoutData,
-    placeholderData: EMPTY,
+    initialDataUpdatedAt: initialLayoutData ? 0 : undefined,
+    refetchOnMount: "always",
+    placeholderData: initialLayoutData ?? EMPTY,
     refetchOnWindowFocus: false,
   });
 
@@ -122,8 +129,10 @@ export function DepartmentsLayout({
           className="hidden lg:flex"
           brandingName={brandingName}
           brandingLogoUrl={brandingLogoUrl}
+          brandingLogoUrlDark={brandingLogoUrlDark}
           brandingHideLogo={brandingHideLogo}
           brandingHideDisplayName={brandingHideDisplayName}
+          sidebarColors={sidebarColors}
         />
 
         {sidebarOpen && (
@@ -138,8 +147,10 @@ export function DepartmentsLayout({
                 onClose={() => setSidebarOpen(false)}
                 brandingName={brandingName}
                 brandingLogoUrl={brandingLogoUrl}
+                brandingLogoUrlDark={brandingLogoUrlDark}
                 brandingHideLogo={brandingHideLogo}
                 brandingHideDisplayName={brandingHideDisplayName}
+                sidebarColors={sidebarColors}
               />
             </div>
           </>

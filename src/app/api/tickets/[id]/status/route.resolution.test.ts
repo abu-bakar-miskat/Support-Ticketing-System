@@ -30,7 +30,6 @@ vi.mock("@/lib/notify", () => ({ createNotification: vi.fn() }))
 vi.mock("@/lib/ticket-completion-notify", () => ({ notifyTicketCompletion: vi.fn().mockResolvedValue(undefined) }))
 vi.mock("@/lib/ticket-cascade", () => ({ cascadeCompleteToSubtickets: vi.fn().mockResolvedValue(undefined) }))
 vi.mock("@/lib/email-config", () => ({
-  RESEND_RECEIVING_ENABLED: true,
   getEmailConfig: vi.fn().mockResolvedValue({
     fromName: "Global Support Portal",
     fromEmail: "support@pengroup.com",
@@ -166,24 +165,4 @@ describe("PATCH /api/tickets/[id]/status — resolution fold-in (issue 010)", ()
     )
   })
 
-  it("omits the token when receiving is disabled", async () => {
-    vi.mocked(
-      (await import("@/lib/email-config")).getEmailConfig,
-    ).mockResolvedValue({
-      fromName: "Global Support Portal",
-      fromEmail: "support@pengroup.com",
-      notifyResolution: true,
-    } as never)
-
-    // Simulate RESEND_RECEIVING_ENABLED = false by patching the imported constant
-    const emailConfig = await import("@/lib/email-config")
-    vi.spyOn(emailConfig, "RESEND_RECEIVING_ENABLED", "get").mockReturnValue(false)
-
-    await PATCH(makeRequest({ to: "Done", resolutionNote: "Done." }), { params })
-    await new Promise((r) => setImmediate(r))
-
-    expect(mockSendReply).toHaveBeenCalledWith(
-      expect.objectContaining({ replyToken: null }),
-    )
-  })
 })

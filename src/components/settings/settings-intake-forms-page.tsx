@@ -28,6 +28,7 @@ import {
   CheckSquare,
   Circle,
   CalendarDays,
+  Globe,
   type LucideIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -63,7 +64,18 @@ import {
   type FormBranding,
   type FormBrandingDefaults,
 } from "@/lib/form-branding";
+import { deriveAccentPalette } from "@/lib/tenant-accent";
 import { Palette } from "lucide-react";
+import { Tip } from "@/components/ui/tooltip";
+import {
+  ListSearchInput,
+  SortDropdown,
+  useListControls,
+  byText,
+  byDateDesc,
+  byDateAsc,
+  byNumberDesc,
+} from "@/components/ui/list-controls";
 
 const SWITCH_ACCENTS = {
   green: {
@@ -97,45 +109,46 @@ function LabeledSwitch({
 }) {
   const colors = SWITCH_ACCENTS[accent];
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      onClick={onToggle}
-      disabled={loading}
-      title={title}
-      className={cn(
-        "relative h-7 w-[80px] shrink-0 cursor-pointer overflow-hidden rounded-full border transition-colors duration-300",
-        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-id/60 focus-visible:ring-offset-1 focus-visible:ring-offset-sts-bg",
-        checked
-          ? colors.track
-          : "border-sts-card-border bg-sts-surface hover:border-sts-muted/60",
-        loading && "cursor-wait opacity-70",
-      )}
-    >
-      <span
+    <Tip label={title}>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={onToggle}
+        disabled={loading}
         className={cn(
-          "absolute top-1/2 -translate-y-1/2 font-sans text-[10px] font-semibold tracking-wide transition-colors duration-300",
-          checked ? cn("left-3", colors.label) : "right-2.5 text-sts-muted",
+          "relative h-7 w-[80px] shrink-0 cursor-pointer overflow-hidden rounded-full border transition-colors duration-300",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-id/60 focus-visible:ring-offset-1 focus-visible:ring-offset-sts-bg",
+          checked
+            ? colors.track
+            : "border-sts-card-border bg-sts-surface hover:border-sts-muted/60",
+          loading && "cursor-wait opacity-70",
         )}
       >
-        {loading ? (
-          <Loader2 className="size-3 animate-spin" />
-        ) : checked ? (
-          onLabel
-        ) : (
-          offLabel
-        )}
-      </span>
-      <span
-        className={cn(
-          "absolute left-[3px] top-1/2 size-5 -translate-y-1/2 rounded-full shadow-sm transition-all duration-300 ease-out",
-          checked
-            ? cn("translate-x-[52px]", colors.thumb)
-            : "translate-x-0 bg-sts-muted",
-        )}
-      />
-    </button>
+        <span
+          className={cn(
+            "absolute top-1/2 -translate-y-1/2 font-sans text-[10px] font-semibold tracking-wide transition-colors duration-300",
+            checked ? cn("left-3", colors.label) : "right-2.5 text-sts-muted",
+          )}
+        >
+          {loading ? (
+            <Loader2 className="size-3 animate-spin" />
+          ) : checked ? (
+            onLabel
+          ) : (
+            offLabel
+          )}
+        </span>
+        <span
+          className={cn(
+            "absolute left-[3px] top-1/2 size-5 -translate-y-1/2 rounded-full shadow-sm transition-all duration-300 ease-out",
+            checked
+              ? cn("translate-x-[52px]", colors.thumb)
+              : "translate-x-0 bg-sts-muted",
+          )}
+        />
+      </button>
+    </Tip>
   );
 }
 
@@ -206,7 +219,20 @@ export type IntakeFormRow = {
   /** Whether this form has any enabled SLA policy. When false the public form
    *  hides the issue-type field, so its editor is hidden here too. */
   hasSlaPolicies: boolean;
+  /** Linked to an active (non-revoked) portal API key — the external portal
+   *  renders this form via /api/portal/v1/form. */
+  usedByPortal: boolean;
 };
+
+export type FormEditorTarget = Pick<
+  IntakeFormRow,
+  | "id"
+  | "name"
+  | "departmentId"
+  | "departmentName"
+  | "intakeSubDepartmentId"
+  | "hasSlaPolicies"
+>;
 
 export type SubDepartmentOption = { id: string; name: string };
 export type MemberOption = UserListPerson;
@@ -235,19 +261,20 @@ function CopyLinkButton({ url }: { url: string }) {
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleCopy}
-      className="flex items-center gap-1.5 rounded-full px-2 py-1 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
-      title={url}
-    >
-      {copied ? (
-        <Check className="size-3 text-sts-green" />
-      ) : (
-        <Copy className="size-3" />
-      )}
-      {copied ? "Copied!" : "Copy link"}
-    </button>
+    <Tip label={url}>
+      <button
+        type="button"
+        onClick={handleCopy}
+        className="flex items-center gap-1.5 rounded-full px-2 py-1 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+      >
+        {copied ? (
+          <Check className="size-3 text-sts-green" />
+        ) : (
+          <Copy className="size-3" />
+        )}
+        {copied ? "Copied!" : "Copy link"}
+      </button>
+    </Tip>
   );
 }
 
@@ -369,13 +396,16 @@ function IntakeFormModal({
           <h2 className="sts-text-modal-title">
             {isEdit ? "Edit support form" : "New support form"}
           </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
-          >
-            <X className="size-4" />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              type="button"
+              onClick={onClose}
+              className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          </Tip>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -800,23 +830,46 @@ function FieldEditor({
     state.type === "select" ||
     state.type === "radio" ||
     state.type === "checkbox";
+  const advancedFilled = Boolean(
+    state.placeholder ||
+      state.helperText ||
+      state.visibleWhen ||
+      state.validation.minLength != null ||
+      state.validation.maxLength != null ||
+      state.validation.min != null ||
+      state.validation.max != null ||
+      state.validation.pattern,
+  );
+  const [showMore, setShowMore] = useState(advancedFilled);
 
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-sts-id/30 bg-sts-card px-4 py-3.5 shadow-sm">
+    <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1">
-        <label className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-sts-subtle">
-          Label
-        </label>
+        <div className="flex items-center justify-between gap-3">
+          <label className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-sts-subtle">
+            Label
+          </label>
+          <label className="flex cursor-pointer items-center gap-2">
+            <span className="font-sans text-[12px] text-sts-muted">Required</span>
+            <input
+              type="checkbox"
+              checked={state.isRequired}
+              onChange={(e) =>
+                setState((s) => ({ ...s, isRequired: e.target.checked }))
+              }
+              className="size-4 rounded accent-sts-blue"
+            />
+          </label>
+        </div>
         <input
           autoFocus
           value={state.label}
           onChange={(e) => setState((s) => ({ ...s, label: e.target.value }))}
           placeholder="e.g. Full name"
           onKeyDown={(e) => {
-            if (e.key === "Enter") onSave(state);
             if (e.key === "Escape") onCancel();
           }}
-          className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[12.5px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
+          className="h-9 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
         />
       </div>
 
@@ -853,209 +906,274 @@ function FieldEditor({
       </div>
 
       {hasOptions && (
-        <div className="flex flex-col gap-1.5">
-          <label className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-sts-subtle">
-            Options
-          </label>
+        <div className="flex flex-col gap-2">
+          <div>
+            <label className="font-sans text-[11.5px] font-semibold uppercase tracking-wide text-sts-subtle">
+              Options
+            </label>
+            {state.type === "select" && (
+              <p className="mt-0.5 font-sans text-[11.5px] text-sts-subtle">
+                Add a choice, then open it to nest sub-options under that choice.
+              </p>
+            )}
+          </div>
 
-          <div className="flex flex-col gap-1">
-            {state.options.map((opt, idx) => {
-              const children = state.childOptions[opt] ?? [];
-              const isOpen = expandedOption === opt;
-              const isEditingOpt = editingOption?.idx === idx;
-              return (
-                <div
-                  key={opt}
-                  className="rounded-lg border border-sts-card-border bg-sts-surface"
-                >
-                  <div className="flex items-center gap-2 px-2.5 py-1.5">
-                    {isEditingOpt ? (
-                      <>
-                        <input
-                          autoFocus
-                          value={editingOption.draft}
-                          onChange={(e) =>
-                            setEditingOption({
-                              ...editingOption,
-                              draft: e.target.value,
-                            })
-                          }
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              confirmEditOption();
+          {state.options.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              {state.options.map((opt, idx) => {
+                const children = state.childOptions[opt] ?? [];
+                const isOpen = expandedOption === opt;
+                const isEditingOpt = editingOption?.idx === idx;
+                return (
+                  <div
+                    key={opt}
+                    className={cn(
+                      "overflow-hidden rounded-xl border bg-sts-card",
+                      isOpen ? "border-sts-id/40" : "border-sts-card-border",
+                    )}
+                  >
+                    <div className="flex items-center gap-2 px-2.5 py-2">
+                      {isEditingOpt ? (
+                        <>
+                          <input
+                            autoFocus
+                            value={editingOption.draft}
+                            onChange={(e) =>
+                              setEditingOption({
+                                ...editingOption,
+                                draft: e.target.value,
+                              })
                             }
-                            if (e.key === "Escape") setEditingOption(null);
-                          }}
-                          className="h-6 min-w-0 flex-1 rounded-md border border-sts-id bg-sts-card px-2 font-sans text-[12px] text-sts-foreground outline-none"
-                        />
-                        <button
-                          type="button"
-                          onClick={confirmEditOption}
-                          className="flex h-6 items-center justify-center rounded-full bg-sts-blue px-2 text-white"
-                        >
-                          <Check className="size-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditingOption(null)}
-                          className="flex h-6 items-center justify-center rounded-full border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground"
-                        >
-                          <X className="size-3" />
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <span className="flex-1 font-sans text-[12px] text-sts-foreground">
-                          {opt}
-                        </span>
-                        {state.type === "select" && (
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                confirmEditOption();
+                              }
+                              if (e.key === "Escape") setEditingOption(null);
+                            }}
+                            className="h-8 min-w-0 flex-1 rounded-lg border border-sts-id bg-sts-surface px-2.5 font-sans text-[13px] text-sts-foreground outline-none"
+                          />
+                          <Tip label="Save option">
+                            <button
+                              aria-label="Save option"
+                              type="button"
+                              onClick={confirmEditOption}
+                              className="flex h-8 items-center justify-center rounded-full bg-sts-blue px-2.5 text-white"
+                            >
+                              <Check className="size-3.5" />
+                            </button>
+                          </Tip>
+                          <Tip label="Cancel">
+                            <button
+                              aria-label="Cancel editing option"
+                              type="button"
+                              onClick={() => setEditingOption(null)}
+                              className="flex h-8 items-center justify-center rounded-full border border-sts-card-border px-2.5 text-sts-subtle hover:text-sts-foreground"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          </Tip>
+                        </>
+                      ) : (
+                        <>
+                          <span className="min-w-0 flex-1 truncate font-sans text-[13px] font-medium text-sts-foreground">
+                            {opt}
+                          </span>
+                          {state.type === "select" && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setExpandedOption(isOpen ? null : opt);
+                                setNewChild("");
+                                setEditingChild(null);
+                              }}
+                              className={cn(
+                                "flex h-7 shrink-0 items-center gap-1 rounded-full border px-2.5 font-sans text-[11.5px] font-medium transition-colors",
+                                isOpen
+                                  ? "border-sts-id bg-sts-blue-tint text-sts-id"
+                                  : "border-sts-card-border bg-sts-surface text-sts-muted hover:text-sts-foreground",
+                              )}
+                            >
+                              <ChevronDown
+                                className={cn(
+                                  "size-3.5 transition-transform",
+                                  isOpen && "rotate-180",
+                                )}
+                              />
+                              {children.length > 0
+                                ? `${children.length} sub-option${children.length !== 1 ? "s" : ""}`
+                                : "Add sub-options"}
+                            </button>
+                          )}
+                          <Tip label="Edit option">
+                            <button
+                              aria-label="Edit option"
+                              type="button"
+                              onClick={() =>
+                                setEditingOption({ idx, draft: opt })
+                              }
+                              className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+                            >
+                              <Pencil className="size-3.5" />
+                            </button>
+                          </Tip>
+                          <Tip label="Remove option">
+                            <button
+                              aria-label="Remove option"
+                              type="button"
+                              onClick={() => removeOption(opt)}
+                              className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-red"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          </Tip>
+                        </>
+                      )}
+                    </div>
+
+                    {state.type === "select" && !isOpen && children.length > 0 && (
+                      <div className="flex flex-wrap gap-1 border-t border-sts-card-border px-2.5 py-2">
+                        {children.map((child) => (
+                          <span
+                            key={child}
+                            className="rounded-full bg-sts-surface px-2 py-0.5 font-sans text-[11px] text-sts-muted"
+                          >
+                            {child}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+
+                    {state.type === "select" && isOpen && (
+                      <div className="border-t border-sts-card-border bg-sts-surface/70 px-3 py-3">
+                        <p className="font-sans text-[11.5px] font-semibold text-sts-foreground">
+                          Sub-options for “{opt}”
+                        </p>
+                        <p className="mt-0.5 font-sans text-[11.5px] text-sts-subtle">
+                          These show after someone picks this choice.
+                        </p>
+
+                        {children.length > 0 ? (
+                          <div className="mt-2.5 flex flex-col gap-1.5">
+                            {children.map((child, childIdx) => {
+                              const isEditingThis =
+                                editingChild?.parent === opt &&
+                                editingChild?.idx === childIdx;
+                              return isEditingThis ? (
+                                <div key={child} className="flex gap-1.5">
+                                  <input
+                                    autoFocus
+                                    value={editingChild.draft}
+                                    onChange={(e) =>
+                                      setEditingChild({
+                                        ...editingChild,
+                                        draft: e.target.value,
+                                      })
+                                    }
+                                    onKeyDown={(e) => {
+                                      if (e.key === "Enter") {
+                                        e.preventDefault();
+                                        confirmEditChild();
+                                      }
+                                      if (e.key === "Escape")
+                                        setEditingChild(null);
+                                    }}
+                                    className="h-8 min-w-0 flex-1 rounded-lg border border-sts-id bg-sts-card px-2.5 font-sans text-[13px] text-sts-foreground outline-none"
+                                  />
+                                  <Tip label="Save sub-option">
+                                    <button
+                                      aria-label="Save sub-option"
+                                      type="button"
+                                      onClick={confirmEditChild}
+                                      className="flex h-8 items-center justify-center rounded-full bg-sts-blue px-2.5 text-white"
+                                    >
+                                      <Check className="size-3.5" />
+                                    </button>
+                                  </Tip>
+                                  <Tip label="Cancel">
+                                    <button
+                                      aria-label="Cancel editing sub-option"
+                                      type="button"
+                                      onClick={() => setEditingChild(null)}
+                                      className="flex h-8 items-center justify-center rounded-full border border-sts-card-border bg-sts-card px-2.5 text-sts-subtle hover:text-sts-foreground"
+                                    >
+                                      <X className="size-3.5" />
+                                    </button>
+                                  </Tip>
+                                </div>
+                              ) : (
+                                <div
+                                  key={child}
+                                  className="flex items-center gap-2 rounded-lg border border-sts-card-border bg-sts-card px-2.5 py-1.5"
+                                >
+                                  <span className="min-w-0 flex-1 truncate font-sans text-[13px] text-sts-foreground">
+                                    {child}
+                                  </span>
+                                  <Tip label="Edit sub-option">
+                                    <button
+                                      aria-label="Edit sub-option"
+                                      type="button"
+                                      onClick={() =>
+                                        setEditingChild({
+                                          parent: opt,
+                                          idx: childIdx,
+                                          draft: child,
+                                        })
+                                      }
+                                      className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+                                    >
+                                      <Pencil className="size-3.5" />
+                                    </button>
+                                  </Tip>
+                                  <Tip label="Remove sub-option">
+                                    <button
+                                      aria-label="Remove sub-option"
+                                      type="button"
+                                      onClick={() => removeChild(opt, child)}
+                                      className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-red"
+                                    >
+                                      <X className="size-3.5" />
+                                    </button>
+                                  </Tip>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="mt-2 font-sans text-[12px] text-sts-subtle">
+                            No sub-options yet.
+                          </p>
+                        )}
+
+                        <div className="mt-2.5 flex gap-1.5">
+                          <input
+                            value={newChild}
+                            onChange={(e) => setNewChild(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                addChild(opt);
+                              }
+                            }}
+                            placeholder="Type a sub-option, then press Enter"
+                            className="h-9 min-w-0 flex-1 rounded-lg border border-sts-card-border bg-sts-card px-3 font-sans text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
+                          />
                           <button
                             type="button"
-                            onClick={() =>
-                              setExpandedOption(isOpen ? null : opt)
-                            }
-                            className={cn(
-                              "flex items-center gap-1 rounded px-1.5 py-0.5 font-sans text-[10.5px] transition-colors",
-                              isOpen
-                                ? "bg-sts-blue-tint text-sts-id"
-                                : "text-sts-subtle hover:text-sts-foreground",
-                            )}
+                            onClick={() => addChild(opt)}
+                            className="flex h-9 shrink-0 items-center gap-1 rounded-full bg-sts-blue px-3 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90 dark:text-gray-900"
                           >
-                            <ChevronDown
-                              className={cn(
-                                "size-3 transition-transform",
-                                isOpen && "rotate-180",
-                              )}
-                            />
-                            {children.length > 0
-                              ? `${children.length} sub-option${children.length !== 1 ? "s" : ""}`
-                              : "Sub-options"}
+                            <Plus className="size-3.5" />
+                            Add
                           </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => setEditingOption({ idx, draft: opt })}
-                          className="text-sts-subtle hover:text-sts-foreground"
-                        >
-                          <Pencil className="size-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => removeOption(opt)}
-                          className="text-sts-subtle hover:text-sts-red"
-                        >
-                          <X className="size-3" />
-                        </button>
-                      </>
+                        </div>
+                      </div>
                     )}
                   </div>
-
-                  {state.type === "select" && isOpen && (
-                    <div className="border-t border-sts-card-border px-2.5 py-2 flex flex-col gap-1.5">
-                      {children.length > 0 && (
-                        <div className="flex flex-col gap-1">
-                          {children.map((child, idx) => {
-                            const isEditingThis =
-                              editingChild?.parent === opt &&
-                              editingChild?.idx === idx;
-                            return isEditingThis ? (
-                              <div key={child} className="flex gap-1.5">
-                                <input
-                                  autoFocus
-                                  value={editingChild.draft}
-                                  onChange={(e) =>
-                                    setEditingChild({
-                                      ...editingChild,
-                                      draft: e.target.value,
-                                    })
-                                  }
-                                  onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                      e.preventDefault();
-                                      confirmEditChild();
-                                    }
-                                    if (e.key === "Escape")
-                                      setEditingChild(null);
-                                  }}
-                                  className="h-6 min-w-0 flex-1 rounded-md border border-sts-id bg-sts-card px-2 font-sans text-[11.5px] text-sts-foreground outline-none"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={confirmEditChild}
-                                  className="flex h-6 items-center justify-center rounded-full bg-sts-blue px-2 text-white"
-                                >
-                                  <Check className="size-2.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => setEditingChild(null)}
-                                  className="flex h-6 items-center justify-center rounded-full border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground"
-                                >
-                                  <X className="size-2.5" />
-                                </button>
-                              </div>
-                            ) : (
-                              <div
-                                key={child}
-                                className="flex items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-card px-2 py-1"
-                              >
-                                <span className="flex-1 font-sans text-[11px] text-sts-foreground">
-                                  {child}
-                                </span>
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setEditingChild({
-                                      parent: opt,
-                                      idx,
-                                      draft: child,
-                                    })
-                                  }
-                                  className="text-sts-subtle hover:text-sts-foreground"
-                                >
-                                  <Pencil className="size-2.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => removeChild(opt, child)}
-                                  className="text-sts-subtle hover:text-sts-red"
-                                >
-                                  <X className="size-2.5" />
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                      <div className="flex gap-1.5">
-                        <input
-                          value={newChild}
-                          onChange={(e) => setNewChild(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              e.preventDefault();
-                              addChild(opt);
-                            }
-                          }}
-                          placeholder={`Add sub-option for "${opt}"…`}
-                          className="h-6 min-w-0 flex-1 rounded-md border border-sts-card-border bg-sts-card px-2 font-sans text-[11.5px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => addChild(opt)}
-                          className="flex h-6 items-center gap-1 rounded-full border border-sts-card-border bg-sts-card px-2 font-sans text-[11px] text-sts-muted hover:text-sts-foreground"
-                        >
-                          <Plus className="size-2.5" />
-                          Add
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
 
           <div className="flex gap-1.5">
             <input
@@ -1067,21 +1185,61 @@ function FieldEditor({
                   addOption();
                 }
               }}
-              placeholder="Add option…"
-              className="h-7 min-w-0 flex-1 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
+              placeholder="Type an option, then press Enter"
+              className="h-9 min-w-0 flex-1 rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none placeholder:text-sts-subtle focus:border-sts-id"
             />
             <button
               type="button"
               onClick={addOption}
-              className="flex h-7 items-center gap-1 rounded-full border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
+              className="flex h-9 shrink-0 items-center gap-1 rounded-full bg-sts-blue px-3 font-sans text-[12px] font-medium text-white hover:bg-sts-blue/90 dark:text-gray-900"
             >
-              <Plus className="size-3" />
+              <Plus className="size-3.5" />
               Add
             </button>
           </div>
         </div>
       )}
 
+      <div className="rounded-lg border border-dashed border-sts-card-border bg-sts-surface/50 px-3 py-2.5">
+        <p className="font-sans text-[10.5px] font-semibold uppercase tracking-wide text-sts-subtle">
+          Submitter preview
+        </p>
+        <p className="mt-1.5 font-sans text-[12.5px] font-medium text-sts-foreground">
+          {state.label.trim() || "Field label"}
+          {state.isRequired && <span className="ml-0.5 text-sts-red">*</span>}
+        </p>
+        {hasOptions ? (
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            {(state.options.length > 0 ? state.options : ["Option"]).slice(0, 4).map((opt) => (
+              <span
+                key={opt}
+                className="rounded-full border border-sts-card-border bg-sts-card px-2 py-0.5 font-sans text-[11px] text-sts-muted"
+              >
+                {opt}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-1.5 flex h-8 items-center rounded-lg border border-sts-card-border bg-sts-card px-2.5 font-sans text-[12px] text-sts-subtle">
+            {state.placeholder.trim() || "Answer"}
+          </div>
+        )}
+        {state.helperText.trim() && (
+          <p className="mt-1 font-sans text-[11px] text-sts-subtle">{state.helperText}</p>
+        )}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => setShowMore((open) => !open)}
+        className="flex items-center gap-1.5 self-start font-sans text-[12px] font-medium text-sts-muted hover:text-sts-foreground"
+      >
+        <ChevronDown className={cn("size-3.5 transition-transform", showMore && "rotate-180")} />
+        {showMore ? "Hide extra options" : "Placeholder, help text, and rules"}
+      </button>
+
+      {showMore && (
+        <div className="flex flex-col gap-3">
       {/* Placeholder */}
       {hasPlaceholder && (
         <div className="flex flex-col gap-1">
@@ -1323,25 +1481,8 @@ function FieldEditor({
           </div>
         </div>
       )}
-
-      <label className="flex cursor-pointer items-center justify-between rounded-lg border border-sts-card-border bg-sts-surface px-3 py-2">
-        <span className="flex flex-col">
-          <span className="font-sans text-[12px] font-medium text-sts-foreground">
-            Required field
-          </span>
-          <span className="font-sans text-[10.5px] text-sts-subtle">
-            Submitters must fill this in.
-          </span>
-        </span>
-        <input
-          type="checkbox"
-          checked={state.isRequired}
-          onChange={(e) =>
-            setState((s) => ({ ...s, isRequired: e.target.checked }))
-          }
-          className="size-4 rounded accent-sts-blue"
-        />
-      </label>
+        </div>
+      )}
 
       {error && <p className="font-sans text-[11.5px] text-sts-red">{error}</p>}
 
@@ -1369,12 +1510,12 @@ function FieldEditor({
 
 // ── Field builder modal ───────────────────────────────────────────────────────
 
-function FieldBuilderModal({
+export function FieldBuilderModal({
   form,
   defaultFields,
   onClose,
 }: {
-  form: IntakeFormRow;
+  form: FormEditorTarget;
   defaultFields: ResolvedDefaultFields;
   onClose: () => void;
 }) {
@@ -1403,6 +1544,8 @@ function FieldBuilderModal({
   const visibleDefaultKeys = form.hasSlaPolicies
     ? DEFAULT_FIELD_KEYS
     : DEFAULT_FIELD_KEYS.filter((key) => key !== "issueType");
+  const editingField = fields.find((field) => field.id === editingId) ?? null;
+  const editorOpen = addingField || editingField != null;
 
   async function saveDefaults() {
     setSavingDefaults(true);
@@ -1554,8 +1697,14 @@ function FieldBuilderModal({
         onClick={onClose}
       />
       <div
-        className="sts-glass-panel relative flex w-full max-w-2xl flex-col rounded-2xl border border-sts-card-border shadow-2xl"
-        style={{ height: "70vh", maxHeight: "70vh" }}
+        className="relative flex w-full max-w-5xl flex-col rounded-2xl border border-sts-card-border bg-[var(--sts-card-solid)] shadow-2xl"
+        style={{
+          height: "min(860px, 88vh)",
+          maxHeight: "88vh",
+          background: "var(--sts-card-solid)",
+          backdropFilter: "none",
+          WebkitBackdropFilter: "none",
+        }}
       >
         {/* Header */}
         <div className="flex shrink-0 items-start justify-between border-b border-sts-card-border px-6 py-4">
@@ -1579,18 +1728,27 @@ function FieldBuilderModal({
               <Plus className="size-3.5" strokeWidth={2.5} />
               Add field
             </button>
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-full border border-sts-card-border p-1.5 text-sts-subtle hover:border-sts-muted hover:text-sts-foreground transition-colors"
-            >
-              <X className="size-3.5" />
-            </button>
+            <Tip label="Close">
+              <button
+                aria-label="Close"
+                type="button"
+                onClick={onClose}
+                className="rounded-full border border-sts-card-border p-1.5 text-sts-subtle hover:border-sts-muted hover:text-sts-foreground transition-colors"
+              >
+                <X className="size-3.5" />
+              </button>
+            </Tip>
           </div>
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div
+          className={cn(
+            "grid min-h-0 flex-1",
+            editorOpen && "lg:grid-cols-[minmax(280px,0.9fr)_minmax(340px,1.1fr)]",
+          )}
+        >
+        <div className="overflow-y-auto px-6 py-4">
           {loadingFields ? (
             <div className="flex h-full flex-col items-center justify-center gap-2">
               <Loader2 className="size-5 animate-spin text-sts-muted" />
@@ -1733,42 +1891,6 @@ function FieldBuilderModal({
               )}
 
               {fields.map((field) => {
-                if (editingId === field.id) {
-                  return (
-                    <FieldEditor
-                      key={field.id}
-                      initial={{
-                        label: field.label,
-                        type: field.type,
-                        isRequired: field.isRequired,
-                        options: field.options,
-                        childOptions: field.childOptions ?? {},
-                        placeholder: field.placeholder ?? "",
-                        helperText: field.helperText ?? "",
-                        validation: (field.validation as FieldValidation) ?? {},
-                        visibleWhen: field.visibleWhen?.fieldId
-                          ? {
-                              fieldId: field.visibleWhen.fieldId,
-                              equals:
-                                field.visibleWhen.equals ??
-                                field.visibleWhen.in?.[0] ??
-                                "",
-                            }
-                          : null,
-                      }}
-                      onSave={(state) => handleEdit(field.id, state)}
-                      onCancel={() => {
-                        setEditingId(null);
-                        setEditorError(null);
-                      }}
-                      saving={saving}
-                      error={editorError}
-                      siblingFields={fields
-                        .filter((f) => f.id !== field.id)
-                        .map((f) => ({ id: f.id, label: f.label }))}
-                    />
-                  );
-                }
                 return (
                   <div
                     key={field.id}
@@ -1790,8 +1912,14 @@ function FieldBuilderModal({
                       dragId.current = null;
                       setDragOverId(null);
                     }}
+                    onClick={() => {
+                      setEditingId(field.id);
+                      setAddingField(false);
+                      setEditorError(null);
+                    }}
                     className={cn(
-                      "group flex items-center gap-3 rounded-xl border border-sts-card-border bg-sts-card px-3 py-2.5 transition-colors",
+                      "group flex cursor-pointer items-center gap-3 rounded-xl border border-sts-card-border bg-sts-card px-3 py-2.5 transition-colors",
+                      editingId === field.id && "border-sts-id bg-sts-blue-tint/40",
                       dragOverId === field.id &&
                         "border-sts-id bg-sts-blue-tint",
                     )}
@@ -1818,57 +1946,109 @@ function FieldBuilderModal({
                       </p>
                     </div>
                     <div className="flex items-center gap-0.5 transition-opacity">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingId(field.id);
-                          setAddingField(false);
-                          setEditorError(null);
-                        }}
-                        className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-                      >
-                        <Pencil className="size-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setDeleteTarget(field)}
-                        className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-red"
-                      >
-                        <Trash2 className="size-3" />
-                      </button>
+                      <Tip label="Edit field">
+                        <button
+                          aria-label="Edit field"
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingId(field.id);
+                            setAddingField(false);
+                            setEditorError(null);
+                          }}
+                          className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+                        >
+                          <Pencil className="size-3" />
+                        </button>
+                      </Tip>
+                      <Tip label="Delete field">
+                        <button
+                          aria-label="Delete field"
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteTarget(field);
+                          }}
+                          className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-red"
+                        >
+                          <Trash2 className="size-3" />
+                        </button>
+                      </Tip>
                     </div>
                   </div>
                 );
               })}
 
-              {addingField && (
-                <FieldEditor
-                  initial={{
-                    label: "",
-                    type: "text",
-                    isRequired: false,
-                    options: [],
-                    childOptions: {},
-                    placeholder: "",
-                    helperText: "",
-                    validation: {},
-                    visibleWhen: null,
-                  }}
-                  onSave={handleAdd}
-                  onCancel={() => {
-                    setAddingField(false);
-                    setEditorError(null);
-                  }}
-                  saving={saving}
-                  error={editorError}
-                  siblingFields={fields.map((f) => ({
-                    id: f.id,
-                    label: f.label,
-                  }))}
-                />
-              )}
             </div>
           )}
+        </div>
+        {editorOpen && (
+          <div className="flex min-h-0 flex-col overflow-y-auto border-t border-sts-card-border px-5 py-4 lg:border-t-0 lg:border-l">
+            <p className="mb-3 font-sans text-[13px] font-semibold text-sts-foreground">
+              {addingField ? "New field" : "Edit field"}
+            </p>
+            {addingField ? (
+              <FieldEditor
+                key="new"
+                initial={{
+                  label: "",
+                  type: "text",
+                  isRequired: false,
+                  options: [],
+                  childOptions: {},
+                  placeholder: "",
+                  helperText: "",
+                  validation: {},
+                  visibleWhen: null,
+                }}
+                onSave={handleAdd}
+                onCancel={() => {
+                  setAddingField(false);
+                  setEditorError(null);
+                }}
+                saving={saving}
+                error={editorError}
+                siblingFields={fields.map((f) => ({
+                  id: f.id,
+                  label: f.label,
+                }))}
+              />
+            ) : editingField ? (
+              <FieldEditor
+                key={editingField.id}
+                initial={{
+                  label: editingField.label,
+                  type: editingField.type,
+                  isRequired: editingField.isRequired,
+                  options: editingField.options,
+                  childOptions: editingField.childOptions ?? {},
+                  placeholder: editingField.placeholder ?? "",
+                  helperText: editingField.helperText ?? "",
+                  validation: (editingField.validation as FieldValidation) ?? {},
+                  visibleWhen: editingField.visibleWhen?.fieldId
+                    ? {
+                        fieldId: editingField.visibleWhen.fieldId,
+                        equals:
+                          editingField.visibleWhen.equals ??
+                          editingField.visibleWhen.in?.[0] ??
+                          "",
+                      }
+                    : null,
+                }}
+                onSave={(state) => handleEdit(editingField.id, state)}
+                onCancel={() => {
+                  setEditingId(null);
+                  setEditorError(null);
+                }}
+                saving={saving}
+                error={editorError}
+                siblingFields={fields
+                  .filter((f) => f.id !== editingField.id)
+                  .map((f) => ({ id: f.id, label: f.label }))}
+              />
+            ) : null}
+          </div>
+        )}
         </div>
       </div>
 
@@ -1974,13 +2154,13 @@ function FormDesignModal({
     (!accentColor.trim() || isHexColor(accentColor));
 
   const previewLogo = logoUrl.trim() || defaults.logoUrl;
-  const previewHeader = isHexColor(headerColor)
-    ? headerColor
-    : defaults.headerColor;
   const previewAccent = isHexColor(accentColor)
     ? accentColor
     : defaults.accentColor;
-  const previewBg = isHexColor(backgroundColor) ? backgroundColor : "#f8f8fc";
+  const previewPalette = deriveAccentPalette(previewAccent);
+  const previewBg = isHexColor(backgroundColor)
+    ? backgroundColor
+    : (previewPalette?.light.tint ?? "#f8f8fc");
 
   async function handleSave() {
     if (!colorsValid) {
@@ -2030,17 +2210,20 @@ function FormDesignModal({
           <div>
             <h2 className="sts-text-modal-title">Form design</h2>
             <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
-              Branding for the public “{form.name}” page. Empty fields fall back
-              to the department brand (Email settings → Branding).
+              Branding for the public “{form.name}” page. Empty fields use this
+              tenant’s logo and accent.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
-          >
-            <X className="size-4" />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              type="button"
+              onClick={onClose}
+              className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          </Tip>
         </div>
 
         {/* Edit / Preview toggle */}
@@ -2108,8 +2291,8 @@ function FormDesignModal({
                   />
                 </div>
                 <p className="font-sans text-[11px] text-sts-subtle">
-                  Upload an image or paste a public URL. Shown in a banner at
-                  the top of the form. Leave blank to use the workspace logo.
+                  Upload an image or paste a public URL. Leave blank to use this
+                  tenant’s logo.
                 </p>
               </div>
 
@@ -2187,26 +2370,33 @@ function FormDesignModal({
               className="w-full max-w-[560px] overflow-hidden rounded-xl border border-sts-card-border"
               style={{ background: previewBg }}
             >
-              <div className="px-6 py-5" style={{ background: previewHeader }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={previewLogo}
-                  alt="Logo preview"
-                  className="h-10 w-auto"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.visibility =
-                      "hidden";
-                  }}
-                />
-              </div>
-              <div className="px-6 py-6">
-                <p className="font-sans text-[12px] font-semibold uppercase tracking-wide text-gray-500">
+              <div className="flex items-center gap-3 px-6 pt-6">
+                {previewLogo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={previewLogo}
+                    alt="Logo preview"
+                    className="size-12 shrink-0 rounded-2xl bg-white object-contain p-1 shadow-sm"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.visibility =
+                        "hidden";
+                    }}
+                  />
+                ) : null}
+                <div>
+                <p
+                  className="font-sans text-[12px] font-semibold uppercase tracking-wide"
+                  style={{ color: previewAccent }}
+                >
                   {form.departmentName}
                 </p>
-                <h3 className="mt-1.5 font-sans text-[22px] font-semibold text-gray-900">
+                <h3 className="mt-1 font-sans text-[22px] font-semibold text-gray-900">
                   {form.name}
                 </h3>
-                <p className="mt-1.5 font-sans text-[14px] text-gray-500">
+                </div>
+              </div>
+              <div className="px-6 py-6">
+                <p className="font-sans text-[14px] text-gray-500">
                   {introText.trim() ||
                     "Fill in the details below and we'll get back to you as soon as possible."}
                 </p>
@@ -2256,60 +2446,125 @@ function FormDesignModal({
 // route its ticket to a concerned sub-department; assignment then follows that
 // sub-department's assignment method (unless the form/issue overrides it).
 
+const PRIORITY_RANK: Record<string, number> = { Urgent: 0, Critical: 1, High: 2, Medium: 3, Low: 4 };
+
 type IssueRow = {
   id: string;
   name: string;
+  departmentId: string | null;
   subDepartmentId: string | null;
   priority: string | null;
   firstResponseMins: number;
   resolutionMins: number;
+  /** ISO creation date — drives the Newest / Oldest sorts. */
+  createdAt?: string;
+};
+
+export type IssueDepartmentOption = {
+  id: string;
+  name: string;
+  subDepartments: SubDepartmentOption[];
 };
 
 function IssueEditorRow({
   issue,
   subDepartments,
+  departments,
   requiresSubDept,
+  showSlaTargets,
   onSave,
   onDelete,
 }: {
   issue: IssueRow;
   subDepartments: SubDepartmentOption[];
+  departments?: IssueDepartmentOption[];
   requiresSubDept: boolean;
-  onSave: (id: string, patch: { name: string; subDepartmentId: string | null }) => Promise<void>;
+  showSlaTargets: boolean;
+  onSave: (id: string, patch: {
+    name: string;
+    departmentId?: string;
+    subDepartmentId: string | null;
+    firstResponseMins: number;
+    resolutionMins: number;
+  }) => Promise<void>;
   onDelete: (id: string) => void;
 }) {
   const [name, setName] = useState(issue.name);
+  const [departmentId, setDepartmentId] = useState(issue.departmentId ?? "");
   const [subDepartmentId, setSubDepartmentId] = useState(issue.subDepartmentId ?? "");
+  const [firstResponseMins, setFirstResponseMins] = useState(issue.firstResponseMins);
+  const [resolutionMins, setResolutionMins] = useState(issue.resolutionMins);
   const [saving, setSaving] = useState(false);
-  const dirty = name.trim() !== issue.name || (subDepartmentId || null) !== issue.subDepartmentId;
-  const canSave = dirty && !saving && name.trim().length > 0 && !(requiresSubDept && !subDepartmentId);
+  const availableSubDepartments = departments
+    ? (departments.find((department) => department.id === departmentId)?.subDepartments ?? [])
+    : subDepartments;
+  const dirty = name.trim() !== issue.name ||
+    (departments ? departmentId !== issue.departmentId : false) ||
+    (subDepartmentId || null) !== issue.subDepartmentId ||
+    firstResponseMins !== issue.firstResponseMins ||
+    resolutionMins !== issue.resolutionMins;
+  const canSave = dirty && !saving && name.trim().length > 0 &&
+    firstResponseMins > 0 && resolutionMins > 0 &&
+    (!departments || Boolean(departmentId)) &&
+    !(requiresSubDept && !subDepartmentId);
 
   async function save() {
     if (!canSave) return;
     setSaving(true);
     try {
-      await onSave(issue.id, { name: name.trim(), subDepartmentId: subDepartmentId || null });
+      await onSave(issue.id, {
+        name: name.trim(),
+        ...(departments ? { departmentId } : {}),
+        subDepartmentId: subDepartmentId || null,
+        firstResponseMins,
+        resolutionMins,
+      });
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <div className="flex items-center gap-2 rounded-xl border border-sts-card-border bg-sts-card px-3 py-2.5">
+    <div className="flex flex-wrap items-end gap-2 rounded-xl border border-sts-card-border bg-sts-card px-3 py-2.5">
       <input
         value={name}
         onChange={(e) => setName(e.target.value)}
         placeholder="Issue name"
         className="h-8 min-w-0 flex-1 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-id"
       />
+      {departments && (
+        <div className="w-[170px] shrink-0">
+          <Select
+            value={departmentId}
+            onValueChange={(value) => {
+              setDepartmentId(value ?? "");
+              setSubDepartmentId("");
+            }}
+          >
+            <SelectTrigger className="h-8 w-full rounded-lg border-sts-card-border bg-sts-surface font-sans text-[12.5px] text-sts-foreground">
+              <span className={departmentId ? "text-sts-foreground" : "text-sts-subtle"}>
+                {departments.find((department) => department.id === departmentId)?.name ?? "Select department"}
+              </span>
+            </SelectTrigger>
+            <SelectContent>
+              {departments.map((department) => (
+                <SelectItem key={department.id} value={department.id} className="font-sans text-[12.5px]">
+                  {department.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       <div className="w-[190px] shrink-0">
         <Select
           value={subDepartmentId || "__default__"}
+          disabled={Boolean(departments) && !departmentId}
           onValueChange={(v) => setSubDepartmentId(v === "__default__" ? "" : (v ?? ""))}
         >
           <SelectTrigger className="h-8 w-full rounded-lg border-sts-card-border bg-sts-surface font-sans text-[12.5px] text-sts-foreground">
             <span className={subDepartmentId ? "text-sts-foreground" : "text-sts-subtle"}>
-              {subDepartments.find((s) => s.id === subDepartmentId)?.name ??
+              {availableSubDepartments.find((s) => s.id === subDepartmentId)?.name ??
                 (requiresSubDept ? "Select sub-department" : "Form default")}
             </span>
           </SelectTrigger>
@@ -2319,7 +2574,7 @@ function IssueEditorRow({
                 Form default
               </SelectItem>
             )}
-            {subDepartments.map((s) => (
+            {availableSubDepartments.map((s) => (
               <SelectItem key={s.id} value={s.id} className="font-sans text-[12.5px]">
                 {s.name}
               </SelectItem>
@@ -2327,56 +2582,120 @@ function IssueEditorRow({
           </SelectContent>
         </Select>
       </div>
-      <button
-        type="button"
-        onClick={save}
-        disabled={!canSave}
-        className="flex h-8 shrink-0 items-center gap-1 rounded-full bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-40 dark:text-gray-900"
-        title="Save issue"
-      >
-        {saving ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
-        Save
-      </button>
-      <button
-        type="button"
-        onClick={() => onDelete(issue.id)}
-        className="shrink-0 rounded-full p-1.5 text-sts-subtle hover:bg-red-500/10 hover:text-sts-red"
-        title="Delete issue"
-      >
-        <Trash2 className="size-3.5" />
-      </button>
+      {showSlaTargets && (<>
+      <label className="flex w-[130px] shrink-0 flex-col gap-1">
+        <span className="font-sans text-[10px] font-semibold uppercase tracking-wide text-sts-subtle">
+          Response (min)
+        </span>
+        <input
+          type="number"
+          min={1}
+          max={525600}
+          value={firstResponseMins}
+          onChange={(event) => setFirstResponseMins(Number(event.target.value))}
+          className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-id"
+        />
+      </label>
+      <label className="flex w-[130px] shrink-0 flex-col gap-1">
+        <span className="font-sans text-[10px] font-semibold uppercase tracking-wide text-sts-subtle">
+          Resolution (min)
+        </span>
+        <input
+          type="number"
+          min={1}
+          max={525600}
+          value={resolutionMins}
+          onChange={(event) => setResolutionMins(Number(event.target.value))}
+          className="h-8 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-id"
+        />
+      </label>
+      </>)}
+      <Tip label="Save issue">
+        <button
+          type="button"
+          onClick={save}
+          disabled={!canSave}
+          className="flex h-8 shrink-0 items-center gap-1 rounded-full bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-40 dark:text-gray-900"
+        >
+          {saving ? <Loader2 className="size-3 animate-spin" /> : <Check className="size-3" />}
+          Save
+        </button>
+      </Tip>
+      <Tip label="Delete issue">
+        <button
+          aria-label="Delete issue"
+          type="button"
+          onClick={() => onDelete(issue.id)}
+          className="shrink-0 rounded-full p-1.5 text-sts-subtle hover:bg-red-500/10 hover:text-sts-red"
+        >
+          <Trash2 className="size-3.5" />
+        </button>
+      </Tip>
     </div>
   );
 }
 
-function IssuesModal({
+export function IssuesModal({
   form,
   subDepartments,
+  issuesEndpoint,
+  issueDepartments,
+  showSlaTargets = true,
   onClose,
 }: {
-  form: IntakeFormRow;
+  form: FormEditorTarget;
   subDepartments: SubDepartmentOption[];
+  issuesEndpoint?: string;
+  issueDepartments?: IssueDepartmentOption[];
+  /** Show per-issue Response/Resolution SLA inputs. Support Forms hides them;
+   *  issues still carry the default targets they were created with. */
+  showSlaTargets?: boolean;
   onClose: () => void;
 }) {
   const [issues, setIssues] = useState<IssueRow[] | null>(null);
   const [newName, setNewName] = useState("");
+  const [newDepartmentId, setNewDepartmentId] = useState("");
   const [newSubDept, setNewSubDept] = useState("");
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Department-level forms (no default sub-department) must route every issue.
-  const requiresSubDept = !form.intakeSubDepartmentId;
-  const base = `/api/departments/${form.departmentId}/sla-policies`;
+  const tenantRouted = Boolean(issueDepartments);
+  const requiresSubDept = tenantRouted || !form.intakeSubDepartmentId;
+  const newSubDepartments = issueDepartments
+    ? (issueDepartments.find((department) => department.id === newDepartmentId)?.subDepartments ?? [])
+    : subDepartments;
+  const base = issuesEndpoint ?? `/api/departments/${form.departmentId}/sla-policies`;
+
+  const issueList = useListControls(issues ?? [], {
+    searchText: (i) => {
+      const dept = issueDepartments?.find((d) => d.id === i.departmentId);
+      const subs = dept?.subDepartments ?? subDepartments;
+      return [i.name, i.priority ?? "", dept?.name ?? "", subs.find((sd) => sd.id === i.subDepartmentId)?.name ?? ""].join(" ");
+    },
+    sortOptions: [
+      { id: "added", label: "Order added", compare: () => 0 },
+      { id: "name", label: "Name (A–Z)", compare: byText((i) => i.name) },
+      { id: "newest", label: "Newest first", compare: byDateDesc((i: IssueRow) => i.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((i: IssueRow) => i.createdAt) },
+      {
+        id: "priority",
+        label: "Priority",
+        compare: (a, b) => (PRIORITY_RANK[a.priority ?? ""] ?? 9) - (PRIORITY_RANK[b.priority ?? ""] ?? 9),
+      },
+    ],
+  });
 
   useEffect(() => {
-    fetch(`${base}?formConfigId=${form.id}`)
+    fetch(issuesEndpoint ? base : `${base}?formConfigId=${form.id}`)
       .then((r) => r.json())
       .then((data: IssueRow[]) => setIssues(Array.isArray(data) ? data : []))
       .catch(() => setIssues([]));
-  }, [base, form.id]);
+  }, [base, form.id, issuesEndpoint]);
 
   async function addIssue() {
     const name = newName.trim();
     if (!name) { setError("Issue name is required."); return; }
+    if (tenantRouted && !newDepartmentId) { setError("Pick a department for this issue."); return; }
     if (requiresSubDept && !newSubDept) { setError("Pick a sub-department for this issue."); return; }
     setAdding(true);
     setError(null);
@@ -2387,6 +2706,7 @@ function IssuesModal({
         body: JSON.stringify({
           name,
           formConfigId: form.id,
+          ...(tenantRouted ? { departmentId: newDepartmentId } : {}),
           subDepartmentId: newSubDept || null,
           // Sensible default SLA targets; fine-tune on the SLA policies page.
           firstResponseMins: 60,
@@ -2401,13 +2721,20 @@ function IssuesModal({
       const created: IssueRow = await res.json();
       setIssues((prev) => [...(prev ?? []), created]);
       setNewName("");
+      setNewDepartmentId("");
       setNewSubDept("");
     } finally {
       setAdding(false);
     }
   }
 
-  async function saveIssue(id: string, patch: { name: string; subDepartmentId: string | null }) {
+  async function saveIssue(id: string, patch: {
+    name: string;
+    departmentId?: string;
+    subDepartmentId: string | null;
+    firstResponseMins: number;
+    resolutionMins: number;
+  }) {
     const res = await fetch(`${base}/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -2436,37 +2763,45 @@ function IssuesModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 sts-overlay-backdrop" onClick={onClose} />
       <div
-        className="relative flex w-full max-w-2xl flex-col rounded-2xl border border-sts-card-border shadow-2xl"
+        className={cn(
+          "relative flex w-full flex-col rounded-2xl border border-sts-card-border shadow-2xl",
+          tenantRouted ? "max-w-5xl" : "max-w-2xl",
+        )}
         style={{ height: "70vh", maxHeight: "70vh", background: "var(--sts-card-solid)" }}
       >
         <div className="flex shrink-0 items-start justify-between border-b border-sts-card-border px-6 py-4">
           <div>
             <h2 className="sts-text-modal-title">Issues</h2>
             <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
-              {form.name} · {form.departmentName}
+              {tenantRouted ? form.name : `${form.name} · ${form.departmentName}`}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-full border border-sts-card-border p-1.5 text-sts-subtle hover:border-sts-muted hover:text-sts-foreground transition-colors"
-          >
-            <X className="size-3.5" />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              type="button"
+              onClick={onClose}
+              className="rounded-full border border-sts-card-border p-1.5 text-sts-subtle hover:border-sts-muted hover:text-sts-foreground transition-colors"
+            >
+              <X className="size-3.5" />
+            </button>
+          </Tip>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <p className="mb-3 font-sans text-[11.5px] text-sts-subtle">
-            Customers pick an issue on the public form. Each issue routes its ticket to the chosen
-            sub-department, where it&apos;s recorded and assigned using that sub-department&apos;s
+            Customers pick an issue on the support form. Each issue routes its ticket to the chosen
+            {tenantRouted ? " department and sub-department" : " sub-department"}, where it&apos;s recorded and assigned using that sub-department&apos;s
             assignment method.
-            {requiresSubDept
-              ? " This form has no default sub-department, so every issue must route to one."
+            {tenantRouted
+              ? " Select both levels for every issue."
+              : requiresSubDept
+                ? " This form has no default sub-department, so every issue must route to one."
               : " Leave an issue on “Form default” to use the form’s default sub-department."}
           </p>
 
           {/* Add new issue */}
-          <div className="mb-4 flex items-center gap-2 rounded-xl border border-dashed border-sts-card-border bg-sts-surface/40 px-3 py-2.5">
+          <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-dashed border-sts-card-border bg-sts-surface/40 px-3 py-2.5">
             <input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
@@ -2474,11 +2809,39 @@ function IssuesModal({
               placeholder="New issue, e.g. Cannot log in"
               className="h-8 min-w-0 flex-1 rounded-lg border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12.5px] text-sts-foreground outline-none focus:border-sts-id"
             />
+            {issueDepartments && (
+              <div className="w-[170px] shrink-0">
+                <Select
+                  value={newDepartmentId}
+                  onValueChange={(value) => {
+                    setNewDepartmentId(value ?? "");
+                    setNewSubDept("");
+                  }}
+                >
+                  <SelectTrigger className="h-8 w-full rounded-lg border-sts-card-border bg-sts-surface font-sans text-[12.5px] text-sts-foreground">
+                    <span className={newDepartmentId ? "text-sts-foreground" : "text-sts-subtle"}>
+                      {issueDepartments.find((department) => department.id === newDepartmentId)?.name ?? "Select department"}
+                    </span>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {issueDepartments.map((department) => (
+                      <SelectItem key={department.id} value={department.id} className="font-sans text-[12.5px]">
+                        {department.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="w-[190px] shrink-0">
-              <Select value={newSubDept || "__default__"} onValueChange={(v) => setNewSubDept(v === "__default__" ? "" : (v ?? ""))}>
+              <Select
+                value={newSubDept || "__default__"}
+                disabled={tenantRouted && !newDepartmentId}
+                onValueChange={(v) => setNewSubDept(v === "__default__" ? "" : (v ?? ""))}
+              >
                 <SelectTrigger className="h-8 w-full rounded-lg border-sts-card-border bg-sts-surface font-sans text-[12.5px] text-sts-foreground">
                   <span className={newSubDept ? "text-sts-foreground" : "text-sts-subtle"}>
-                    {subDepartments.find((s) => s.id === newSubDept)?.name ??
+                    {newSubDepartments.find((s) => s.id === newSubDept)?.name ??
                       (requiresSubDept ? "Select sub-department" : "Form default")}
                   </span>
                 </SelectTrigger>
@@ -2488,7 +2851,7 @@ function IssuesModal({
                       Form default
                     </SelectItem>
                   )}
-                  {subDepartments.map((s) => (
+                  {newSubDepartments.map((s) => (
                     <SelectItem key={s.id} value={s.id} className="font-sans text-[12.5px]">
                       {s.name}
                     </SelectItem>
@@ -2499,7 +2862,7 @@ function IssuesModal({
             <button
               type="button"
               onClick={addIssue}
-              disabled={adding}
+              disabled={adding || (tenantRouted && (!newDepartmentId || !newSubDept))}
               className="flex h-8 shrink-0 items-center gap-1 rounded-full bg-sts-blue px-3 font-sans text-[11.5px] font-medium text-white hover:bg-sts-blue/90 disabled:opacity-50 dark:text-gray-900"
             >
               {adding ? <Loader2 className="size-3 animate-spin" /> : <Plus className="size-3" strokeWidth={2.5} />}
@@ -2522,12 +2885,27 @@ function IssuesModal({
             </div>
           ) : (
             <div className="flex flex-col gap-2">
-              {issues.map((issue) => (
+              <div className="flex items-center justify-between gap-2">
+                <ListSearchInput value={issueList.query} onChange={issueList.setQuery} placeholder="Search issues…" />
+                <SortDropdown
+                  value={issueList.sortKey}
+                  onChange={issueList.setSortKey}
+                  options={issueList.sortDropdownOptions}
+                />
+              </div>
+              {issueList.visible.length === 0 && (
+                <p className="py-6 text-center font-sans text-[12.5px] text-sts-muted">
+                  No issues match &ldquo;{issueList.query.trim()}&rdquo;
+                </p>
+              )}
+              {issueList.visible.map((issue) => (
                 <IssueEditorRow
                   key={issue.id}
                   issue={issue}
                   subDepartments={subDepartments}
+                  departments={issueDepartments}
                   requiresSubDept={requiresSubDept}
+                  showSlaTargets={showSlaTargets}
                   onSave={saveIssue}
                   onDelete={deleteIssue}
                 />
@@ -2538,7 +2916,7 @@ function IssuesModal({
 
         <div className="flex shrink-0 items-center justify-between gap-2 border-t border-sts-card-border px-6 py-3">
           <p className="font-sans text-[11px] text-sts-subtle">
-            Fine-tune SLA targets, priority &amp; assignees on the SLA policies page.
+            {showSlaTargets && "Response and resolution targets are applied to tickets created for each issue."}
           </p>
           <button
             type="button"
@@ -2675,6 +3053,25 @@ export function SettingsIntakeFormsPage({
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const showDepartmentColumn = !scopedDepartmentName;
 
+  const formList = useListControls(initialForms, {
+    searchText: (f) =>
+      [f.name, f.departmentName, f.intakeSubDepartmentName ?? "", f.publicPath, f.displayMode].join(" "),
+    sortOptions: [
+      { id: "name", label: "Name (A–Z)", compare: byText((f) => f.name) },
+      { id: "newest", label: "Newest first", compare: byDateDesc((f) => f.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((f) => f.createdAt) },
+      { id: "submissions", label: "Most submissions", compare: byNumberDesc((f) => f.intakeCount) },
+      {
+        id: "status",
+        label: "Active first",
+        compare: (a, b) => Number(getIsActive(b)) - Number(getIsActive(a)) || a.name.localeCompare(b.name),
+      },
+      ...(showDepartmentColumn
+        ? [{ id: "department", label: "Department", compare: byText<IntakeFormRow>((f) => f.departmentName) }]
+        : []),
+    ],
+  });
+
   return (
     <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
@@ -2705,6 +3102,26 @@ export function SettingsIntakeFormsPage({
           </p>
         </div>
       ) : (
+        <>
+        <div className="flex items-center justify-between gap-2">
+          <ListSearchInput
+            value={formList.query}
+            onChange={formList.setQuery}
+            placeholder="Search forms…"
+          />
+          <SortDropdown
+            value={formList.sortKey}
+            onChange={formList.setSortKey}
+            options={formList.sortDropdownOptions}
+          />
+        </div>
+        {formList.visible.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-[6px] border border-dashed border-sts-card-border py-12 text-center">
+            <p className="font-sans text-[13px] text-sts-muted">
+              No forms match &ldquo;{formList.query.trim()}&rdquo;
+            </p>
+          </div>
+        ) : (
         <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
           <Table className="min-w-[780px]">
             <TableHeader>
@@ -2738,7 +3155,7 @@ export function SettingsIntakeFormsPage({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {initialForms.map((form) => {
+              {formList.visible.map((form) => {
                 const shareUrl = `${origin}${form.publicPath}`;
                 return (
                   <TableRow
@@ -2757,6 +3174,15 @@ export function SettingsIntakeFormsPage({
                             >
                               <MessageCircle className="size-2.5" />
                               Chat
+                            </span>
+                          )}
+                          {form.usedByPortal && (
+                            <span
+                              className="inline-flex shrink-0 items-center gap-1 rounded-full border border-sts-id/40 bg-sts-id px-1.5 py-0.5 font-sans text-[10px] font-semibold text-white dark:text-gray-900"
+                              title="Used by the portal (linked to an active portal API key)"
+                            >
+                              <Globe className="size-2.5" />
+                              Portal
                             </span>
                           )}
                         </span>
@@ -2875,51 +3301,58 @@ export function SettingsIntakeFormsPage({
                     {/* Actions */}
                     <TableCell className="py-0 text-right">
                       <div className="flex h-[56px] items-center justify-end gap-1">
-                        <button
-                          type="button"
-                          onClick={() => setIssuesModal(form)}
-                          className="flex items-center gap-1.5 rounded-full border border-sts-id/25 bg-sts-blue/10 px-3 py-1.5 font-sans text-[11.5px] font-semibold text-sts-id transition-colors hover:bg-sts-blue/20"
-                          title="Add or edit the issues shown on this form and their routing"
-                        >
-                          <ListChecks className="size-3.5" />
-                          Issues
-                        </button>
-                        {form.displayMode !== "CHAT" && (
+                        <Tip label="Add or edit the issues shown on this form and their routing">
                           <button
                             type="button"
-                            onClick={() => setFieldModal(form)}
+                            onClick={() => setIssuesModal(form)}
                             className="flex items-center gap-1.5 rounded-full border border-sts-id/25 bg-sts-blue/10 px-3 py-1.5 font-sans text-[11.5px] font-semibold text-sts-id transition-colors hover:bg-sts-blue/20"
-                            title="Add or edit the fields shown on this form"
                           >
-                            <Settings2 className="size-3.5" />
-                            Add Field
+                            <ListChecks className="size-3.5" />
+                            Issues
                           </button>
+                        </Tip>
+                        {form.displayMode !== "CHAT" && (
+                          <Tip label="Add or edit the fields shown on this form">
+                            <button
+                              type="button"
+                              onClick={() => setFieldModal(form)}
+                              className="flex items-center gap-1.5 rounded-full border border-sts-id/25 bg-sts-blue/10 px-3 py-1.5 font-sans text-[11.5px] font-semibold text-sts-id transition-colors hover:bg-sts-blue/20"
+                            >
+                              <Settings2 className="size-3.5" />
+                              Add Field
+                            </button>
+                          </Tip>
                         )}
-                        <button
-                          type="button"
-                          onClick={() => setDesignModal(form)}
-                          className="flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-3 py-1.5 font-sans text-[11.5px] font-semibold text-sts-muted transition-colors hover:border-sts-muted hover:bg-sts-card hover:text-sts-foreground"
-                          title="Customize the public form's logo and colors"
-                        >
-                          <Palette className="size-3.5" />
-                          Design
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setModal({ type: "edit", form })}
-                          className="cursor-pointer rounded-full p-1.5 text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
-                          title="Edit form settings"
-                        >
-                          <Pencil className="size-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeleteTarget(form)}
-                          className="cursor-pointer rounded-full p-1.5 text-sts-muted transition-colors hover:bg-red-500/10 hover:text-sts-red dark:hover:bg-red-950/30"
-                          title="Delete this form"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
+                        <Tip label="Customize the public form's logo and colors">
+                          <button
+                            type="button"
+                            onClick={() => setDesignModal(form)}
+                            className="flex items-center gap-1.5 rounded-full border border-sts-card-border bg-sts-surface px-3 py-1.5 font-sans text-[11.5px] font-semibold text-sts-muted transition-colors hover:border-sts-muted hover:bg-sts-card hover:text-sts-foreground"
+                          >
+                            <Palette className="size-3.5" />
+                            Design
+                          </button>
+                        </Tip>
+                        <Tip label="Edit form settings">
+                          <button
+                            aria-label="Edit form settings"
+                            type="button"
+                            onClick={() => setModal({ type: "edit", form })}
+                            className="cursor-pointer rounded-full p-1.5 text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+                          >
+                            <Pencil className="size-3.5" />
+                          </button>
+                        </Tip>
+                        <Tip label="Delete this form">
+                          <button
+                            aria-label="Delete form"
+                            type="button"
+                            onClick={() => setDeleteTarget(form)}
+                            className="cursor-pointer rounded-full p-1.5 text-sts-muted transition-colors hover:bg-red-500/10 hover:text-sts-red dark:hover:bg-red-950/30"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </Tip>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -2928,6 +3361,8 @@ export function SettingsIntakeFormsPage({
             </TableBody>
           </Table>
         </div>
+        )}
+        </>
       )}
 
       {modal && (
@@ -2953,6 +3388,7 @@ export function SettingsIntakeFormsPage({
           subDepartments={
             departments.find((d) => d.id === issuesModal.departmentId)?.subDepartments ?? []
           }
+          showSlaTargets={false}
           onClose={() => {
             setIssuesModal(null);
             startTransition(() => router.refresh());

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, Check, ArrowUpDown, Search, SlidersHorizontal, Eye, EyeOff } from "lucide-react";
+import { ChevronDown, Check, ArrowUpDown, Search, SlidersHorizontal, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import type { HiddenFilters } from "@/hooks/use-persisted-hidden-filters";
@@ -256,5 +256,26 @@ export function SortDropdown({
         </div>
       </PopoverContent>
     </Popover>
+  );
+}
+
+export function RefreshButton({
+  onRefresh,
+  refreshing,
+}: {
+  onRefresh: () => void;
+  refreshing: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onRefresh}
+      disabled={refreshing}
+      title="Reload tasks"
+      aria-label="Reload tasks"
+      className="-ml-1.5 flex size-6 shrink-0 items-center justify-center rounded-full text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:cursor-default"
+    >
+      <RefreshCw className={cn("size-3", refreshing && "animate-spin")} />
+    </button>
   );
 }

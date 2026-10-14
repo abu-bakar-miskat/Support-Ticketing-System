@@ -1,5 +1,6 @@
 "use client";
 
+import { Tip } from "@/components/ui/tooltip";
 import { useState, useTransition, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -21,8 +22,11 @@ import {
   Sparkles,
   Clock,
 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { PageHeader } from "@/components/ui/page-header";
+import { EmptyState } from "@/components/ui/empty-state";
+import { ListSearchInput, SortDropdown } from "@/components/ui/list-controls";
 import {
   getNotification,
   markNotificationRead,
@@ -83,11 +87,68 @@ export type InboxItem = {
   };
 };
 
+/** Ticket-less system notifications (feature/template/domain approvals, agreement
+ *  + mailbox alerts, access grants). Mirrors what the notification panel shows. */
+export type GeneralItem = {
+  id: string;
+  notifType: string;
+  actor: string;
+  actorInitials: string;
+  actorColor: string;
+  actorAvatarUrl?: string | null;
+  message: string | null;
+  time: string;
+  createdAt: string;
+  unread: boolean;
+};
+
 type AnyItem =
   | ({ kind: "ticket" } & InboxItem)
-  | ({ kind: "join_request" } & JoinRequestNotification);
+  | ({ kind: "join_request" } & JoinRequestNotification)
+  | ({ kind: "general" } & GeneralItem);
+
+// Label + click target per ticket-less notification type. Unknown types still
+// render (with a generic label and no navigation) so nothing from the panel is
+// ever missing here.
+const GENERAL_META: Record<
+  string,
+  { icon: React.ElementType; color: string; label: string; href: string | null }
+> = {
+  feature_request_submitted:  { icon: GitPullRequest, color: "#f84201", label: "requested feature approval", href: "/platform/feature-approvals" },
+  template_request_submitted: { icon: GitPullRequest, color: "#f84201", label: "requested a template",       href: "/platform/feature-approvals" },
+  domain_request_submitted:   { icon: GitPullRequest, color: "#f84201", label: "requested a domain",         href: "/platform/feature-approvals" },
+  feature_request_reviewed:   { icon: Sparkles,       color: "#7c3aed", label: "reviewed a feature request", href: null },
+  template_request_reviewed:  { icon: Sparkles,       color: "#7c3aed", label: "reviewed a template request", href: null },
+  domain_request_reviewed:    { icon: Sparkles,       color: "#7c3aed", label: "reviewed a domain request",  href: null },
+  agreement_expiring:         { icon: Clock,          color: "#d97706", label: "agreement expiring",         href: null },
+  mailbox_connection_failed:  { icon: Bell,           color: "#dc2626", label: "mailbox connection failed",  href: null },
+  access_granted:             { icon: UserCheck,      color: "#059669", label: "granted you access",         href: null },
+};
+
+function generalMeta(type: string) {
+  return GENERAL_META[type] ?? { icon: Bell, color: "#0a76b9", label: "sent a notification", href: null };
+}
 
 type TimeGroup = "today" | "yesterday" | "this_week" | "earlier";
+
+type InboxSort = "newest" | "oldest" | "unread";
+
+const SORT_OPTIONS: { id: InboxSort; label: string }[] = [
+  { id: "newest", label: "Newest first" },
+  { id: "oldest", label: "Oldest first" },
+  { id: "unread", label: "Unread first" },
+];
+
+/** Text a notification is matched against by the inbox search box. */
+function searchTextFor(n: AnyItem): string {
+  if (n.kind === "ticket") {
+    return [n.actor, n.action, n.preview, n.ticketId, n.detail.title, n.detail.ticketHumanId].join(" ");
+  }
+  if (n.kind === "join_request") {
+    return [n.actor, "join request", n.subDepartmentName, n.message].join(" ");
+  }
+  return [n.actor, generalMeta(n.notifType).label, n.message].join(" ");
+}
 
 const TABS: { id: TabId; label: string; icon: React.ElementType }[] = [
   { id: "all", label: "All", icon: Bell },
@@ -253,17 +314,19 @@ function NotificationCard({
       {/* Actions */}
       <div className="flex shrink-0 flex-col items-end gap-1.5 self-center">
         {item.unread && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              onMarkDone(item.id);
-            }}
-            title="Mark as read"
-            className="flex size-6 items-center justify-center rounded-full border border-sts-card-border text-sts-subtle transition-all hover:border-sts-blue hover:bg-sts-blue-tint hover:text-sts-blue"
-          >
-            <Check className="size-3" strokeWidth={2.5} />
-          </button>
+          <Tip label="Mark as read">
+            <button
+              aria-label="Mark as read"
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                onMarkDone(item.id);
+              }}
+              className="flex size-6 items-center justify-center rounded-full border border-sts-card-border text-sts-subtle transition-all hover:border-sts-blue hover:bg-sts-blue-tint hover:text-sts-blue"
+            >
+              <Check className="size-3" strokeWidth={2.5} />
+            </button>
+          </Tip>
         )}
         <span className="flex size-6 items-center justify-center rounded-md border border-sts-card-border text-sts-subtle transition-colors group-hover:border-sts-id/30 group-hover:text-sts-id">
           <ArrowRight className="size-3" strokeWidth={2} />
@@ -356,30 +419,120 @@ function JoinRequestCard({
   );
 }
 
+// ── General (ticket-less) notification card ────────────────────────────────────
+
+function GeneralCard({
+  item,
+  onSelect,
+}: {
+  item: GeneralItem;
+  onSelect: () => void;
+}) {
+  const meta = generalMeta(item.notifType);
+  const Icon = meta.icon;
+  // Feature/template/domain review messages are prefixed with "approved:"/
+  // "rejected:" for other surfaces — strip it for a clean one-liner here.
+  const summary = item.message?.replace(/^(approved|rejected):\s*/i, "").trim() || null;
+
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      className={cn(
+        "group relative flex w-full items-start gap-3.5 rounded-xl border px-4 py-3.5 text-left transition-all hover:shadow-sm",
+        item.unread
+          ? "border-sts-card-border bg-sts-card hover:border-sts-id/20"
+          : "border-transparent bg-sts-surface/30 hover:bg-sts-surface/60",
+      )}
+    >
+      {item.unread && (
+        <span className="absolute left-0 top-3 bottom-3 w-[3px] rounded-full bg-sts-blue" />
+      )}
+      <div className="relative mt-0.5 shrink-0">
+        <UserAvatar name={item.actor} avatarUrl={item.actorAvatarUrl} size={32} />
+        <span
+          className="absolute -bottom-1 -right-1 flex size-[15px] items-center justify-center rounded-full border-[1.5px] border-sts-card"
+          style={{ backgroundColor: meta.color }}
+        >
+          <Icon className="size-[8px] text-white" strokeWidth={2.5} />
+        </span>
+      </div>
+      <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="flex min-w-0 items-baseline gap-1.5">
+          <span
+            className={cn(
+              "shrink-0 font-sans text-[12.5px] font-semibold",
+              item.unread ? "text-sts-foreground" : "text-sts-muted",
+            )}
+          >
+            {item.actor}
+          </span>
+          <span className="shrink-0 font-sans text-[11.5px] text-sts-muted">{meta.label}</span>
+          <span className="ml-auto shrink-0 font-sans text-[11px] text-sts-subtle">{item.time}</span>
+        </div>
+        {summary && (
+          <p
+            className={cn(
+              "min-w-0 truncate font-sans text-[12px] leading-none",
+              item.unread ? "text-sts-foreground/90" : "text-sts-muted/80",
+            )}
+          >
+            {summary}
+          </p>
+        )}
+      </div>
+      <span className="flex size-6 shrink-0 items-center justify-center self-center rounded-md border border-sts-card-border text-sts-subtle transition-colors group-hover:border-sts-id/30 group-hover:text-sts-id">
+        <ArrowRight className="size-3" strokeWidth={2} />
+      </span>
+    </button>
+  );
+}
+
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 export function InboxPage({
   items,
   joinRequestItems = [],
+  generalItems = [],
   currentUserInitials,
   userId,
+  initialTab,
 }: {
   items: InboxItem[];
   joinRequestItems?: JoinRequestNotification[];
+  generalItems?: GeneralItem[];
   currentUserInitials: string;
   userId: string;
+  /** From `?tab=` — lets links (e.g. /mentions) open a specific tab. */
+  initialTab?: string;
 }) {
   const router = useRouter();
   const [, startTransition] = useTransition();
-  const [activeTab, setActiveTab] = useState<TabId>("all");
+  const [activeTab, setActiveTabState] = useState<TabId>(() =>
+    TABS.some((t) => t.id === initialTab) ? (initialTab as TabId) : "all",
+  );
+  // Mirror the tab into the URL so reload/back keeps it.
+  const setActiveTab = useCallback((tab: TabId) => {
+    setActiveTabState(tab);
+    const url = new URL(window.location.href);
+    if (tab === "all") url.searchParams.delete("tab");
+    else url.searchParams.set("tab", tab);
+    window.history.replaceState(window.history.state, "", url);
+  }, []);
   const [readIds, setReadIds] = useState<Set<string>>(new Set());
   const [liveItems, setLiveItems] = useState<InboxItem[]>(items);
   const decrement = useNotificationStore((s) => s.decrement);
+  const increment = useNotificationStore((s) => s.increment);
   const reset = useNotificationStore((s) => s.reset);
+  const initCount = useNotificationStore((s) => s.init);
 
   const prependNotification = useCallback(async (notifId: string) => {
     try {
       const item: InboxItem = await getNotification(notifId);
+      // Ticket-less notifications (join requests, feature/template/domain
+      // approvals, …) come back with `detail: null` — they can't render as a
+      // ticket card, so don't live-prepend them; they'll appear on next load.
+      if (!item?.detail) return;
       setLiveItems((prev) => {
         if (prev.some((p) => p.id === notifId)) return prev;
         return [item, ...prev];
@@ -409,6 +562,7 @@ export function InboxPage({
   const allItems: AnyItem[] = [
     ...liveItems.map((i): AnyItem => ({ kind: "ticket", ...i })),
     ...joinRequestItems.map((i): AnyItem => ({ kind: "join_request", ...i })),
+    ...generalItems.map((i): AnyItem => ({ kind: "general", ...i })),
   ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   const all = allItems.map((n) =>
@@ -416,7 +570,11 @@ export function InboxPage({
   );
   const unreadCount = all.filter((n) => n.unread).length;
 
-  const filtered = all.filter((n) => {
+  const [query, setQuery] = useState("");
+  const [sortKey, setSortKey] = useState<InboxSort>("newest");
+  const searchTerms = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+
+  const tabFiltered = all.filter((n) => {
     if (activeTab === "unread") return n.unread;
     if (activeTab === "mentions")
       return n.kind === "ticket" && n.type === "mention";
@@ -427,9 +585,21 @@ export function InboxPage({
     return true;
   });
 
+  const filtered = tabFiltered.filter((n) => {
+    if (searchTerms.length === 0) return true;
+    const hay = searchTextFor(n).toLowerCase();
+    return searchTerms.every((t) => hay.includes(t));
+  });
+  // `all` is already newest-first; the other sorts reorder within each time group.
+  if (sortKey === "oldest") filtered.reverse();
+  else if (sortKey === "unread") filtered.sort((a, b) => Number(b.unread) - Number(a.unread));
+
   // Group by time
   const groups: { key: TimeGroup; items: AnyItem[] }[] = [];
-  const groupOrder: TimeGroup[] = ["today", "yesterday", "this_week", "earlier"];
+  const groupOrder: TimeGroup[] =
+    sortKey === "oldest"
+      ? ["earlier", "this_week", "yesterday", "today"]
+      : ["today", "yesterday", "this_week", "earlier"];
   const grouped = new Map<TimeGroup, AnyItem[]>();
   for (const item of filtered) {
     const g = getTimeGroup(item.createdAt);
@@ -448,7 +618,18 @@ export function InboxPage({
     setReadIds((prev) => new Set(prev).add(id));
     decrement();
     startTransition(async () => {
-      await markNotificationRead(id).catch(() => null);
+      try {
+        await markNotificationRead(id);
+      } catch {
+        // Roll back so the unread state/counter match the server.
+        setReadIds((prev) => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+        increment();
+        toast.error("Couldn't mark notification as read");
+      }
     });
   }
 
@@ -457,11 +638,25 @@ export function InboxPage({
     router.push("/settings/sub-departments");
   }
 
+  function openGeneral(item: GeneralItem) {
+    markDone(item.id);
+    const href = generalMeta(item.notifType).href;
+    if (href) router.push(href);
+  }
+
   function markAllRead() {
+    const previousReadIds = readIds;
+    const previousCount = useNotificationStore.getState().unreadCount;
     setReadIds(new Set(allItems.map((n) => n.id)));
     reset();
     startTransition(async () => {
-      await markAllNotificationsRead().catch(() => null);
+      try {
+        await markAllNotificationsRead();
+      } catch {
+        setReadIds(previousReadIds);
+        initCount(previousCount);
+        toast.error("Couldn't mark all as read");
+      }
     });
   }
 
@@ -495,7 +690,7 @@ export function InboxPage({
       />
 
       {/* Tabs */}
-      <div className="mb-5 flex items-center gap-2">
+      <div className="mb-5 flex flex-wrap items-center gap-2">
         <Filter className="size-3.5 shrink-0 text-sts-subtle" />
         <div className="flex gap-0.5 self-start rounded-full border border-sts-card-border bg-sts-surface p-0.5">
           {TABS.map((tab) => {
@@ -541,23 +736,55 @@ export function InboxPage({
             );
           })}
         </div>
+        <div className="ml-auto flex items-center gap-2">
+          <ListSearchInput value={query} onChange={setQuery} placeholder="Search notifications…" />
+          <SortDropdown
+            value={sortKey}
+            onChange={(v) => setSortKey(v as InboxSort)}
+            options={SORT_OPTIONS}
+          />
+        </div>
       </div>
 
       {/* Feed */}
       {filtered.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 py-20 text-center">
-          <div className="flex size-12 items-center justify-center rounded-xl border border-sts-card-border bg-sts-card">
-            <Inbox className="size-5 text-sts-subtle" strokeWidth={1.2} />
-          </div>
-          <div>
-            <p className="font-sans text-[13px] font-semibold text-sts-foreground">
-              All caught up
-            </p>
-            <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
-              No notifications match this filter.
-            </p>
-          </div>
-        </div>
+        searchTerms.length > 0 && tabFiltered.length > 0 ? (
+          <EmptyState
+            icon={Inbox}
+            title="No notifications match"
+            description={`Nothing matches "${query.trim()}".`}
+            action={
+              <button
+                type="button"
+                onClick={() => setQuery("")}
+                className="h-8 rounded-full border border-sts-card-border px-3.5 font-sans text-[12px] font-medium text-sts-foreground transition-colors hover:bg-sts-surface"
+              >
+                Clear search
+              </button>
+            }
+          />
+        ) : activeTab === "all" ? (
+          <EmptyState
+            icon={Inbox}
+            title="All caught up"
+            description="You have no notifications. Mentions, assignments and comments will show up here."
+          />
+        ) : (
+          <EmptyState
+            icon={Inbox}
+            title={activeTab === "unread" ? "No unread notifications" : `No ${TABS.find((t) => t.id === activeTab)?.label.toLowerCase() ?? "notifications"} yet`}
+            description="Nothing matches this tab right now."
+            action={
+              <button
+                type="button"
+                onClick={() => setActiveTab("all")}
+                className="h-8 rounded-full border border-sts-card-border px-3.5 font-sans text-[12px] font-medium text-sts-foreground transition-colors hover:bg-sts-surface"
+              >
+                Show all notifications
+              </button>
+            }
+          />
+        )
       ) : (
         <div className="flex flex-col gap-4">
           {groups.map(({ key, items: groupItems }) => (
@@ -570,6 +797,12 @@ export function InboxPage({
                       key={item.id}
                       item={item}
                       onSelect={() => openJoinRequest(item)}
+                    />
+                  ) : item.kind === "general" ? (
+                    <GeneralCard
+                      key={item.id}
+                      item={item}
+                      onSelect={() => openGeneral(item)}
                     />
                   ) : (
                     <NotificationCard

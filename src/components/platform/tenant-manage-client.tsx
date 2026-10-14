@@ -17,11 +17,21 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { TenantAvatar } from "@/components/platform/tenant-avatar";
 import { UserAvatar } from "@/components/ui/user-avatar";
 import type { TenantBranding } from "@/lib/tenant-branding";
+import { normalizeHex } from "@/lib/tenant-accent";
+import { AccentColorField } from "@/components/settings/accent-color-field";
 import {
   TenantAgreements,
   type AgreementRow,
 } from "@/components/platform/tenant-agreements";
 import { tenantTypeLabel } from "@/lib/tenant-types";
+import {
+  ListSearchInput,
+  SortDropdown,
+  byDateAsc,
+  byDateDesc,
+  byText,
+  useListControls,
+} from "@/components/ui/list-controls";
 
 type UserResult = {
   id: string;
@@ -48,6 +58,8 @@ type Member = {
   avatarUrl: string | null;
   role: string;
   isActive: boolean;
+  /** ISO timestamp the person joined this tenant (earliest membership). */
+  joinedAt?: string | null;
 };
 
 const MEMBER_ROLES = ["admin", "manager", "sub_manager", "agent"] as const;
@@ -178,6 +190,8 @@ export function TenantManageClient({
     initialBranding.displayName ?? "",
   );
   const [logoUrl, setLogoUrl] = useState(initialBranding.logoUrl ?? "");
+  const [accentColor, setAccentColor] = useState(initialBranding.accentColor ?? "");
+  const accentValid = !accentColor.trim() || normalizeHex(accentColor) !== null;
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -187,10 +201,29 @@ export function TenantManageClient({
   const [tenantStatus, setTenantStatus] = useState(tenant.status);
   const [deleted, setDeleted] = useState(tenant.deleted);
   const [lifecycleBusy, setLifecycleBusy] = useState(false);
+  const [lifecycleConfirm, setLifecycleConfirm] = useState<"suspend" | "delete" | null>(null);
 
   // Members
   const [members, setMembers] = useState<Member[]>(initialMembers);
   const [memberToRemove, setMemberToRemove] = useState<Member | null>(null);
+  const memberList = useListControls(members, {
+    searchText: (m) => `${m.name} ${m.email} ${roleLabel(m.role)}`,
+    sortOptions: [
+      { id: "name", label: "Name (A–Z)", compare: byText((m) => m.name || m.email) },
+      { id: "name-desc", label: "Name (Z–A)", compare: (a, b) => byText<Member>((m) => m.name || m.email)(b, a) },
+      { id: "newest", label: "Newest first", compare: byDateDesc((m) => m.joinedAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((m) => m.joinedAt) },
+      { id: "email", label: "Email", compare: byText((m) => m.email) },
+      {
+        id: "role",
+        label: "Role",
+        compare: (a, b) =>
+          MEMBER_ROLES.indexOf(a.role as (typeof MEMBER_ROLES)[number]) -
+          MEMBER_ROLES.indexOf(b.role as (typeof MEMBER_ROLES)[number]),
+      },
+      { id: "restricted", label: "Restricted first", compare: (a, b) => Number(a.isActive) - Number(b.isActive) },
+    ],
+  });
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<string>("agent");
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
@@ -279,7 +312,8 @@ export function TenantManageClient({
     if (body.added && body.member) {
       setMembers((prev) => {
         const rest = prev.filter((m) => m.id !== body.member.id);
-        return [...rest, body.member];
+        // Just added — stamp the join time so date sorts place them correctly.
+        return [...rest, { joinedAt: new Date().toISOString(), ...body.member }];
       });
       setStatus(
         `${body.member.name || body.member.email} added as ${roleLabel(inviteRole)}.`,
@@ -390,6 +424,7 @@ export function TenantManageClient({
       body: JSON.stringify({
         displayName: displayName.trim() || undefined,
         logoUrl: logoUrl.trim() || undefined,
+        accentColor: normalizeHex(accentColor) ?? undefined,
       }),
     });
     setSaving(false);
@@ -436,12 +471,6 @@ export function TenantManageClient({
   }
 
   async function softDeleteTenant() {
-    if (
-      !window.confirm(
-        "Soft-delete this tenant? Members lose access until it's restored. No data is removed.",
-      )
-    )
-      return;
     setLifecycleBusy(true);
     setError(null);
     setStatus(null);
@@ -602,7 +631,7 @@ export function TenantManageClient({
             <section className={cn(sectionCard, "space-y-4")}>
               <form onSubmit={saveBranding} className="space-y-4">
                 <h2 className="font-sans text-[12.5px] font-semibold text-sts-foreground">
-                  Logo &amp; name
+                  Logo, name &amp; color
                 </h2>
 
                 <div>
@@ -650,7 +679,9 @@ export function TenantManageClient({
                   </p>
                 </div>
 
-                <Button type="submit" size="lg" disabled={saving}>
+                <AccentColorField value={accentColor} onChange={setAccentColor} />
+
+                <Button type="submit" size="lg" disabled={saving || !accentValid}>
                   {saving ? "Saving…" : "Save branding"}
                 </Button>
               </form>
@@ -716,9 +747,9 @@ export function TenantManageClient({
                       size="lg"
                       className="shrink-0"
                       onClick={() =>
-                        updateStatus(
-                          tenantStatus === "suspended" ? "active" : "suspended",
-                        )
+                        tenantStatus === "suspended"
+                          ? updateStatus("active")
+                          : setLifecycleConfirm("suspend")
                       }
                       disabled={lifecycleBusy}
                     >
@@ -739,7 +770,7 @@ export function TenantManageClient({
                       variant="destructive"
                       size="lg"
                       className="shrink-0"
-                      onClick={softDeleteTenant}
+                      onClick={() => setLifecycleConfirm("delete")}
                       disabled={lifecycleBusy}
                     >
                       Delete
@@ -935,8 +966,23 @@ export function TenantManageClient({
               </div>
             )}
 
-            <ul className="mt-4 max-h-[530px] divide-y divide-sts-card-border overflow-y-auto">
-              {members.map((m) => (
+            {members.length > 0 && (
+              <div className="mt-4 flex items-center justify-between gap-2">
+                <ListSearchInput
+                  value={memberList.query}
+                  onChange={memberList.setQuery}
+                  placeholder="Search members…"
+                />
+                <SortDropdown
+                  value={memberList.sortKey}
+                  onChange={memberList.setSortKey}
+                  options={memberList.sortDropdownOptions}
+                />
+              </div>
+            )}
+
+            <ul className="mt-2 max-h-[530px] divide-y divide-sts-card-border overflow-y-auto">
+              {memberList.visible.map((m) => (
                 <li key={m.id} className="flex items-center gap-3 py-2">
                   <UserAvatar name={m.name} avatarUrl={m.avatarUrl} size={28} />
                   <div className="min-w-0 flex-1">
@@ -977,6 +1023,11 @@ export function TenantManageClient({
                   No members yet.
                 </li>
               )}
+              {members.length > 0 && memberList.visible.length === 0 && (
+                <li className="py-3 font-sans text-[12px] text-sts-subtle">
+                  No members match &ldquo;{memberList.query.trim()}&rdquo;.
+                </li>
+              )}
             </ul>
           </section>
 
@@ -986,6 +1037,22 @@ export function TenantManageClient({
           />
         </div>
       </div>
+
+      <ConfirmDialog
+        open={lifecycleConfirm !== null}
+        onOpenChange={(o) => { if (!o) setLifecycleConfirm(null); }}
+        title={lifecycleConfirm === "suspend" ? `Suspend ${tenant.name}?` : `Soft-delete ${tenant.name}?`}
+        description={
+          lifecycleConfirm === "suspend"
+            ? "Every member of this tenant will be signed out and blocked from signing in until you reactivate it."
+            : "Members lose access until it's restored. No data is removed."
+        }
+        confirmLabel={lifecycleConfirm === "suspend" ? "Suspend tenant" : "Soft-delete"}
+        onConfirm={async () => {
+          if (lifecycleConfirm === "suspend") await updateStatus("suspended");
+          else if (lifecycleConfirm === "delete") await softDeleteTenant();
+        }}
+      />
 
       <ConfirmDialog
         open={memberToRemove !== null}

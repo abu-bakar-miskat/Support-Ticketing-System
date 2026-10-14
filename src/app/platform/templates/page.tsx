@@ -1,57 +1,72 @@
+import { statusCategory } from "@/lib/status-category";
 import { redirect } from "next/navigation"
 import { getProfile } from "@/lib/profile"
 import { prisma } from "@/lib/db"
 import { TemplatesCatalogueAdmin } from "@/components/platform/templates-catalogue-admin"
+import { OPERATION_TEMPLATES } from "@/lib/operation-templates"
+import { isSystemTemplateSlug } from "@/lib/system-templates"
+import { ASSIGNMENT_METHOD_LABELS } from "@/lib/feature-setup"
+import { ensureDefaultFeatureTemplates, listSavedFeatures } from "@/lib/saved-features"
+import { ensureAvailableFeatureTemplates } from "@/lib/template-catalogue"
 
 export const dynamic = "force-dynamic"
+
+export const metadata = { title: "Feature templates — Global Support Portal" }
 
 export default async function TemplatesCataloguePage() {
   const profile = await getProfile()
   if (!profile) redirect("/login")
   if (!profile.isSuperAdmin) redirect("/")
 
-  const [templateRows, requestRows] = await Promise.all([
-    prisma.template.findMany({
-      orderBy: { order: "asc" },
-      include: {
-        features: { select: { key: true } },
-        _count: { select: { tenantTemplates: { where: { status: "ACTIVE" } } } },
-      },
-    }),
-    prisma.templateRequest.findMany({
-      where: { status: "PENDING" },
-      orderBy: { requestedAt: "asc" },
-      include: {
-        tenant: { select: { id: true, name: true, slug: true } },
-        template: { select: { id: true, name: true } },
-      },
-    }),
-  ])
+  await ensureAvailableFeatureTemplates(profile.id)
+  await ensureDefaultFeatureTemplates(profile.id)
 
-  const requesterIds = [...new Set(requestRows.map((r) => r.requestedById))]
-  const requesters = requesterIds.length
-    ? await prisma.profile.findMany({ where: { id: { in: requesterIds } }, select: { id: true, name: true, email: true } })
-    : []
-  const requesterById = new Map(requesters.map((r) => [r.id, r]))
+  const templateRows = await prisma.template.findMany({
+    where: { isActive: true },
+    orderBy: { order: "asc" },
+    include: { features: { select: { key: true } } },
+  })
 
-  const templates = templateRows.map((t) => ({
-    id: t.id,
-    name: t.name,
-    slug: t.slug,
-    description: t.description,
-    isActive: t.isActive,
-    featureKeys: t.features.map((f) => f.key),
-    activeTenantCount: t._count.tenantTemplates,
-  }))
+  const savedBySlug = new Map((await listSavedFeatures()).map((feature) => [feature.id, feature]))
+  const operationSlugs = new Set(OPERATION_TEMPLATES.map((operation) => operation.slug))
+  const templates = templateRows.filter((t) => !operationSlugs.has(t.slug) && !isSystemTemplateSlug(t.slug)).map((t) => {
+    const saved = savedBySlug.get(t.slug)
+    const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+    return {
+      id: t.id,
+      name: t.name,
+      slug: t.slug,
+      description: t.description,
+      isActive: t.isActive,
+      featureKeys: t.features.map((f) => f.key),
+      activeTenantCount: 0,
+      setup: saved
+        ? {
+            key: saved.key,
+            statuses: saved.statuses.map((status) => ({
+              label: status.label,
+              color: status.color,
+              category: statusCategory(status),
+              isComplete: statusCategory(status) === "COMPLETE",
+            })),
+            lists: saved.lists,
+            tags: saved.tags,
+            sla: saved.sla,
+            ticketTemplates: saved.ticketTemplates,
+            assignmentLabel: saved.key === "assignmentMethods" ? ASSIGNMENT_METHOD_LABELS[saved.assignmentMethod] : null,
+            supportForm:
+              saved.key === "supportForm" && (saved.supportForm.name || saved.supportForm.fields.length > 0)
+                ? { name: saved.supportForm.name, fields: saved.supportForm.fields.map((field) => field.label) }
+                : null,
+            calendar:
+              saved.key === "calendar"
+                ? `${saved.calendar.workingDays.map((day) => days[day]).filter(Boolean).join(", ")} ${saved.calendar.start}–${saved.calendar.end}`
+                : null,
+            reportsPeriodDays: saved.key === "reports" ? saved.reportsPeriodDays : null,
+          }
+        : null,
+    }
+  })
 
-  const requests = requestRows.map((r) => ({
-    id: r.id,
-    tenant: r.tenant,
-    template: r.template,
-    message: r.message,
-    requestedAt: r.requestedAt.toISOString(),
-    requestedBy: requesterById.get(r.requestedById) ?? null,
-  }))
-
-  return <TemplatesCatalogueAdmin initialTemplates={templates} initialRequests={requests} />
+  return <TemplatesCatalogueAdmin initialTemplates={templates} />
 }

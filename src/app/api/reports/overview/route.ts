@@ -1,3 +1,4 @@
+import { loadPerformanceOverview } from "@/lib/reporting/performance-overview"
 import { NextResponse } from "next/server"
 import { requireAuth, type AuthProfile } from "@/lib/auth"
 import { prisma } from "@/lib/db"
@@ -5,7 +6,7 @@ import { runAsSystem } from "@/lib/request-scope"
 import { getProfileDeptScope, ticketInDeptWhere, effectiveTicketDept } from "@/lib/dept-scope"
 import { resolveAnalyticsScope } from "@/lib/reporting/analytics-scope"
 import { resolveReportRange } from "@/lib/report-period"
-import { normalizeStatus, UI_STATUS_DOT } from "@/components/board/board-types"
+import { statusCategory, STATUS_CATEGORIES, STATUS_CATEGORY_LABELS } from "@/lib/status-category"
 import type {
   ReportsOverview,
   NamedCount,
@@ -53,8 +54,10 @@ async function loadOverview(request: Request, profile: AuthProfile) {
   const subDepartmentFilter = analyticsScope.ticketWhere
   const projectFilter = projectId && projectId !== "all" ? { projectId } : {}
   // Person filter = tickets assigned to that person; every widget follows it.
-  const personFilter = personId && personId !== "all" ? { assigneeId: personId } : {}
-  const base = { deletedAt: null, ...subDepartmentFilter, ...projectFilter, ...personFilter }
+  const personFilter = personId && personId !== "all"
+    ? { OR: [{ assigneeId: personId }, { assignees: { some: { userId: personId } } }] }
+    : {}
+  const base = { deletedAt: null, isDraft: false, ...subDepartmentFilter, ...projectFilter, ...personFilter }
   // Cohort created within the selected period (for creation-based metrics).
   const createdWhere = { ...base, createdAt: { gte: start, lt: end } }
   // Tickets resolved (closed) within the selected period.
@@ -62,26 +65,20 @@ async function loadOverview(request: Request, profile: AuthProfile) {
 
   const [
     createdGroups,
-    resolvedGroups,
     bugGroups,
     moduleTickets,
     statusGroups,
     priorityGroups,
-    workloadGroups,
     projectTotalGroups,
     projectOpenGroups,
     moduleTotalGroups,
     moduleOpenGroups,
     scopeProjectGroups,
     completeStatuses,
+    performanceReport,
   ] = await Promise.all([
     prisma.ticket.groupBy({
       by: ["creatorId"],
-      where: createdWhere,
-      _count: { _all: true },
-    }),
-    prisma.ticket.groupBy({
-      by: ["assigneeId", "subDepartmentId", "status"],
       where: createdWhere,
       _count: { _all: true },
     }),
@@ -106,11 +103,6 @@ async function loadOverview(request: Request, profile: AuthProfile) {
     }),
     prisma.ticket.groupBy({ by: ["subDepartmentId", "status"], where: createdWhere, _count: { _all: true } }),
     prisma.ticket.groupBy({ by: ["priority"], where: createdWhere, _count: { _all: true } }),
-    prisma.ticket.groupBy({
-      by: ["assigneeId"],
-      where: { ...createdWhere, closedAt: null },
-      _count: { _all: true },
-    }),
     prisma.ticket.groupBy({ by: ["projectId"], where: createdWhere, _count: { _all: true } }),
     prisma.ticket.groupBy({
       by: ["projectId"],
@@ -133,54 +125,34 @@ async function loadOverview(request: Request, profile: AuthProfile) {
       where: { deletedAt: null, ...subDepartmentFilter },
       _count: { _all: true },
     }),
-    // Statuses flagged complete per subDepartment — the source of truth for "done".
+    // All saved categories for status distribution and completion metrics.
     prisma.subDepartmentStatus.findMany({
       where: {
-        isComplete: true,
         ...(analyticsScope.subDepartmentIds
           ? { subDepartmentId: { in: analyticsScope.subDepartmentIds.length ? analyticsScope.subDepartmentIds : ["__none__"] } }
           : { subDepartment: { tenantId: profile.activeTenantId ?? "__no_tenant__" } }),
       },
-      select: { subDepartmentId: true, label: true },
+      select: { subDepartmentId: true, label: true, category: true },
     }),
+    loadPerformanceOverview(
+      analyticsScope.subDepartmentIds ? { kind: "department", tenantId: profile.activeTenantId ?? "__none__", subDepartmentIds: analyticsScope.subDepartmentIds }
+        : { kind: "cross_department", tenantId: profile.activeTenantId ?? "__none__" },
+      start, end, personId, projectId,
+    ),
   ])
 
-  // A ticket is "done" when its current status is flagged isComplete on its subDepartment.
-  // SubDepartments with no configured statuses fall back to the default "Live" complete state.
-  const completeBySubDepartment = new Map<string, Set<string>>()
-  for (const s of completeStatuses) {
-    const set = completeBySubDepartment.get(s.subDepartmentId) ?? new Set<string>()
-    set.add(s.label)
-    completeBySubDepartment.set(s.subDepartmentId, set)
-  }
-  const isDone = (subDepartmentId: string, status: string): boolean => {
-    const set = completeBySubDepartment.get(subDepartmentId)
-    if (set && set.size > 0) return set.has(status)
-    return normalizeStatus(status) === "Live"
-  }
+  const categories = new Map(completeStatuses.map((s) => [`${s.subDepartmentId}::${s.label}`, statusCategory(s)]))
+  const ticketCategory = (subDepartmentId: string, label: string) => categories.get(`${subDepartmentId}::${label}`) ?? statusCategory({ label })
+  const isDone = (subDepartmentId: string, label: string) => ticketCategory(subDepartmentId, label) === "COMPLETE"
 
-  // Full member list in scope (ignores all filters) for the person picker.
-  // Members never receive the list — the picker is manager/admin-only.
-  const memberOptions = canFilterByPerson
-    ? await prisma.profile.findMany({
-        where: {
-          deletedAt: null,
-          ...(analyticsScope.subDepartmentIds
-            ? { memberships: { some: { subDepartmentId: { in: analyticsScope.subDepartmentIds.length ? analyticsScope.subDepartmentIds : ["__none__"] }, isActive: true } } }
-            : { tenantMemberships: { some: { tenantId: profile.activeTenantId ?? "__no_tenant__", isActive: true } } }),
-        },
-        select: { id: true, name: true, avatarUrl: true },
-        orderBy: { name: "asc" },
-      })
-    : []
+  const { ticketSources, personPerformance, userPerformance, performanceDetails } = performanceReport
+  const memberOptions = canFilterByPerson ? performanceReport.memberOptions : []
 
   // ── Resolve display names for creators / resolvers ──
   const personIds = [
     ...new Set(
       [
         ...createdGroups.map((g) => g.creatorId),
-        ...resolvedGroups.map((g) => g.assigneeId),
-        ...workloadGroups.map((g) => g.assigneeId),
       ].filter((id): id is string => !!id),
     ),
   ]
@@ -198,13 +170,9 @@ async function loadOverview(request: Request, profile: AuthProfile) {
     .sort((a, b) => b.count - a.count)
     .slice(0, 8)
 
-  const resolvedByPerson = new Map<string, number>()
-  for (const g of resolvedGroups) {
-    if (!g.assigneeId || !isDone(g.subDepartmentId, g.status)) continue
-    resolvedByPerson.set(g.assigneeId, (resolvedByPerson.get(g.assigneeId) ?? 0) + g._count._all)
-  }
-  const resolved: NamedCount[] = [...resolvedByPerson.entries()]
-    .map(([id, count]) => ({ name: nameById.get(id) ?? "Unknown", count }))
+  const resolved: NamedCount[] = userPerformance
+    .filter((person) => person.personId && person.completed > 0)
+    .map((person) => ({ name: person.name, count: person.completed }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 8)
 
@@ -253,21 +221,21 @@ async function loadOverview(request: Request, profile: AuthProfile) {
     })
     .sort((a, b) => a.module.localeCompare(b.module))
 
-  // ── Status distribution (open statuses normalized; all done statuses → "Completed") ──
+  // ── Status distribution by the four saved lifecycle categories ──
   const statusCountMap = new Map<string, number>()
   for (const g of statusGroups) {
-    const label = isDone(g.subDepartmentId, g.status) ? "Completed" : normalizeStatus(g.status)
+    const label = STATUS_CATEGORY_LABELS[ticketCategory(g.subDepartmentId, g.status)]
     statusCountMap.set(label, (statusCountMap.get(label) ?? 0) + g._count._all)
   }
-  const STATUS_ORDER = ["To Do", "In Progress", "Pull Request", "Live", "Blocked", "Completed"]
+  const STATUS_ORDER: string[] = STATUS_CATEGORIES.map((category) => STATUS_CATEGORY_LABELS[category])
   const statusDist: DistSlice[] = [...statusCountMap.entries()]
     .map(([label, count]) => ({
       label,
       count,
       color:
-        label === "Completed"
+        label === "Complete"
           ? "#16a34a"
-          : UI_STATUS_DOT[label as keyof typeof UI_STATUS_DOT] ?? "#94a3b8",
+          : ({ "To-do": "#94a3b8", "In progress": "#0a76b9", "Blocked": "#dc2626" } as Record<string, string>)[label] ?? "#94a3b8",
     }))
     .sort((a, b) => STATUS_ORDER.indexOf(a.label) - STATUS_ORDER.indexOf(b.label))
 
@@ -281,9 +249,9 @@ async function loadOverview(request: Request, profile: AuthProfile) {
     .sort((a, b) => PRIORITY_ORDER.indexOf(a.label) - PRIORITY_ORDER.indexOf(b.label))
 
   // ── Open workload per assignee ──
-  const workload: NamedCount[] = workloadGroups
-    .filter((g) => g.assigneeId)
-    .map((g) => ({ name: nameById.get(g.assigneeId!) ?? "Unknown", count: g._count._all }))
+  const workload: NamedCount[] = personPerformance
+    .filter((person) => person.personId && person.assigned > person.completed)
+    .map((person) => ({ name: person.name, count: person.assigned - person.completed }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 8)
 
@@ -358,6 +326,7 @@ async function loadOverview(request: Request, profile: AuthProfile) {
     const deptMembers = await prisma.profile.findMany({
       where: {
         deletedAt: null,
+        ...(personId !== "all" ? { id: personId } : {}),
         memberships: { some: { subDepartmentId: { in: deptSubDepartmentIds }, isActive: true } },
       },
       select: { id: true, name: true, avatarUrl: true },
@@ -368,7 +337,7 @@ async function loadOverview(request: Request, profile: AuthProfile) {
       // "Other department" = tickets NOT belonging to the active department, by
       // the ticket's project department (not its subDepartment) — so work done on a
       // member's own subDepartment but inside another department's project counts.
-      const notInDept = { NOT: ticketInDeptWhere(deptScope.activeDeptId) }
+      const notInDept = { tenantId: profile.activeTenantId ?? "__no_tenant__", ...projectFilter, NOT: ticketInDeptWhere(deptScope.activeDeptId) }
       const deptSelect = {
         project: {
           select: {
@@ -494,6 +463,10 @@ async function loadOverview(request: Request, profile: AuthProfile) {
     projectTickets,
     moduleTickets: moduleTicketOverview,
     totals,
+    ticketSources,
+    personPerformance,
+    userPerformance,
+    performanceDetails,
     projectOptions,
     memberOptions: memberOptions.map((m) => ({ id: m.id, name: m.name, avatarUrl: m.avatarUrl ?? null })),
     crossDept,

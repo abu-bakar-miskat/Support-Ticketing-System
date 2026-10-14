@@ -4,13 +4,14 @@ import { getRequestScope } from "@/lib/request-scope"
 const m = vi.hoisted(() => ({
   auth: vi.fn(), scope: vi.fn(), projectScope: vi.fn(), subScope: vi.fn(), deptScope: vi.fn(),
   setup: vi.fn(), after: vi.fn(), email: vi.fn(), notify: vi.fn(), event: vi.fn(), members: vi.fn(),
-  eligibility: vi.fn(),
+  eligibility: vi.fn(), sla: vi.fn(), rules: vi.fn(),
   ticket: { create: vi.fn(), findUnique: vi.fn() }, project: { findUnique: vi.fn() },
+  subDepartmentStatus: { findMany: vi.fn() },
   subDepartment: { findUnique: vi.fn() }, profile: { findUnique: vi.fn(), findMany: vi.fn() },
   attachment: { updateMany: vi.fn() }, transaction: vi.fn(),
 }))
 vi.mock("next/server", async original => ({ ...await original<typeof import("next/server")>(), after: m.after }))
-vi.mock("@/lib/db", () => ({ prisma: { ticket: m.ticket, project: m.project, subDepartment: m.subDepartment,
+vi.mock("@/lib/db", () => ({ prisma: { ticket: m.ticket, project: m.project, subDepartment: m.subDepartment, subDepartmentStatus: m.subDepartmentStatus,
   profile: m.profile, attachment: m.attachment, $transaction: m.transaction } }))
 vi.mock("@/lib/auth", () => ({ requireAuth: m.auth, assertTicketEditAccess: vi.fn().mockResolvedValue(null) }))
 vi.mock("@/lib/prisma-scope", () => ({ resolveProfileTicketScope: m.scope }))
@@ -29,8 +30,8 @@ vi.mock("@/lib/ensure-project-members", () => ({ ensureProjectMembers: m.members
 vi.mock("@/lib/email", () => ({ sendAssignmentEmail: m.email }))
 vi.mock("@/lib/notify", () => ({ createNotification: m.notify }))
 vi.mock("@/lib/ticket-events", () => ({ appendTicketEvent: m.event }))
-vi.mock("@/lib/sla-engine", () => ({ startSlaTimers: vi.fn().mockResolvedValue(undefined) }))
-vi.mock("@/lib/rule-executor", () => ({ applyRulesToTicket: vi.fn().mockResolvedValue(undefined) }))
+vi.mock("@/lib/sla-engine", () => ({ startSlaTimers: m.sla }))
+vi.mock("@/lib/rule-executor", () => ({ applyRulesToTicket: m.rules }))
 import { POST } from "./route"
 
 const profile = { id: "user-1", name: "Creator", role: "agent", tenantIds: ["tenant-1"],
@@ -46,6 +47,7 @@ const tx = { ticket: m.ticket, attachment: m.attachment }
 
 beforeEach(() => {
   vi.clearAllMocks()
+  m.subDepartmentStatus.findMany.mockResolvedValue([{ label: "To Do", category: "TODO", order: 0 }])
   m.auth.mockResolvedValue({ profile, error: null })
   m.scope.mockResolvedValue({ kind: "tenant", tenantIds: ["tenant-1"], subDepartmentTeamIds: ["sub-1"], grantedTicketIds: ["granted"] })
   m.projectScope.mockResolvedValue(true)
@@ -60,10 +62,21 @@ beforeEach(() => {
   m.ticket.create.mockResolvedValue(created)
   m.attachment.updateMany.mockResolvedValue({ count: 1 })
   m.transaction.mockImplementation(async fn => fn(tx))
-  for (const fn of [m.members, m.event, m.notify, m.email]) fn.mockResolvedValue(undefined)
+  for (const fn of [m.members, m.event, m.notify, m.email, m.sla, m.rules]) fn.mockResolvedValue(undefined)
 })
 
 describe("POST /api/tickets", () => {
+  it.each([false, true])("never starts SLA timers for manual tickets (draft: %s)", async isDraft => {
+    expect((await POST(request({ ...valid, isDraft }))).status).toBe(201)
+    await m.after.mock.calls[0][0]()
+    expect(m.sla).not.toHaveBeenCalled()
+    if (isDraft) expect(m.rules).not.toHaveBeenCalled()
+    else expect(m.rules).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "ticket-1", allowSla: false }),
+      expect.objectContaining({ priority: "High" }),
+    )
+  })
+
   it("returns the saved ticket without waiting for external delivery", async () => {
     const response = await POST(request(valid))
     expect(response.status).toBe(201)
@@ -180,4 +193,26 @@ describe("POST /api/tickets", () => {
     await m.after.mock.calls[0][0]()
     expect(m.email).toHaveBeenCalledWith(expect.objectContaining({ assigneeId: "user-2", humanId: "DEV-7" }))
   })
+})
+
+
+it.each([undefined, "user-2"])("saves the creation estimate for the primary assignee %s", async assigneeId => {
+  expect((await POST(request({ ...valid, assigneeId, estimatedTime: 5 }))).status).toBe(201)
+  expect(m.ticket.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({
+    estimatedTime: 5, estimates: { create: { userId: assigneeId ?? profile.id, estimatedMinutes: 5 } },
+  }) }))
+})
+it("does not invent a personal estimate when creation supplies no estimate", async () => {
+  await POST(request(valid))
+  expect(m.ticket.create.mock.calls[0][0].data).not.toHaveProperty("estimates")
+})
+
+it("creates in the team's custom To-do status when no status is supplied", async () => {
+  m.subDepartmentStatus.findMany.mockResolvedValue([{ label: "Testing", category: "IN_PROGRESS", order: 0 }, { label: "Incoming", category: "TODO", order: 9 }])
+  expect((await POST(request(valid))).status).toBe(201)
+  expect(m.ticket.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.objectContaining({ status: "Incoming" }) }))
+})
+it("rejects a status that belongs to another workflow", async () => {
+  expect((await POST(request({ ...valid, status: "Unknown" }))).status).toBe(400)
+  expect(m.ticket.create).not.toHaveBeenCalled()
 })

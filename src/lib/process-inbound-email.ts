@@ -1,7 +1,7 @@
 import "server-only"
+import { mailboxOriginIdsWhere } from "@/lib/mailbox-ticket-origin"
 import { prisma } from "@/lib/db"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { extractReplyToken } from "@/lib/customer-conversation"
 import {
   isAutoReply,
   pickBody,
@@ -17,21 +17,23 @@ import { notifyQuarantinedReply } from "@/lib/notify-quarantined-reply"
 import { classifyAttachment, INBOUND_MAX_BYTES } from "@/lib/message-attachments"
 import { maybeReopenTicket } from "@/lib/customer-reopen"
 import { isOverRateLimit } from "@/lib/inbound-rate-limit"
-import { getMailProvider, type MailProvider, type NormalizedAttachment } from "@/lib/mail-providers"
-import { findMailboxConnectionForRecipients, logMailSuppression } from "@/lib/mailbox-connection"
+import { syncWorkTimerWithConversation } from "@/lib/timer-conversation-sync"
+import type { NormalizedAttachment, NormalizedInboundEmail } from "@/lib/mail-providers"
+import { getMailboxRouteById, logMailSuppression } from "@/lib/mailbox-connection"
 import { broadcastMailboxMail } from "@/lib/realtime-broadcast"
-import { createTicketFromInboundEmail, MailboxInactiveError } from "@/lib/mailbox-ticket-creation"
+import {
+  createTicketFromInboundEmail,
+  DuplicateInboundEmailError,
+  MailboxInactiveError,
+} from "@/lib/mailbox-ticket-creation"
 import { DepartmentNotOperationalError } from "@/lib/department-setup"
-
-// Re-exported for existing call sites (webhook route, reconcile route) — the
-// implementation lives in lib/resend-client.ts so lib/mail-providers/resend-provider.ts
-// can depend on it without a module cycle back through this file.
-export { getResendClient } from "@/lib/resend-client"
+import { normalizeStatus } from "@/components/board/board-types"
 
 type MatchedTicket = {
   id: string
   title: string
   ticketNumber: number
+  status: string
   assigneeId: string | null
   creatorId: string
   subDepartmentId: string
@@ -42,10 +44,8 @@ type MatchedTicket = {
 type StoredAttachment = { id: string; storageUrl: string; fileName: string; fileSize: number }
 
 async function storeInboundAttachments(
-  provider: MailProvider,
-  emailId: string,
   ticketId: string,
-  messageDbId: string,
+  messageDbId: string | null,
   uploaderProfileId: string,
   attachments: NormalizedAttachment[],
 ): Promise<StoredAttachment[]> {
@@ -63,21 +63,11 @@ async function storeInboundAttachments(
         return null
       }
 
-      const downloadUrl = await provider.fetchAttachmentUrl(emailId, att.id)
-      if (!downloadUrl) {
-        console.error("[inbound] failed to get attachment download URL, att.id:", att.id)
-        return null
-      }
-
-      const response = await fetch(downloadUrl)
-      if (!response.ok) {
-        console.error("[inbound] failed to download attachment:", response.status, att.filename)
-        return null
-      }
-      const buffer = await response.arrayBuffer()
+      // The provider parsed the full MIME message, so the bytes are in hand.
+      const buffer = att.content
 
       const safeName = (att.filename ?? "attachment").replace(/[^\w.\-()+ ]/g, "_").slice(0, 200)
-      const storagePath = `${ticketId}/msg-${messageDbId}/${Date.now()}-${safeName}`
+      const storagePath = `${ticketId}/${messageDbId ? `msg-${messageDbId}` : "description"}/${Date.now()}-${safeName}`
 
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("attachments")
@@ -144,41 +134,35 @@ export async function broadcastChatMessage(
 }
 
 /**
- * Fetch a received email from Resend, match it to a ticket, persist it, and
- * fire notifications. Idempotent — call safely on duplicates.
+ * Match an email synced from a connected mailbox to a ticket (threading
+ * headers → subject reference), or open a new ticket through that mailbox.
+ * The sync already knows which connection the message came from
+ * (`mailboxConnectionId`), so mail reaching the inbox via an alias, group or
+ * Bcc still routes correctly. A tenant (send-only) mailbox only threads
+ * replies; it never opens tickets.
  *
- * Returns true if a new message was stored, false if skipped.
+ * Idempotent on the RFC Message-ID; throws only on unexpected failures so the
+ * caller can retry.
  */
-export async function processInboundEmail(
-  emailId: string,
-  messageId: string,
-  recipients: string[],
-): Promise<boolean> {
+export async function processNormalizedInboundEmail(params: {
+  email: NormalizedInboundEmail
+  messageId: string
+  recipients: string[]
+  mailboxConnectionId: string
+}): Promise<boolean> {
+  const { email, messageId, recipients } = params
   const normalizedMessageId = normalizeMessageId(messageId) || messageId
   const idVariants = messageIdLookupVariants(messageId)
 
-  // Idempotency check (normalized + legacy bracketed / bare forms)
+  // Fast path only — the atomic re-check happens under the advisory lock below.
   const existing = await prisma.ticketMessage.findFirst({
     where: { providerMessageId: { in: idVariants } },
     select: { id: true },
   })
-  if (existing) return false
-
-  console.log("[inbound] processInboundEmail start — emailId:", emailId, "recipients:", recipients)
-
-  const provider = getMailProvider("RESEND")
-  if (!provider) {
-    console.error("[inbound] RESEND_API_KEY is not configured")
-    return false
-  }
-
-  const email = await provider.fetchMessage(emailId)
-  if (!email) {
-    console.error("[inbound] failed to fetch email body")
-    return false
-  }
-
-  console.log("[inbound] email fetched — from:", email.from, "subject:", email.subject)
+  const origin = await prisma.activityLog.findFirst({
+    where: mailboxOriginIdsWhere(idVariants), select: { id: true },
+  })
+  if (existing || origin) return false
 
   const headers = normalizeHeaderKeys(email.headers)
   const isSystem = isAutoReply(headers)
@@ -187,31 +171,30 @@ export async function processInboundEmail(
 
   let ticket: MatchedTicket | null = null
   let submitterEmail: string | null = null
-  let isNewTicket = false
   let mailboxConnectionId: string | null = null
 
-  const token = recipients.map(extractReplyToken).find(Boolean) ?? null
-  if (token) {
-    const intake = await prisma.intake.findUnique({
-      where: { replyToken: token },
-      select: {
-        submitterEmail: true,
-        ticket: {
-          select: {
-            id: true, title: true, ticketNumber: true,
-            assigneeId: true, creatorId: true, subDepartmentId: true,
-            subDepartment: { select: { prefix: true } },
-          },
-        },
-      },
-    })
-    if (intake?.ticket) {
-      ticket = intake.ticket
-      submitterEmail = intake.submitterEmail
-    }
-  }
+  const messageData = (status: "trusted" | "quarantined" | "system", throttled: boolean) => ({
+    direction: "inbound" as const,
+    status,
+    authorProfileId: null,
+    fromName,
+    fromEmail,
+    bodyHtml,
+    throttled,
+    rawPayload: {
+      from: email.from, to: email.to, subject: email.subject,
+      text: email.text, html: email.html, headers, quotedText: quoted,
+      // The connected mailbox's address, kept apart from the message's own
+      // `to` (which can differ for aliases/forwards). The resolved connection
+      // makes mailbox filtering unambiguous and excludes ordinary replies.
+      envelopeTo: recipients,
+      mailboxConnectionId,
+    },
+    providerMessageId: normalizedMessageId,
+    inReplyTo: headers["in-reply-to"] ?? null,
+  })
 
-  if (!ticket) {
+  {
     const refIds = extractReferencedIds(
       headers["in-reply-to"] ?? null,
       headers["references"] ?? null,
@@ -223,7 +206,7 @@ export async function processInboundEmail(
         select: {
           ticket: {
             select: {
-              id: true, title: true, ticketNumber: true,
+              id: true, title: true, ticketNumber: true, status: true,
               assigneeId: true, creatorId: true, subDepartmentId: true,
               subDepartment: { select: { prefix: true } },
               intake: { select: { submitterEmail: true } },
@@ -234,6 +217,16 @@ export async function processInboundEmail(
       if (prior?.ticket) {
         ticket = prior.ticket
         submitterEmail = prior.ticket.intake?.submitterEmail ?? null
+      } else {
+        const origin = await prisma.activityLog.findFirst({
+          where: mailboxOriginIdsWhere(lookupIds),
+          select: { ticket: { select: {
+            id: true, title: true, ticketNumber: true, status: true,
+            assigneeId: true, creatorId: true, subDepartmentId: true,
+            subDepartment: { select: { prefix: true } },
+          } } },
+        })
+        ticket = origin?.ticket ?? null
       }
     }
   }
@@ -250,7 +243,7 @@ export async function processInboundEmail(
           subDepartment: { prefix: { equals: ref.prefix, mode: "insensitive" } },
         },
         select: {
-          id: true, title: true, ticketNumber: true,
+          id: true, title: true, ticketNumber: true, status: true,
           assigneeId: true, creatorId: true, subDepartmentId: true,
           subDepartment: { select: { prefix: true } },
           intake: { select: { submitterEmail: true } },
@@ -267,9 +260,11 @@ export async function processInboundEmail(
     // Always resolve the configured mailbox first. Its on/off state controls
     // ticket creation only; it must never control whether the provider's email
     // is received and recorded in the application's mailbox view.
-    const mailbox = await findMailboxConnectionForRecipients(recipients)
+    const mailbox = await getMailboxRouteById(params.mailboxConnectionId)
     if (!mailbox) {
-      console.log("[inbound] no matching mailbox route, dropping message:", messageId)
+      // A tenant mailbox is send-only: it threads replies (above) but never
+      // opens tickets from new mail.
+      console.log("[inbound] mailbox doesn't open tickets (tenant scope), dropping new message:", messageId)
       return false
     }
 
@@ -316,8 +311,15 @@ export async function processInboundEmail(
         subject: email.subject,
         description: bodyHtml,
         mailboxConnectionId: route.id,
+        // Persist sender and threading metadata with the description atomically.
+        inboundMessage: { providerMessageIds: idVariants, data: messageData("trusted", false) },
       })
     } catch (err) {
+      // A concurrent run of this same email already created its ticket.
+      if (err instanceof DuplicateInboundEmailError) {
+        console.log("[inbound] duplicate inbound email skipped at ticket creation:", normalizedMessageId)
+        return false
+      }
       // DS-08: the department hasn't completed setup yet — drop the message
       // rather than fail the whole webhook. Not logged as a suppression
       // (that's specifically for auto-generated mail, EM-06); this is just
@@ -356,19 +358,23 @@ export async function processInboundEmail(
       id: createdTicket.id,
       title: email.subject?.trim() || `Email from ${fromName || fromEmail}`,
       ticketNumber: createdTicket.ticketNumber,
+      status: "OPEN",
       assigneeId: createdTicket.assigneeId,
       creatorId: createdTicket.creatorId,
       subDepartmentId: route.subDepartmentId,
       subDepartment: { prefix: createdTicket.subDepartmentPrefix },
     }
-    isNewTicket = true
+    // The original body is the description, not a customer reply.
+    if (email.attachments.length > 0) {
+      await storeInboundAttachments(ticket.id, null, ticket.creatorId, email.attachments)
+    }
+    broadcastMailboxMail(route.departmentId, route.subDepartmentId).catch(() => undefined)
+    return true
   }
 
-  // A freshly-created ticket has no baseline submitter email to verify
-  // against, so its first message is always "trusted" — never quarantined.
-  const senderVerified = isNewTicket || !submitterEmail || fromEmail === submitterEmail.toLowerCase()
+  const senderVerified = !submitterEmail || fromEmail === submitterEmail.toLowerCase()
   const messageStatus = isSystem ? "system" : (senderVerified ? "trusted" : "quarantined")
-  const throttled = !isSystem && !isNewTicket && await isOverRateLimit(ticket.id)
+  const throttled = !isSystem && await isOverRateLimit(ticket.id)
 
   // Create atomically under a per-message-id advisory lock. The top-of-function
   // idempotency check is only a fast path — it is not atomic with the insert, so
@@ -387,31 +393,12 @@ export async function processInboundEmail(
       where: { providerMessageId: { in: idVariants } },
       select: { id: true },
     })
-    if (dup) return null
+    const origin = await tx.activityLog.findFirst({
+      where: mailboxOriginIdsWhere(idVariants), select: { id: true },
+    })
+    if (dup || origin) return null
     return tx.ticketMessage.create({
-      data: {
-        ticketId: ticket.id,
-        direction: "inbound",
-        status: messageStatus,
-        authorProfileId: null,
-        fromName,
-        fromEmail,
-        bodyHtml,
-        throttled,
-        rawPayload: {
-          from: email.from, to: email.to, subject: email.subject,
-          text: email.text, html: email.html, headers, quotedText: quoted,
-          resendEmailId: emailId,
-          // The webhook envelope is the source used to route direct mail. Keep
-          // it separately from the provider's fetched `to` field, which can be
-          // rewritten during forwarding. The resolved connection makes mailbox
-          // filtering unambiguous and excludes ordinary ticket replies.
-          envelopeTo: recipients,
-          mailboxConnectionId,
-        },
-        providerMessageId: normalizedMessageId,
-        inReplyTo: headers["in-reply-to"] ?? null,
-      },
+      data: { ...messageData(messageStatus, throttled), ticketId: ticket.id },
       select: { id: true, direction: true, status: true, bodyHtml: true, fromName: true, fromEmail: true, createdAt: true, throttled: true },
     })
   })
@@ -423,12 +410,24 @@ export async function processInboundEmail(
     return false
   }
 
+  // Resume work immediately after the inbound message commits. Keep this ahead
+  // of attachment downloads, mailbox broadcasts, and notifications so those
+  // slower side effects cannot delay the assignee's timer.
+  if (!isSystem && messageStatus === "trusted") {
+    if (!throttled && normalizeStatus(ticket.status) !== "In Progress") {
+      await maybeReopenTicket(ticket.id, ticket.subDepartmentId, ticket.creatorId)
+    }
+    await syncWorkTimerWithConversation(ticket.id, "inbound").catch((err) =>
+      console.error("[inbound] failed to resume work timer:", err),
+    )
+  }
+
   // Store attachments before broadcasting so the realtime payload carries them —
   // the client appends the broadcast directly with no refetch, so an empty list
   // here would hide inbound images until a manual reload.
   const storedAttachments =
     email.attachments.length > 0
-      ? await storeInboundAttachments(provider, emailId, ticket.id, created.id, ticket.creatorId, email.attachments)
+      ? await storeInboundAttachments(ticket.id, created.id, ticket.creatorId, email.attachments)
       : []
 
   broadcastChatMessage(ticket.id, {
@@ -464,15 +463,9 @@ export async function processInboundEmail(
     })
     .catch((err) => console.error("[inbound] failed to broadcast mailbox mail:", err))
 
-  // The new-ticket path already fired an assignment/failure notification from
-  // createTicketFromInboundEmail — a "customer replied"/reopen notification
-  // for its own first message would be redundant (and reopen never applies
-  // to a ticket that was just created).
-  if (isSystem || throttled || isNewTicket) return true
+  if (isSystem) return true
 
-  if (messageStatus === "trusted") {
-    await maybeReopenTicket(ticket.id, ticket.subDepartmentId, ticket.creatorId)
-  }
+  if (throttled) return true
 
   if (messageStatus === "quarantined") {
     await notifyQuarantinedReply({

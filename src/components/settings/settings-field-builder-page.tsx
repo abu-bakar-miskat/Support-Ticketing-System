@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { useRouter } from "next/navigation"
 import { BreadcrumbRegistrar } from "@/components/dashboard/breadcrumb-registrar"
+import { Tip } from "@/components/ui/tooltip";
 
 export type FieldRow = {
   id: string
@@ -231,12 +232,16 @@ function FieldEditor({
                           }}
                           className="h-6 min-w-0 flex-1 rounded-md border border-sts-id bg-sts-card px-2 font-sans text-[12px] text-sts-foreground outline-none"
                         />
-                        <button type="button" onClick={confirmEditOption} className="flex h-6 items-center justify-center rounded-full bg-sts-blue px-2 text-white">
-                          <Check className="size-3" />
-                        </button>
-                        <button type="button" onClick={() => setEditingOption(null)} className="flex h-6 items-center justify-center rounded-full border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground">
-                          <X className="size-3" />
-                        </button>
+                        <Tip label="Save option">
+                          <button aria-label="Save option" type="button" onClick={confirmEditOption} className="flex h-6 items-center justify-center rounded-full bg-sts-blue px-2 text-white">
+                            <Check className="size-3" />
+                          </button>
+                        </Tip>
+                        <Tip label="Cancel">
+                          <button aria-label="Cancel editing option" type="button" onClick={() => setEditingOption(null)} className="flex h-6 items-center justify-center rounded-full border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground">
+                            <X className="size-3" />
+                          </button>
+                        </Tip>
                       </>
                     ) : (
                       <>
@@ -254,20 +259,26 @@ function FieldEditor({
                           <ChevronDown className={cn("size-3 transition-transform", isOpen && "rotate-180")} />
                           {children.length > 0 ? `${children.length} sub-option${children.length !== 1 ? "s" : ""}` : "Sub-options"}
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditingOption({ idx, draft: opt })}
-                          className="text-sts-subtle hover:text-sts-foreground"
-                        >
-                          <Pencil className="size-3" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => removeOption(opt)}
-                          className="text-sts-subtle hover:text-sts-red"
-                        >
-                          <X className="size-3" />
-                        </button>
+                        <Tip label="Edit option">
+                          <button
+                            aria-label="Edit option"
+                            type="button"
+                            onClick={() => setEditingOption({ idx, draft: opt })}
+                            className="text-sts-subtle hover:text-sts-foreground"
+                          >
+                            <Pencil className="size-3" />
+                          </button>
+                        </Tip>
+                        <Tip label="Remove option">
+                          <button
+                            aria-label="Remove option"
+                            type="button"
+                            onClick={() => removeOption(opt)}
+                            className="text-sts-subtle hover:text-sts-red"
+                          >
+                            <X className="size-3" />
+                          </button>
+                        </Tip>
                       </>
                     )}
                   </div>
@@ -291,30 +302,40 @@ function FieldEditor({
                                   }}
                                   className="h-6 min-w-0 flex-1 rounded-md border border-sts-id bg-sts-card px-2 font-sans text-[11.5px] text-sts-foreground outline-none"
                                 />
-                                <button type="button" onClick={confirmEditChild} className="flex h-6 items-center justify-center rounded-full bg-sts-blue px-2 text-white">
-                                  <Check className="size-2.5" />
-                                </button>
-                                <button type="button" onClick={() => setEditingChild(null)} className="flex h-6 items-center justify-center rounded-full border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground">
-                                  <X className="size-2.5" />
-                                </button>
+                                <Tip label="Save sub-option">
+                                  <button aria-label="Save sub-option" type="button" onClick={confirmEditChild} className="flex h-6 items-center justify-center rounded-full bg-sts-blue px-2 text-white">
+                                    <Check className="size-2.5" />
+                                  </button>
+                                </Tip>
+                                <Tip label="Cancel">
+                                  <button aria-label="Cancel editing sub-option" type="button" onClick={() => setEditingChild(null)} className="flex h-6 items-center justify-center rounded-full border border-sts-card-border px-2 text-sts-subtle hover:text-sts-foreground">
+                                    <X className="size-2.5" />
+                                  </button>
+                                </Tip>
                               </div>
                             ) : (
                               <div key={child} className="flex items-center gap-1.5 rounded-md border border-sts-card-border bg-sts-card px-2 py-1">
                                 <span className="flex-1 font-sans text-[11px] text-sts-foreground">{child}</span>
-                                <button
-                                  type="button"
-                                  onClick={() => setEditingChild({ parent: opt, idx, draft: child })}
-                                  className="text-sts-subtle hover:text-sts-foreground"
-                                >
-                                  <Pencil className="size-2.5" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => removeChild(opt, child)}
-                                  className="text-sts-subtle hover:text-sts-red"
-                                >
-                                  <X className="size-2.5" />
-                                </button>
+                                <Tip label="Edit sub-option">
+                                  <button
+                                    aria-label="Edit sub-option"
+                                    type="button"
+                                    onClick={() => setEditingChild({ parent: opt, idx, draft: child })}
+                                    className="text-sts-subtle hover:text-sts-foreground"
+                                  >
+                                    <Pencil className="size-2.5" />
+                                  </button>
+                                </Tip>
+                                <Tip label="Remove sub-option">
+                                  <button
+                                    aria-label="Remove sub-option"
+                                    type="button"
+                                    onClick={() => removeChild(opt, child)}
+                                    className="text-sts-subtle hover:text-sts-red"
+                                  >
+                                    <X className="size-2.5" />
+                                  </button>
+                                </Tip>
                               </div>
                             )
                           })}
@@ -411,11 +432,17 @@ export function SettingsFieldBuilderPage({
   formName,
   departmentName,
   fields: initialFields,
+  backHref = "/settings/support-forms",
+  backLabel = "Support forms",
+  currentHref = `/settings/support-forms/${formId}`,
 }: {
   formId: string
   formName: string
   departmentName: string
   fields: FieldRow[]
+  backHref?: string
+  backLabel?: string
+  currentHref?: string
 }) {
   const router = useRouter()
   const [, startTransition] = useTransition()
@@ -528,19 +555,19 @@ export function SettingsFieldBuilderPage({
       <BreadcrumbRegistrar
         crumbs={[
           { label: "Home", href: "/" },
-          { label: "Support forms", href: "/settings/support-forms" },
-          { label: formName, href: `/settings/support-forms/${formId}` },
+          { label: backLabel, href: backHref },
+          { label: formName, href: currentHref },
         ]}
       />
       {/* Header */}
       <div className="flex flex-col gap-1">
         <button
           type="button"
-          onClick={() => startTransition(() => router.push("/settings/support-forms"))}
+          onClick={() => startTransition(() => router.push(backHref))}
           className="flex w-fit items-center gap-1 font-sans text-[11.5px] text-sts-muted hover:text-sts-foreground"
         >
           <ChevronLeft className="size-3.5" />
-          Support forms
+          {backLabel}
         </button>
         <div className="flex items-center justify-between">
           <div>
@@ -632,24 +659,30 @@ export function SettingsFieldBuilderPage({
                 </p>
               </div>
               <div className="flex items-center gap-0.5 transition-opacity">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingId(field.id)
-                    setAddingField(false)
-                    setEditorError(null)
-                  }}
-                  className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-                >
-                  <Pencil className="size-3" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setDeleteTarget(field)}
-                  className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-red"
-                >
-                  <Trash2 className="size-3" />
-                </button>
+                <Tip label="Edit field">
+                  <button
+                    aria-label="Edit field"
+                    type="button"
+                    onClick={() => {
+                      setEditingId(field.id)
+                      setAddingField(false)
+                      setEditorError(null)
+                    }}
+                    className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+                  >
+                    <Pencil className="size-3" />
+                  </button>
+                </Tip>
+                <Tip label="Delete field">
+                  <button
+                    aria-label="Delete field"
+                    type="button"
+                    onClick={() => setDeleteTarget(field)}
+                    className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-red"
+                  >
+                    <Trash2 className="size-3" />
+                  </button>
+                </Tip>
               </div>
             </div>
           )

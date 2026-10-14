@@ -104,58 +104,19 @@ describe("evaluateSlaIndicator — overall is the worse of the two metrics", () 
   });
 });
 
-describe("planReopen — OQ-03", () => {
-  it("starts a fresh first-response cycle", () => {
-    const now = new Date("2026-08-20T12:00:00.000Z");
-    const fields = planReopen(
-      { resolutionStartedAt: new Date("2026-08-10T09:00:00.000Z"), resolutionStoppedAt: null },
-      now,
-    );
-    expect(fields.firstResponseStartedAt).toEqual(now);
-    expect(fields.firstResponseStoppedAt).toBeNull();
-    expect(fields.firstResponseAtRiskNotifiedAt).toBeNull();
-    expect(fields.firstResponseBreachNotifiedAt).toBeNull();
-    expect(fields.resolutionStoppedAt).toBeNull();
+describe("planReopen — fresh reopen cycle", () => {
+  it("resets both clocks and all four notification guards", () => {
+    const now = new Date("2026-10-12T10:00:00Z");
+    expect(planReopen(now)).toEqual({
+      firstResponseStartedAt: now, resolutionStartedAt: now,
+      firstResponseStoppedAt: null, resolutionStoppedAt: null,
+      firstResponseAtRiskNotifiedAt: null, firstResponseBreachNotifiedAt: null,
+      resolutionAtRiskNotifiedAt: null, resolutionBreachNotifiedAt: null,
+    });
   });
-
-  it("resumes resolution by shifting startedAt past the closed period, preserving prior elapsed progress", () => {
-    const resolutionStartedAt = new Date("2026-08-10T09:00:00.000Z");
-    const resolutionStoppedAt = new Date("2026-08-12T09:00:00.000Z"); // closed after 48h elapsed
-    const reopenAt = new Date("2026-08-20T00:00:00.000Z"); // sat closed for ~8 days
-
-    const beforeClose = evaluateSlaMetric(
-      { startedAt: resolutionStartedAt, stoppedAt: resolutionStoppedAt },
-      resolutionStoppedAt,
-      1000,
-      null,
-    );
-
-    const reopened = planReopen({ resolutionStartedAt, resolutionStoppedAt }, reopenAt);
-    const atReopenInstant = evaluateSlaMetric(
-      { startedAt: reopened.resolutionStartedAt, stoppedAt: reopened.resolutionStoppedAt },
-      reopenAt,
-      1000,
-      null,
-    );
-
-    // Elapsed at the moment of reopen equals what had accrued before the close —
-    // none of the closed-duration counted against the SLA.
-    expect(atReopenInstant.elapsedMs).toBe(beforeClose.elapsedMs);
-
-    // An hour after reopening, exactly one more hour has accrued.
-    const anHourLater = new Date(reopenAt.getTime() + 60 * MIN);
-    const afterMore = evaluateSlaMetric(
-      { startedAt: reopened.resolutionStartedAt, stoppedAt: null },
-      anHourLater,
-      1000,
-      null,
-    );
-    expect(afterMore.elapsedMs).toBe(beforeClose.elapsedMs + 60 * MIN);
-  });
-
-  it("does not shift resolutionStartedAt when it was never stopped", () => {
-    const resolutionStartedAt = new Date("2026-08-10T09:00:00.000Z");
-    const reopened = planReopen({ resolutionStartedAt, resolutionStoppedAt: null }, new Date("2026-08-20T00:00:00.000Z"));
-    expect(reopened.resolutionStartedAt).toEqual(resolutionStartedAt);
+  it("starts resolution at zero, excluding previous work and closed time", () => {
+    const now = new Date("2026-10-12T10:00:00Z");
+    const reopened = planReopen(now);
+    expect(evaluateSlaMetric({ startedAt: reopened.resolutionStartedAt, stoppedAt: null }, now, 30, null).elapsedMs).toBe(0);
   });
 });

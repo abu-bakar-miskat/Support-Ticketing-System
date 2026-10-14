@@ -84,6 +84,17 @@ describe("buildDigest", () => {
 });
 
 describe("bucketDistribution", () => {
+  it("uses categories before familiar status names", async () => {
+    const { bucketDistribution } = await import("./aggregate");
+    const rows = [
+      ticket({ status: "Done", category: "TODO" }),
+      ticket({ status: "Review", category: "TODO" }),
+      ticket({ status: "Released", category: "COMPLETE" }),
+      ticket({ status: "Testing", category: "IN_PROGRESS" }),
+    ];
+    expect(bucketDistribution(rows, T0)).toEqual({ done: 1, review: 0, overdue: 0, active: 1, todo: 2, total: 4 });
+  });
+
   it("buckets each ticket exactly once with priority done > review > overdue > active > todo", async () => {
     const { bucketDistribution } = await import("./aggregate");
     const rows: ProjectTicketRow[] = [

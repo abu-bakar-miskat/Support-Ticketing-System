@@ -28,6 +28,7 @@ import {
   humanizeAction,
   ChangeDiff,
 } from "@/components/audit/admin-action-meta";
+import { auditTargetTypeLabel } from "@/lib/audit-display";
 
 const ALL_OPTION = "__all__";
 
@@ -146,8 +147,8 @@ function EventRow({ event, showTenant }: { event: AuditEvent; showTenant: boolea
                 <span className="text-sts-subtle/40">·</span>
               </>
             )}
-            <span className="inline-flex shrink-0 items-center rounded-md bg-sts-surface px-2 py-0.5 font-mono text-[10.5px] font-semibold text-sts-id">
-              {event.targetType}
+            <span className="inline-flex shrink-0 items-center rounded-md bg-sts-surface px-2 py-0.5 font-sans text-[10.5px] font-semibold text-sts-id">
+              {auditTargetTypeLabel(event.targetType)}
             </span>
             {event.target ? (
               <span

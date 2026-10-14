@@ -16,7 +16,7 @@ export type SavedViewFilters = {
   assigneeId?: string[]
   moduleId?: string[]
   labels?: string[]
-  source?: "intake" | "manual" | "mailbox"
+  source?: "intake" | "portal" | "manual" | "mailbox"
   sort?: string
   search?: string
   dateFrom?: string
@@ -67,7 +67,7 @@ function sanitizeFilters(raw: unknown): SavedViewFilters {
     const val = r[key]
     if (typeof val === "string" && val) out[key] = val.slice(0, 200)
   }
-  if (r.source === "intake" || r.source === "manual" || r.source === "mailbox") out.source = r.source
+  if (r.source === "intake" || r.source === "portal" || r.source === "manual" || r.source === "mailbox") out.source = r.source
   return out
 }
 

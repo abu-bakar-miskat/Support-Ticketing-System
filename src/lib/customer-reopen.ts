@@ -1,30 +1,28 @@
+import { isCompleteStatus } from "@/lib/status-category";
 import { prisma } from "@/lib/db"
-import { syncResolutionTimerOnClosedAtChange } from "@/lib/sla-engine"
 import { applyReopenedLabel, REOPENED_LABEL } from "@/lib/ticket-column-moves"
 
-type SubDepartmentStatusRow = { label: string; isComplete: boolean; order: number }
+type SubDepartmentStatusRow = { label: string; category?: import("@/lib/status-category").StatusCategory; isComplete?: boolean; order: number }
 
 /**
  * Return the label of the first non-completion status from an already-ordered
  * (by `order` asc) list, or null when every status is a completion status.
  */
 export function resolveReopenStatus(statuses: SubDepartmentStatusRow[]): string | null {
-  return statuses.find((s) => !s.isComplete)?.label ?? null
+  return statuses.find((s) => !isCompleteStatus(s))?.label ?? null
 }
 
 /**
- * If the ticket is currently in a completion status, move it to the first
- * non-completion status and record a STATUS_CHANGED activity log entry that
- * attributes the reopen to a customer reply.
+ * Mark a completed ticket needing agent attention without changing its status.
  *
- * Returns true when a reopen was performed, false otherwise (ticket was not
- * completed, or every subDepartment status is a completion status — edge case).
+ * Returns false: customer replies never reopen automatically.
  */
 export async function maybeReopenTicket(
   ticketId: string,
   subDepartmentId: string,
-  actorId: string,
+  _actorId: string,
 ): Promise<boolean> {
+  void _actorId // Kept for compatibility with inbound callers.
   const [ticket, subDepartmentStatuses] = await Promise.all([
     prisma.ticket.findUnique({
       where: { id: ticketId },
@@ -33,45 +31,20 @@ export async function maybeReopenTicket(
     prisma.subDepartmentStatus.findMany({
       where: { subDepartmentId },
       orderBy: { order: "asc" },
-      select: { label: true, isComplete: true, order: true },
+      select: { label: true, category: true, order: true },
     }),
   ])
 
   if (!ticket) return false
 
   const currentStatus = subDepartmentStatuses.find((s) => s.label === ticket.status)
-  if (!currentStatus?.isComplete) return false
+  if (!currentStatus || !isCompleteStatus(currentStatus)) return false
 
-  const targetLabel = resolveReopenStatus(subDepartmentStatuses)
-  if (!targetLabel) {
-    // All statuses are completion statuses — stay put
-    return false
-  }
-
-  await prisma.ticket.update({
-    where: { id: ticketId },
-    data: {
-      status: targetLabel,
-      closedAt: null,
-      labels: applyReopenedLabel(ticket.labels ?? []),
-    },
+  // A reply labels the closed ticket for attention. Only the agent's later
+  // In Progress transition reopens it and resets SLA/work allowances.
+  const labels = ticket.labels ?? []
+  if (!labels.includes(REOPENED_LABEL)) await prisma.ticket.update({
+    where: { id: ticketId }, data: { labels: applyReopenedLabel(labels) },
   })
-
-  await syncResolutionTimerOnClosedAtChange(ticketId, null)
-
-  await prisma.activityLog.create({
-    data: {
-      ticketId,
-      actorId,
-      action: "STATUS_CHANGED",
-        metadata: {
-          from: ticket.status,
-          to: targetLabel,
-          triggeredBy: "customer_reply",
-          label: REOPENED_LABEL,
-        },
-    },
-  })
-
-  return true
+  return false
 }

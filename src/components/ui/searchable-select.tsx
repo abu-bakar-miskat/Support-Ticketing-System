@@ -8,6 +8,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 export type SearchableSelectOption = {
   value: string;
   label: string;
+  description?: string;
+  /** Extra terms that should match search without being shown as the label. */
+  keywords?: string[];
   color?: string;
   disabled?: boolean;
 };
@@ -63,7 +66,11 @@ export function SearchableSelect({
   const q = query.trim().toLowerCase();
   const filtered =
     showSearch && q
-      ? options.filter((o) => o.label.toLowerCase().includes(q))
+      ? options.filter((o) =>
+          [o.label, o.value, ...(o.keywords ?? [])].some((term) =>
+            term.toLowerCase().includes(q),
+          ),
+        )
       : options;
   const active = highlightWhenSet && value !== "";
 
@@ -82,7 +89,7 @@ export function SearchableSelect({
           aria-label={ariaLabel}
           disabled={disabled}
           className={cn(
-            "relative flex items-center gap-1.5 rounded-full border px-2.5 font-sans transition-colors outline-none disabled:cursor-not-allowed disabled:opacity-50",
+            "relative flex items-center gap-1.5 rounded-full border px-2.5 font-sans transition-colors outline-none focus-visible:ring-2 focus-visible:ring-sts-accent/60 disabled:cursor-not-allowed disabled:opacity-50",
             SIZE_CLASS[size],
             active
               ? "border-sts-blue/40 bg-sts-blue-tint text-sts-foreground"
@@ -161,7 +168,14 @@ export function SearchableSelect({
                         style={{ background: opt.color ?? "#94a3b8" }}
                       />
                     )}
-                    <span className="min-w-0 flex-1 truncate">{opt.label}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate">{opt.label}</span>
+                      {opt.description && (
+                        <span className="mt-0.5 block truncate text-[10.5px] text-sts-subtle">
+                          {opt.description}
+                        </span>
+                      )}
+                    </span>
                     {isSelected && (
                       <Check className="size-3.5 shrink-0 text-sts-blue" strokeWidth={2.5} />
                     )}

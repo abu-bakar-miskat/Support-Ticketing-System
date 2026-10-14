@@ -1,13 +1,19 @@
-"use client";
+"use client"
+
+import { isCompleteStatus } from "@/lib/status-category";
+
+import { categoryForStatus } from "@/lib/status-category";
+import { deriveSubStatus } from "@/lib/ticket-sub-status";
 
 import { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
-import { toastError } from "@/lib/toast-error";
+import { toastError, toastResponseError } from "@/lib/toast-error";
 import { useQueryClient } from "@tanstack/react-query";
 import { ticketKeys } from "@/hooks/queries/keys";
 import { invalidateTaskCaches } from "@/hooks/queries/invalidate-task-caches";
 import { useTicketDetail } from "@/hooks/queries/use-ticket-detail";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { useTenantHref } from "@/hooks/use-tenant-href";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useBreadcrumbStore, useDrawerStore, useTimerStore } from "@/store";
@@ -80,6 +86,7 @@ import { CommentInput } from "@/components/tickets/comment-input";
 import {
   CustomerMessageItem,
   CustomerReplyComposer,
+  MessageAttachments,
   type MessageData,
   type MessageNote,
 } from "@/components/tickets/customer-reply";
@@ -96,7 +103,6 @@ import { useSubDepartmentStatuses } from "@/hooks/queries/use-sub-department-sta
 import { useLabels } from "@/hooks/queries/use-labels";
 import { buildLinkedLabelOptions } from "@/lib/status-label-choice";
 import {
-  normalizeStatus,
   uiPriorityFromDb,
 } from "@/components/board/board-types";
 import type {
@@ -104,7 +110,8 @@ import type {
   UiPriority,
 } from "@/components/board/board-types";
 import { PriorityPill } from "@/components/board/priority-indicator";
-import { SlaIndicatorBadge } from "@/components/tickets/sla-indicator-badge";
+import { SlaIndicatorBadge, useSlaIndicator } from "@/components/tickets/sla-indicator-badge";
+import { SlaDetailsSection } from "@/components/tickets/sla-details-section";
 import { StatusPill as SharedStatusPill } from "@/components/board/status-pill";
 import { TagPill } from "@/components/board/tag-pill";
 import type { UserListPerson } from "@/lib/user-list-person";
@@ -141,6 +148,7 @@ import {
   GitHubDevSection,
   type GitHubDevData,
 } from "@/components/tickets/github-dev-section";
+import { Tip } from "@/components/ui/tooltip";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -493,7 +501,7 @@ const ACTIVITY_TEXT: Record<string, (meta: Record<string, unknown>) => string> =
     SUBTICKET_ADDED: (m) =>
       m.humanId ? `added sub-ticket ${m.humanId}` : "added a sub-ticket",
     LABELS_CHANGED: () => "updated labels",
-    TIMER_RESET: () => "manually reset their timer",
+    TIMER_RESET: (metadata) => metadata.reopenCycle ? "started a fresh SLA and work cycle" : "manually reset their timer",
     DATE_CHANGED: (m) => {
       const fmt = (d: unknown) => (typeof d === "string" && d ? d : null);
       const toStart = fmt(m.toStart);
@@ -583,6 +591,10 @@ export type CommentData = {
   authorId: string;
   authorName: string;
   authorAvatarUrl: string | null;
+  /** True for a requester comment submitted through the external Portal API. */
+  externalAuthor?: boolean;
+  /** True when the comment is visible in the external portal reply thread. */
+  portalVisible?: boolean;
   attachments: CommentAttachment[];
   replies: CommentData[];
   /** Set when this comment is an internal note attached to a customer message. */
@@ -650,6 +662,8 @@ export type TicketDetailProps = {
   projectColor: string;
   /** Project kind — "support" tickets hide sub-tickets, story points, asset links. */
   projectKind?: string;
+  /** True when the ticket was submitted through the external Portal API. */
+  isPortalTicket?: boolean;
   projectModuleSystemEnabled?: boolean;
   moduleId?: string | null;
   moduleName?: string | null;
@@ -687,6 +701,9 @@ export type TicketDetailProps = {
   subTickets: SubTicketData[];
   comments: CommentData[];
   messages?: MessageData[];
+  /** Shared-mailbox ticket's original email: shown as the description, hidden from the reply thread. */
+  originMessageId?: string | null;
+  descriptionAttachments?: CommentAttachment[];
   customerReply?: {
     enabled: boolean;
     customerName: string | null;
@@ -743,6 +760,7 @@ export function TicketDetailPage({
   projectName,
   projectColor,
   projectKind = "standard",
+  isPortalTicket = false,
   projectModuleSystemEnabled = false,
   moduleId = null,
   moduleName = null,
@@ -777,6 +795,8 @@ export function TicketDetailPage({
   subTickets: initialSubTickets,
   comments,
   messages = EMPTY_MESSAGES,
+  originMessageId = null,
+  descriptionAttachments = [],
   customerReply = DEFAULT_CUSTOMER_REPLY,
   activity,
   canDelete,
@@ -799,6 +819,7 @@ export function TicketDetailPage({
   isDraft = false,
 }: TicketDetailProps) {
   const router = useRouter();
+  const tenantHref = useTenantHref();
   const queryClient = useQueryClient();
   const currentUser = useCurrentUser();
   const currentUserId = currentUser?.id ?? "";
@@ -809,8 +830,21 @@ export function TicketDetailPage({
     setDraftBannerVisible(isDraft);
   }, [isDraft]);
   const [activeTab, setActiveTab] = useState<
-    "conversation" | "internal" | "activity"
-  >(projectKind === "support" ? "conversation" : "internal");
+    "conversation" | "reply" | "internal" | "activity"
+  >(
+    isPortalTicket
+      ? "reply"
+      : projectKind === "support"
+        ? "conversation"
+        : "internal",
+  );
+  const visibleActiveTab = isPortalTicket
+    ? activeTab === "conversation"
+      ? "reply"
+      : activeTab
+    : activeTab === "reply"
+      ? "internal"
+      : activeTab;
   const [activityLimit, setActivityLimit] = useState(10);
   const [copied, setCopied] = useState(false);
   const [titleValue, setTitleValue] = useState(title);
@@ -865,6 +899,14 @@ export function TicketDetailPage({
   const knownCommentIds = useRef(new Set(comments.map((c) => c.id)));
   const knownActivityIds = useRef(new Set(activity.map((a) => a.id)));
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  // Tracks the message/comment counts last seen by the auto-scroll effect, so we
+  // only jump to the newest item when one actually *arrives* — never on the
+  // initial mount (which would land the viewer at the bottom) or a tab switch.
+  const lastChatCounts = useRef<{
+    messages: number;
+    portalReplies: number;
+    internalComments: number;
+  } | null>(null);
   const [liveMessages, setLiveMessages] = useState<MessageData[]>(messages);
   const [refreshingMessages, setRefreshingMessages] = useState(false);
   const pushSub = useDrawerStore((s) => s.pushSub);
@@ -950,13 +992,20 @@ export function TicketDetailPage({
 
   // Customer chat messages sorted oldest-first — chronological, with the
   // newest message nearest the composer pinned at the bottom of the thread.
+  // A mailbox ticket's original email is shown as the description, not here.
   const sortedMessages = useMemo(
     () =>
-      [...liveMessages].sort(
-        (a, b) =>
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-      ),
-    [liveMessages],
+      liveMessages
+        .filter((m) => m.id !== originMessageId)
+        .sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        ),
+    [liveMessages, originMessageId],
+  );
+  const originAttachments = useMemo(
+    () => [...descriptionAttachments, ...(liveMessages.find((m) => m.id === originMessageId)?.attachments ?? [])],
+    [liveMessages, originMessageId, descriptionAttachments],
   );
 
   // "inbound" = last message from submitter → waiting for assignee
@@ -965,71 +1014,98 @@ export function TicketDetailPage({
   const chatReplyStatus = useMemo<
     "awaiting-assignee" | "awaiting-customer" | null
   >(() => {
-    if (liveMessages.length === 0) return null;
+    // Portal API tickets converse through the portal reply thread: a requester
+    // comment counts as inbound, a staff portal reply as outbound.
+    const portalThread = isPortalTicket
+      ? liveComments
+          .flatMap((c) => [c, ...c.replies])
+          .filter((c) => c.portalVisible && !c.deletedAt)
+          .map((c) => ({
+            direction: c.externalAuthor ? "inbound" as const : "outbound" as const,
+            createdAt: c.createdAt,
+          }))
+      : [];
     const statusConfig = effectiveSubDepartmentStatuses.find(
       (s) => s.label === liveStatus,
     );
-    if (statusConfig?.isComplete || liveStatus === "Live") return null;
-    const last = [...liveMessages].sort(
-      (a, b) =>
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    )[0];
-    return last.direction === "inbound"
+    if (statusConfig ? isCompleteStatus(statusConfig) : categoryForStatus(liveStatus, effectiveSubDepartmentStatuses) === "COMPLETE") return null;
+    const subStatus = deriveSubStatus([...liveMessages, ...portalThread], originMessageId);
+    if (!subStatus) return null;
+    return subStatus === "WAITING_FOR_SUPPORT"
       ? "awaiting-assignee"
       : "awaiting-customer";
-  }, [liveMessages, liveStatus, effectiveSubDepartmentStatuses]);
+  }, [liveMessages, liveComments, isPortalTicket, liveStatus, effectiveSubDepartmentStatuses, originMessageId]);
 
-  // Unified conversation: top-level comments and their replies flattened into
-  // one chronological timeline (oldest first, newest nearest the composer pinned
-  // at the bottom). Each reply keeps a reference to the comment it answers so
-  // responses stay linked for full traceability.
-  const flatComments = useMemo(() => {
-    const snippet = (body: string) => {
-      const clean = body
-        .replace(/@([\w.-]+)/g, (_, h: string) => `@${h.replace(/_/g, " ")}`)
-        .replace(/\s+/g, " ")
-        .trim();
-      return clean.length > 60 ? `${clean.slice(0, 60)}…` : clean;
-    };
-    const items: {
-      comment: CommentData;
-      parentRef: {
-        id: string;
-        authorName: string;
-        snippet: string;
-        isDeleted: boolean;
-      } | null;
-    }[] = [];
-    for (const c of liveComments) {
-      items.push({ comment: c, parentRef: null });
-      for (const r of c.replies ?? []) {
-        items.push({
-          comment: r,
-          parentRef: {
-            id: c.id,
-            authorName: c.authorName,
-            snippet: c.deletedAt ? "" : snippet(c.body),
-            isDeleted: !!c.deletedAt,
-          },
-        });
-      }
-    }
-    return items.sort(
-      (a, b) =>
-        new Date(a.comment.createdAt).getTime() -
-        new Date(b.comment.createdAt).getTime(),
-    );
-  }, [liveComments]);
+  // Portal-visible replies and staff-only comments are intentionally split at
+  // the data boundary. Both retain their threaded, chronological presentation.
+  const portalReplyComments = useMemo(
+    () =>
+      liveComments
+        .filter((comment) => comment.portalVisible)
+        .sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        ),
+    [liveComments],
+  );
+  const internalComments = useMemo(
+    () =>
+      liveComments
+        .filter((comment) => !comment.portalVisible)
+        .sort(
+          (a, b) =>
+            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+        ),
+    [liveComments],
+  );
+  const portalReplyCount = useMemo(
+    () =>
+      portalReplyComments.reduce(
+        (count, comment) => count + 1 + (comment.replies?.length ?? 0),
+        0,
+      ),
+    [portalReplyComments],
+  );
+  const internalCommentCount = useMemo(
+    () =>
+      internalComments.reduce(
+        (count, comment) => count + 1 + (comment.replies?.length ?? 0),
+        0,
+      ),
+    [internalComments],
+  );
 
-  // Jump to the newest item (bottom, by the sticky composer) whenever the
-  // conversation or internal-comment tab opens or a comment/message arrives.
+  // Jump to the newest item (bottom, by the sticky composer) only when a
+  // comment/message actually arrives — not on the initial mount or a tab
+  // switch, which would otherwise land the viewer at the bottom of the page.
   useEffect(() => {
-    if (activeTab !== "conversation" && activeTab !== "internal") return;
+    if (
+      visibleActiveTab !== "conversation" &&
+      visibleActiveTab !== "reply" &&
+      visibleActiveTab !== "internal"
+    ) return;
+    const prev = lastChatCounts.current;
+    const grew = prev !== null && (
+      (visibleActiveTab === "conversation" && sortedMessages.length > prev.messages) ||
+      (visibleActiveTab === "reply" && portalReplyCount > prev.portalReplies) ||
+      (visibleActiveTab === "internal" && internalCommentCount > prev.internalComments)
+    );
+    lastChatCounts.current = {
+      messages: sortedMessages.length,
+      portalReplies: portalReplyCount,
+      internalComments: internalCommentCount,
+    };
+    if (!grew) return;
     const id = requestAnimationFrame(() =>
       chatBottomRef.current?.scrollIntoView({ block: "end" }),
     );
     return () => cancelAnimationFrame(id);
-  }, [activeTab, sortedMessages.length, flatComments.length]);
+  }, [
+    visibleActiveTab,
+    sortedMessages.length,
+    portalReplyCount,
+    internalCommentCount,
+  ]);
 
   useEffect(() => {
     setTitleValue(title);
@@ -1118,6 +1194,7 @@ export function TicketDetailPage({
     })
       .then((res) => {
         if (!res.ok) {
+          toast.error("Couldn't update labels");
           setLiveLabels(previous);
           queryClient.setQueryData<TicketDetailProps>(
             ticketKeys.detail(dbId),
@@ -1125,7 +1202,8 @@ export function TicketDetailPage({
           );
         }
       })
-      .catch(() => {
+      .catch((err: unknown) => {
+        toastError("Couldn't update labels", err);
         setLiveLabels(previous);
         queryClient.setQueryData<TicketDetailProps>(
           ticketKeys.detail(dbId),
@@ -1491,7 +1569,10 @@ export function TicketDetailPage({
         }
         case "TIMER_RESET": {
           const actorId = event.actorId;
-          if (actorId) {
+          if (payload.reopenCycle) {
+            setLiveTimeEntries([]);
+            router.refresh();
+          } else if (actorId) {
             setLiveTimeEntries((prev) =>
               prev.filter((e) => e.userId !== actorId),
             );
@@ -1528,6 +1609,7 @@ export function TicketDetailPage({
       queryClient,
       dbId,
       scheduleSoftReconcile,
+      router,
     ],
   );
 
@@ -1554,6 +1636,16 @@ export function TicketDetailPage({
     },
     [],
   );
+
+  const syncConversationTimer = useCallback(async () => {
+    try {
+      await fetch(`/api/tickets/${dbId}/messages/sync-timer`, { method: "POST" });
+    } finally {
+      // The endpoint commits the timer before responding, so this refresh can
+      // update the global indicator without waiting for another broadcast.
+      await useTimerStore.getState().syncFromServer();
+    }
+  }, [dbId]);
 
   useEffect(() => {
     const supabase = createClient();
@@ -1591,6 +1683,10 @@ export function TicketDetailPage({
       (message, direction) => {
         appendMessage(message);
         if (direction === "inbound") {
+          // Ask this app instance to synchronize immediately. In shared-DB
+          // development the webhook may be handled by another deployment, so a
+          // local /api/time refresh alone can happen before any timer exists.
+          void syncConversationTimer();
           try {
             const audio = new Audio("/sounds/notification.mp3");
             audio.volume = 0.5;
@@ -1609,15 +1705,15 @@ export function TicketDetailPage({
         }
       },
     );
-  }, [dbId, appendMessage, refreshMessages]);
+  }, [dbId, appendMessage, refreshMessages, syncConversationTimer]);
 
   // Poll for new messages only when the chat tab is open AND the browser tab is
-  // visible. Broadcast handles the fast path; this catches emails that arrive
-  // before Resend fires the webhook. 20s interval — low enough to catch stragglers,
+  // visible. Broadcast handles the fast path; this catches anything a missed
+  // broadcast skipped. 20s interval — low enough to catch stragglers,
   // high enough not to hammer the DB. Skip while hydrating so polling doesn't
   // contend with the primary /detail request.
   useEffect(() => {
-    if (isHydrating || activeTab !== "conversation") return;
+    if (isHydrating || visibleActiveTab !== "conversation") return;
     const poll = async () => {
       if (document.visibilityState !== "visible") return;
       try {
@@ -1637,37 +1733,7 @@ export function TicketDetailPage({
     };
     const interval = setInterval(poll, 20_000);
     return () => clearInterval(interval);
-  }, [isHydrating, activeTab, dbId]);
-
-  // Reconciliation: ask the server to check Resend for any emails the webhook
-  // may have missed. Runs when the Chat tab is open on a fully-loaded ticket,
-  // then repeats every 30s while the tab stays open and visible — so a missed
-  // webhook self-heals without the user needing to close/reopen the ticket.
-  // Skipped while hydrating so reconcile doesn't contend with /detail for the
-  // shared DB pool (that race caused 45s timeouts → "Failed to load ticket").
-  useEffect(() => {
-    if (isHydrating || activeTab !== "conversation") return;
-    let cancelled = false;
-    const reconcile = async () => {
-      if (document.visibilityState !== "visible") return;
-      try {
-        const res = await fetch(`/api/tickets/${dbId}/messages/reconcile`, {
-          method: "POST",
-        });
-        if (!res.ok || cancelled) return;
-        const { reconciled } = await res.json();
-        if (reconciled > 0 && !cancelled) await refreshMessages();
-      } catch {
-        // best-effort — silently ignore
-      }
-    };
-    reconcile();
-    const interval = setInterval(reconcile, 30_000);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, [isHydrating, activeTab, dbId, refreshMessages]);
+  }, [isHydrating, visibleActiveTab, dbId]);
 
   // Live GitHub Development section — the webhook broadcasts to
   // `ticket-github:{dbId}` when a linked PR changes state (e.g. merged), a new
@@ -1684,10 +1750,10 @@ export function TicketDetailPage({
   const isTimerRunningHere = timerTicketDbId === dbId;
   useEffect(() => {
     if (!isTimerRunningHere) return;
-    if (normalizeStatus(liveStatus) !== "In Progress") {
+    if (categoryForStatus(liveStatus, effectiveSubDepartmentStatuses) !== "IN_PROGRESS") {
       stopTimerAction(timerEntryId).catch(() => undefined);
     }
-  }, [liveStatus, isTimerRunningHere, timerEntryId, stopTimerAction]);
+  }, [liveStatus, effectiveSubDepartmentStatuses, isTimerRunningHere, timerEntryId, stopTimerAction]);
 
   const stackLen = useDrawerStore((s) => s.stack.length);
   const popDrawer = useDrawerStore((s) => s.pop);
@@ -1860,25 +1926,34 @@ export function TicketDetailPage({
       return;
     }
     setTitleSaving(true);
-    await updateTicket(dbId, { title: t }).catch(() => null);
-    setTitleSaving(false);
-    setTitleEditing(false);
+    try {
+      await updateTicket(dbId, { title: t });
+      setTitleEditing(false);
+    } catch (err) {
+      // Keep the editor open so the typed title isn't lost.
+      toastError("Couldn't save the title", err);
+    } finally {
+      setTitleSaving(false);
+    }
   }
 
   async function saveDescription() {
     setDescSaving(true);
-    const ok = await updateTicket(dbId, {
-      description: descValue || null,
-    }).catch(() => null);
-    if (ok !== null) {
-      const attachmentIds = extractAttachmentIdsFromHtml(descValue);
-      if (attachmentIds.length > 0) {
-        await fetch(`/api/tickets/${dbId}/attachments/link`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ attachmentIds }),
-        }).catch(() => null);
-      }
+    try {
+      await updateTicket(dbId, { description: descValue || null });
+    } catch (err) {
+      // Keep the editor open so the typed description isn't lost.
+      setDescSaving(false);
+      toastError("Couldn't save the description", err);
+      return;
+    }
+    const attachmentIds = extractAttachmentIdsFromHtml(descValue);
+    if (attachmentIds.length > 0) {
+      await fetch(`/api/tickets/${dbId}/attachments/link`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ attachmentIds }),
+      }).catch(() => null);
     }
     setDescSaving(false);
     setDescEditing(false);
@@ -1931,6 +2006,8 @@ export function TicketDetailPage({
   // Support-project tickets hide features that don't apply to support work:
   // sub-tickets, story points, and asset links.
   const isSupport = projectKind === "support";
+  // Refetch SLA when the conversation (first response) or status (resolution) changes.
+  const slaRefreshKey = `${liveStatus}|${liveEstimatedTime}|${liveTimeEntries.map((entry) => `${entry.userId}:${entry.totalSecs}:${entry.isRunning}`).join(":")}|${liveMessages.map((message) => message.id).join(":")}`;
 
   const isImageFile = (fileName: string | undefined | null) =>
     /\.(jpg|jpeg|png|gif|webp|svg|avif)$/i.test(fileName ?? "");
@@ -2037,7 +2114,7 @@ export function TicketDetailPage({
   }, [effectiveSubDepartmentStatuses, liveStatus, departmentLabelOptions]);
 
   // Time tracking is only available when the ticket is actively being worked on ("In Progress").
-  const isTicketActive = normalizeStatus(liveStatus) === "In Progress";
+  const isTicketActive = categoryForStatus(liveStatus, effectiveSubDepartmentStatuses) === "IN_PROGRESS";
 
   const doneSubs = subTickets.filter((s) => s.done).length;
   const subPercent = subTickets.length
@@ -2045,7 +2122,7 @@ export function TicketDetailPage({
     : 0;
 
   async function copyLink() {
-    const ticketUrl = `${window.location.origin}/tickets/${dbId}`;
+    const ticketUrl = `${window.location.origin}${tenantHref(`/tasks/${dbId}`)}`;
     await navigator.clipboard.writeText(ticketUrl).catch(() => undefined);
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
@@ -2132,7 +2209,7 @@ export function TicketDetailPage({
             "min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain pt-[22px]",
             // The conversation feed pins the composer to the bottom, so it
             // needs almost no trailing padding; other tabs keep breathing room.
-            activeTab === "conversation" ? "pb-2" : "pb-16",
+            visibleActiveTab === "conversation" ? "pb-2" : "pb-16",
           )}
         >
           <div className="w-full space-y-3.5 px-8">
@@ -2230,7 +2307,7 @@ export function TicketDetailPage({
               <span className="flex-1" />
               {isDrawer && (
                 <Link
-                  href={`/tasks/${dbId}`}
+                  href={tenantHref(`/tasks/${dbId}`)}
                   title="Open this ticket as a full page"
                   onClick={onClose}
                   className="flex shrink-0 items-center gap-1 whitespace-nowrap font-sans text-[11.5px] font-semibold text-sts-foreground transition-opacity hover:opacity-70"
@@ -2248,25 +2325,28 @@ export function TicketDetailPage({
                 {copied ? "Copied" : "Copy link"}
               </button>
               {canEditTicket && (
-                <button
-                  type="button"
-                  onClick={() => setTransferOpen(true)}
-                  title="Transfer to another department or sub-department"
-                  className="flex shrink-0 items-center gap-1 whitespace-nowrap font-sans text-[11.5px] font-semibold text-sts-foreground hover:opacity-70"
-                >
-                  <ArrowRightLeft className="size-3" />
-                  Transfer
-                </button>
+                <Tip label="Transfer to another department or sub-department">
+                  <button
+                    type="button"
+                    onClick={() => setTransferOpen(true)}
+                    className="flex shrink-0 items-center gap-1 whitespace-nowrap font-sans text-[11.5px] font-semibold text-sts-foreground hover:opacity-70"
+                  >
+                    <ArrowRightLeft className="size-3" />
+                    Transfer
+                  </button>
+                </Tip>
               )}
               {canDelete && (
-                <button
-                  type="button"
-                  onClick={() => setConfirmDelete(true)}
-                  title="Delete ticket"
-                  className="flex size-6 items-center justify-center rounded-full text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-                >
-                  <Trash2 className="size-3.5" />
-                </button>
+                <Tip label="Delete ticket">
+                  <button
+                    aria-label="Delete ticket"
+                    type="button"
+                    onClick={() => setConfirmDelete(true)}
+                    className="flex size-6 items-center justify-center rounded-full text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
+                </Tip>
               )}
             </div>
 
@@ -2345,31 +2425,35 @@ export function TicketDetailPage({
                       onApply={(r) => setTitleValue(r.title)}
                       className="size-6"
                     />
-                    <button
-                      type="button"
-                      onClick={saveTitle}
-                      disabled={titleSaving}
-                      title="Save"
-                      className="flex size-6 items-center justify-center rounded-full bg-sts-id text-white transition-opacity hover:opacity-90 disabled:opacity-60"
-                    >
-                      {titleSaving ? (
-                        <Loader2 className="size-3 animate-spin" />
-                      ) : (
-                        <Check className="size-3" />
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setTitleValue(title);
-                        setTitleEditing(false);
-                      }}
-                      disabled={titleSaving}
-                      title="Cancel"
-                      className="flex size-6 items-center justify-center rounded-full text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-60"
-                    >
-                      <X className="size-3" />
-                    </button>
+                    <Tip label="Save">
+                      <button
+                        aria-label="Save title"
+                        type="button"
+                        onClick={saveTitle}
+                        disabled={titleSaving}
+                        className="flex size-6 items-center justify-center rounded-full bg-sts-id text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+                      >
+                        {titleSaving ? (
+                          <Loader2 className="size-3 animate-spin" />
+                        ) : (
+                          <Check className="size-3" />
+                        )}
+                      </button>
+                    </Tip>
+                    <Tip label="Cancel">
+                      <button
+                        aria-label="Cancel editing title"
+                        type="button"
+                        onClick={() => {
+                          setTitleValue(title);
+                          setTitleEditing(false);
+                        }}
+                        disabled={titleSaving}
+                        className="flex size-6 items-center justify-center rounded-full text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-60"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </Tip>
                   </div>
                 </>
               ) : (
@@ -2378,17 +2462,19 @@ export function TicketDetailPage({
                     {titleValue}
                   </h1>
                   {canEditTicket && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setTitleValue(title);
-                        setTitleEditing(true);
-                      }}
-                      className="mt-1 shrink-0 rounded-full p-1 text-sts-subtle transition-opacity hover:bg-sts-surface hover:text-sts-foreground"
-                      title="Edit title"
-                    >
-                      <Pencil className="size-3.5" />
-                    </button>
+                    <Tip label="Edit title">
+                      <button
+                        aria-label="Edit title"
+                        type="button"
+                        onClick={() => {
+                          setTitleValue(title);
+                          setTitleEditing(true);
+                        }}
+                        className="mt-1 shrink-0 rounded-full p-1 text-sts-subtle transition-opacity hover:bg-sts-surface hover:text-sts-foreground"
+                      >
+                        <Pencil className="size-3.5" />
+                      </button>
+                    </Tip>
                   )}
                 </>
               )}
@@ -2409,7 +2495,11 @@ export function TicketDetailPage({
               />
 
               {!isHydrating ? (
-                <SlaIndicatorBadge ticketId={dbId} size="md" />
+                <SlaIndicatorBadge
+                  ticketId={dbId}
+                  size="md"
+                  refreshKey={slaRefreshKey}
+                />
               ) : null}
 
               {transferredFromName && (
@@ -2431,15 +2521,18 @@ export function TicketDetailPage({
               {liveLabels.map((lbl) => (
                 <span key={lbl} className="group relative inline-flex">
                   <TagPill label={lbl} size="md" />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleLabelsChange(liveLabels.filter((l) => l !== lbl))
-                    }
-                    className="absolute -right-1 -top-1 flex size-3.5 items-center justify-center rounded-full bg-sts-red text-white opacity-0 transition-opacity group-hover:opacity-100"
-                  >
-                    <X className="size-2" />
-                  </button>
+                  <Tip label="Remove label">
+                    <button
+                      aria-label={`Remove label ${lbl}`}
+                      type="button"
+                      onClick={() =>
+                        handleLabelsChange(liveLabels.filter((l) => l !== lbl))
+                      }
+                      className="absolute -right-1 -top-1 flex size-3.5 items-center justify-center rounded-full bg-sts-red text-white opacity-0 transition-opacity group-hover:opacity-100"
+                    >
+                      <X className="size-2" />
+                    </button>
+                  </Tip>
                 </span>
               ))}
               <LabelPicker
@@ -2620,6 +2713,41 @@ export function TicketDetailPage({
               );
             })()} */}
 
+            {/* Key fields for narrow screens — the details sidebar is lg-only. */}
+            <div className="grid grid-cols-1 gap-3 rounded-[12px] border border-sts-card-border bg-sts-card p-3 sm:grid-cols-3 lg:hidden">
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <SectionLabel>Status</SectionLabel>
+                <StatusSelect
+                  ticketId={dbId}
+                  currentStatus={liveStatus}
+                  statuses={effectiveSubDepartmentStatuses}
+                  onStatusChange={setLiveStatus}
+                  disabled={!canChangeStatus}
+                />
+              </div>
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <SectionLabel>Priority</SectionLabel>
+                <PrioritySelect
+                  ticketId={dbId}
+                  priority={livePriority}
+                  disabled={!canEditTicket}
+                  onPriorityChange={setLivePriority}
+                />
+              </div>
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <SectionLabel>Assignee</SectionLabel>
+                <AssigneeSelect
+                  ticketId={dbId}
+                  assigneeId={liveAssigneeId}
+                  assigneeName={liveAssigneeName}
+                  assigneeAvatarUrl={liveAssigneeAvatarUrl}
+                  subDepartmentMembers={subDepartmentMembers}
+                  onAssigneeChange={handleAssigneeChange}
+                  disabled={!canEditTicket}
+                />
+              </div>
+            </div>
+
             {/* Description — hidden for intake-form tickets and template-based tickets */}
             {!intake && !hasTemplateData && (
               <div>
@@ -2724,6 +2852,12 @@ export function TicketDetailPage({
                       <p className="font-sans text-[12.5px] text-sts-subtle">
                         No description
                       </p>
+                    )}
+                    {/* The original mailbox email's attachments live with its body here. */}
+                    {!descEditing && !isHydrating && originAttachments.length > 0 && (
+                      <div className="mt-3">
+                        <MessageAttachments attachments={originAttachments} />
+                      </div>
                     )}
                   </>
                 )}
@@ -2937,7 +3071,12 @@ export function TicketDetailPage({
             )}
 
             {/* Intake */}
-            {intake && <IntakeCard intake={intake} />}
+            {intake && (
+              <IntakeCard
+                intake={intake}
+                sourceLabel={isPortalTicket ? "Portal API Support Form" : undefined}
+              />
+            )}
 
             {!isHydrating ? <RuleExecutionLog ticketId={dbId} /> : null}
 
@@ -3047,7 +3186,7 @@ export function TicketDetailPage({
                             }
                             className="group/sub flex min-h-[34px] items-center gap-2.5 rounded-full px-2 py-1 transition-colors hover:bg-sts-surface"
                           >
-                            {/* Completion checkbox (reflects status.isComplete) */}
+                            {/* Completion checkbox (reflects the Complete status category) */}
                             {st.done ? (
                               <CheckSquare className="size-4 shrink-0 text-sts-green" />
                             ) : (
@@ -3096,39 +3235,43 @@ export function TicketDetailPage({
                             )}
                             {/* Unlink (detach from parent, keep the ticket) */}
                             {canEditTicket && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setSubToUnlink({
-                                    id: st.dbId,
-                                    humanId: st.humanId,
-                                  });
-                                }}
-                                title={`Remove ${st.humanId} from sub-tickets`}
-                                className="shrink-0 rounded p-1 text-sts-subtle transition-colors hover:bg-sts-blue/10 hover:text-sts-blue"
-                              >
-                                <Unlink className="size-3.5" />
-                              </button>
+                              <Tip label={`Remove ${st.humanId} from sub-tickets`}>
+                                <button
+                                  aria-label={`Remove ${st.humanId} from sub-tickets`}
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setSubToUnlink({
+                                      id: st.dbId,
+                                      humanId: st.humanId,
+                                    });
+                                  }}
+                                  className="shrink-0 rounded p-1 text-sts-subtle transition-colors hover:bg-sts-blue/10 hover:text-sts-blue"
+                                >
+                                  <Unlink className="size-3.5" />
+                                </button>
+                              </Tip>
                             )}
                             {/* Delete */}
                             {st.canDelete && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setSubToDelete({
-                                    id: st.dbId,
-                                    humanId: st.humanId,
-                                  });
-                                }}
-                                title={`Delete ${st.humanId}`}
-                                className="shrink-0 rounded p-1 text-sts-subtle transition-colors hover:bg-sts-red/10 hover:text-sts-red"
-                              >
-                                <Trash2 className="size-3.5" />
-                              </button>
+                              <Tip label={`Delete ${st.humanId}`}>
+                                <button
+                                  aria-label={`Delete ${st.humanId}`}
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    setSubToDelete({
+                                      id: st.dbId,
+                                      humanId: st.humanId,
+                                    });
+                                  }}
+                                  className="shrink-0 rounded p-1 text-sts-subtle transition-colors hover:bg-sts-red/10 hover:text-sts-red"
+                                >
+                                  <Trash2 className="size-3.5" />
+                                </button>
+                              </Tip>
                             )}
                           </Link>
                         ))}
@@ -3168,13 +3311,16 @@ export function TicketDetailPage({
                             }}
                             className="min-w-0 flex-1 bg-transparent font-sans text-[12.5px] text-sts-foreground outline-none placeholder:text-sts-subtle"
                           />
-                          <button
-                            type="button"
-                            onClick={closeLinkPicker}
-                            className="shrink-0 text-sts-subtle hover:text-sts-muted"
-                          >
-                            <X className="size-3.5" />
-                          </button>
+                          <Tip label="Close">
+                            <button
+                              aria-label="Close"
+                              type="button"
+                              onClick={closeLinkPicker}
+                              className="shrink-0 text-sts-subtle hover:text-sts-muted"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          </Tip>
                         </div>
                         <div className="max-h-56 overflow-y-auto py-1">
                           {linkLoading ? (
@@ -3252,16 +3398,19 @@ export function TicketDetailPage({
                           >
                             {subSaving ? "…" : "Create"}
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setAddingSubTicket(false);
-                              setSubTitle("");
-                            }}
-                            className="shrink-0 text-sts-subtle hover:text-sts-muted"
-                          >
-                            <X className="size-3.5" />
-                          </button>
+                          <Tip label="Cancel">
+                            <button
+                              aria-label="Cancel adding sub-ticket"
+                              type="button"
+                              onClick={() => {
+                                setAddingSubTicket(false);
+                                setSubTitle("");
+                              }}
+                              className="shrink-0 text-sts-subtle hover:text-sts-muted"
+                            >
+                              <X className="size-3.5" />
+                            </button>
+                          </Tip>
                         </div>
                       </form>
                     )}
@@ -3302,14 +3451,20 @@ export function TicketDetailPage({
                 {[
                   {
                     key: "conversation" as const,
-                    label: "Conversation",
+                    label: "Reply",
                     count: sortedMessages.length,
-                    show: isSupport,
+                    show: isSupport && !isPortalTicket,
+                  },
+                  {
+                    key: "reply" as const,
+                    label: "Reply",
+                    count: portalReplyCount,
+                    show: isPortalTicket,
                   },
                   {
                     key: "internal" as const,
-                    label: "Comment",
-                    count: flatComments.length,
+                    label: "Internal Comment",
+                    count: internalCommentCount,
                     show: true,
                   },
                   {
@@ -3327,7 +3482,7 @@ export function TicketDetailPage({
                       onClick={() => setActiveTab(tab.key)}
                       className={cn(
                         "relative flex h-[30px] items-center gap-[5px] pr-[16px] font-sans text-[12px]",
-                        activeTab === tab.key
+                        visibleActiveTab === tab.key
                           ? "font-semibold text-sts-foreground"
                           : "text-sts-muted hover:text-sts-foreground",
                       )}
@@ -3336,39 +3491,41 @@ export function TicketDetailPage({
                       <span className="font-sans text-[11.5px] text-sts-subtle">
                         {tab.count}
                       </span>
-                      {activeTab === tab.key && (
+                      {visibleActiveTab === tab.key && (
                         <span className="absolute bottom-0 left-0 right-[16px] h-[2px] rounded-full bg-sts-blue" />
                       )}
                     </button>
                   ))}
                 <span className="flex-1" />
-                {activeTab === "conversation" && (
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setRefreshingMessages(true);
-                      await refreshMessages();
-                      setRefreshingMessages(false);
-                    }}
-                    disabled={refreshingMessages}
-                    title="Refresh messages"
-                    className="mb-0.5 flex items-center justify-center rounded-full p-1 text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
-                  >
-                    <RefreshCw
-                      className={cn(
-                        "size-[11px]",
-                        refreshingMessages && "animate-spin",
-                      )}
-                    />
-                  </button>
+                {visibleActiveTab === "conversation" && (
+                  <Tip label="Refresh messages">
+                    <button
+                      aria-label="Refresh messages"
+                      type="button"
+                      onClick={async () => {
+                        setRefreshingMessages(true);
+                        await refreshMessages();
+                        setRefreshingMessages(false);
+                      }}
+                      disabled={refreshingMessages}
+                      className="mb-0.5 flex items-center justify-center rounded-full p-1 text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+                    >
+                      <RefreshCw
+                        className={cn(
+                          "size-[11px]",
+                          refreshingMessages && "animate-spin",
+                        )}
+                      />
+                    </button>
+                  </Tip>
                 )}
               </div>
             </div>
 
             {/* Tab content */}
             {isHydrating ? (
-              <TicketTabContentHydrating activeTab={activeTab} />
-            ) : activeTab === "conversation" ? (
+              <TicketTabContentHydrating activeTab={visibleActiveTab} />
+            ) : visibleActiveTab === "conversation" ? (
               <div className="flex flex-col">
                 {/* Customer email chain only — internal comments live in their
                     own tab so this stays a clean record of the conversation. */}
@@ -3407,17 +3564,27 @@ export function TicketDetailPage({
                       ticketId={dbId}
                       customerName={customerReply.customerName}
                       customerEmail={customerReply.customerEmail}
-                      onSent={(m) => setLiveMessages((prev) => [...prev, m])}
-                      onSentConfirmed={(tempId, real) =>
+                      onSent={(m) => {
+                        setLiveMessages((prev) => [...prev, m]);
+                        // Pause the visible timer immediately; the server
+                        // persists the stop once the email send succeeds.
+                        if (useTimerStore.getState().ticketDbId === dbId) {
+                          useTimerStore.getState().clearRunning();
+                        }
+                      }}
+                      onSentConfirmed={(tempId, real) => {
                         setLiveMessages((prev) =>
                           prev.some((m) => m.id === real.id)
                             ? prev.filter((m) => m.id !== tempId)
                             : prev.map((m) => (m.id === tempId ? real : m)),
-                        )
-                      }
-                      onSentFailed={(tempId) =>
-                        setLiveMessages((prev) => prev.filter((m) => m.id !== tempId))
-                      }
+                        );
+                        if (real.ticketStatus) setLiveStatus(real.ticketStatus);
+                        void useTimerStore.getState().syncFromServer();
+                      }}
+                      onSentFailed={(tempId) => {
+                        setLiveMessages((prev) => prev.filter((m) => m.id !== tempId));
+                        void useTimerStore.getState().syncFromServer();
+                      }}
                     />
                   ) : (
                     <p className="py-2 text-center font-sans text-[11.5px] text-sts-subtle">
@@ -3430,11 +3597,60 @@ export function TicketDetailPage({
                 {/* Bottom anchor — scrolled into view to reveal the newest item */}
                 <div ref={chatBottomRef} />
               </div>
-            ) : activeTab === "internal" ? (
+            ) : visibleActiveTab === "reply" ? (
+              <div className="flex flex-col">
+                {/* Requester-visible portal thread. Only comments explicitly
+                    marked portal-visible are rendered or returned externally. */}
+                {portalReplyComments.length === 0 ? (
+                  <div className="flex flex-col items-center gap-1.5 rounded-lg border border-dashed border-sts-card-border py-8 text-center">
+                    <MessageSquare className="size-5 text-sts-subtle/50" />
+                    <p className="font-sans text-[12.5px] font-medium text-sts-foreground">
+                      No replies yet
+                    </p>
+                    <p className="font-sans text-[11.5px] text-sts-subtle">
+                      Reply below — the portal requester can read this thread.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col divide-y divide-sts-card-border">
+                    {portalReplyComments.map((comment) => (
+                      <div key={`portal-reply-${comment.id}`} className="py-4">
+                        <CommentItem
+                          comment={comment}
+                          ticketId={dbId}
+                          subDepartmentMembers={mentionableUsers}
+                          onReplySubmitted={(reply) => handleReplyAdded(comment.id, reply)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="sticky bottom-0 z-10 -mx-1 border-t border-sts-card-border bg-sts-bg px-1 pb-2 pt-3">
+                  <CommentInput
+                    ticketId={dbId}
+                    subDepartmentMembers={mentionableUsers}
+                    portalVisible
+                    onCommentAdded={(comment) => {
+                      knownCommentIds.current.add(comment.id);
+                      setLiveComments((prev) => {
+                        const idx = prev.findIndex((item) => item.id === comment.id);
+                        if (idx === -1) return [...prev, comment];
+                        const next = [...prev];
+                        next[idx] = comment;
+                        return next;
+                      });
+                    }}
+                  />
+                </div>
+
+                <div ref={chatBottomRef} />
+              </div>
+            ) : visibleActiveTab === "internal" ? (
               <div className="flex flex-col">
                 {/* Staff-only internal comments, separated from the customer
                     email chain. */}
-                {flatComments.length === 0 ? (
+                {internalComments.length === 0 ? (
                   <div className="flex flex-col items-center gap-1.5 rounded-lg border border-dashed border-sts-card-border py-8 text-center">
                     <MessageSquare className="size-5 text-sts-subtle/50" />
                     <p className="font-sans text-[12.5px] font-medium text-sts-foreground">
@@ -3446,13 +3662,12 @@ export function TicketDetailPage({
                   </div>
                 ) : (
                   <div className="flex flex-col divide-y divide-sts-card-border">
-                    {flatComments.map(({ comment, parentRef }) => (
+                    {internalComments.map((comment) => (
                       <div key={`c-${comment.id}`} className="py-4">
                         <CommentItem
                           comment={comment}
                           ticketId={dbId}
                           subDepartmentMembers={mentionableUsers}
-                          parentRef={parentRef}
                           onReplySubmitted={(reply) => handleReplyAdded(comment.id, reply)}
                         />
                       </div>
@@ -3696,6 +3911,7 @@ export function TicketDetailPage({
               ticketHumanId={ticketId}
               ticketTitle={titleValue}
               estimatedTime={liveEstimatedTime}
+              slaRefreshKey={slaRefreshKey}
               timeEntries={liveTimeEntries}
               myActiveTimerId={initialActiveTimerId}
               myActiveTimerStartedAt={myActiveTimerStartedAt}
@@ -3740,6 +3956,11 @@ export function TicketDetailPage({
             {subTicketTime && subTicketTime.perTicket.length > 0 && (
               <SubTicketTimeSection data={subTicketTime} />
             )}
+
+            {/* SLA breakdown — rendered only for admins / department managers */}
+            {!isHydrating ? (
+              <SlaDetailsSection ticketId={dbId} refreshKey={slaRefreshKey} />
+            ) : null}
           </div>
         </aside>
       </div>
@@ -3771,20 +3992,31 @@ function AssetLinksEditor({
   const [newUrl, setNewUrl] = useState("");
   const [saving, setSaving] = useState(false);
 
-  async function patchLinks(nextLinks: { label: string; url: string }[]) {
+  async function patchLinks(nextLinks: { label: string; url: string }[]): Promise<boolean> {
     setSaving(true);
-    await fetch(`/api/tickets/${ticketId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ assetLinks: nextLinks }),
-    });
-    setSaving(false);
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assetLinks: nextLinks }),
+      });
+      if (!res.ok) {
+        await toastResponseError(res, "Couldn't save links");
+        return false;
+      }
+      return true;
+    } catch (err) {
+      toastError("Couldn't save links", err);
+      return false;
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function handleAdd() {
     if (!newUrl.trim()) return;
     const next = [...links, { url: newUrl.trim(), label: newLabel.trim() }];
-    await patchLinks(next);
+    if (!(await patchLinks(next))) return;
     setLinks(next);
     setNewUrl("");
     setNewLabel("");
@@ -3793,7 +4025,7 @@ function AssetLinksEditor({
 
   async function handleRemove(index: number) {
     const next = links.filter((_, i) => i !== index);
-    await patchLinks(next);
+    if (!(await patchLinks(next))) return;
     setLinks(next);
   }
 
@@ -3802,13 +4034,17 @@ function AssetLinksEditor({
       <div className="flex items-center gap-2">
         <SectionLabel>Asset Links</SectionLabel>
         {canEdit && (
-          <button
-            type="button"
-            onClick={() => setAdding((v) => !v)}
-            className="ml-auto flex h-5 w-5 items-center justify-center rounded text-sts-subtle hover:bg-sts-surface hover:text-sts-blue"
-          >
-            <Plus size={12} />
-          </button>
+          <Tip label="Add asset link">
+            <button
+              aria-label="Add asset link"
+              aria-expanded={adding}
+              type="button"
+              onClick={() => setAdding((v) => !v)}
+              className="ml-auto flex h-5 w-5 items-center justify-center rounded text-sts-subtle hover:bg-sts-surface hover:text-sts-blue"
+            >
+              <Plus size={12} />
+            </button>
+          </Tip>
         )}
       </div>
 
@@ -3833,14 +4069,17 @@ function AssetLinksEditor({
                 {link.label || link.url}
               </a>
               {canEdit && (
-                <button
-                  type="button"
-                  onClick={() => handleRemove(i)}
-                  className="shrink-0 text-sts-subtle hover:text-sts-red"
-                  disabled={saving}
-                >
-                  <X size={10} />
-                </button>
+                <Tip label="Remove link">
+                  <button
+                    aria-label={`Remove link ${link.label || link.url}`}
+                    type="button"
+                    onClick={() => handleRemove(i)}
+                    className="shrink-0 text-sts-subtle hover:text-sts-red"
+                    disabled={saving}
+                  >
+                    <X size={10} />
+                  </button>
+                </Tip>
               )}
             </div>
           ))}
@@ -3915,14 +4154,23 @@ function StoryPointsEditor({
     const num = inputVal.trim() === "" ? null : parseInt(inputVal, 10);
     if (num !== null && (isNaN(num) || num < 0)) return;
     setSaving(true);
-    await fetch(`/api/tickets/${ticketId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ storyPoints: num }),
-    });
-    setSp(num);
-    setSaving(false);
-    setEditing(false);
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ storyPoints: num }),
+      });
+      if (!res.ok) {
+        await toastResponseError(res, "Couldn't save story points");
+        return;
+      }
+      setSp(num);
+      setEditing(false);
+    } catch (err) {
+      toastError("Couldn't save story points", err);
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -3956,16 +4204,19 @@ function StoryPointsEditor({
           >
             {saving ? "…" : "Save"}
           </button>
-          <button
-            type="button"
-            onClick={() => {
-              setEditing(false);
-              setInputVal(sp?.toString() ?? "");
-            }}
-            className="flex size-5 items-center justify-center rounded text-sts-subtle hover:text-sts-muted"
-          >
-            <X className="size-3" />
-          </button>
+          <Tip label="Cancel">
+            <button
+              aria-label="Cancel editing story points"
+              type="button"
+              onClick={() => {
+                setEditing(false);
+                setInputVal(sp?.toString() ?? "");
+              }}
+              className="flex size-5 items-center justify-center rounded text-sts-subtle hover:text-sts-muted"
+            >
+              <X className="size-3" />
+            </button>
+          </Tip>
         </div>
       ) : (
         <button
@@ -4319,12 +4570,13 @@ function TimeTrackingSection({
   ticketHumanId,
   ticketTitle,
   estimatedTime: initialEstimatedTime,
+  slaRefreshKey,
   timeEntries: initialEntries,
   myActiveTimerId,
   myActiveTimerStartedAt,
   canStart,
   isAssignee,
-  estimateEditable,
+  estimateEditable: allowEstimateEdit,
   canEditEstimate,
   currentUserId,
   currentUserName,
@@ -4334,6 +4586,7 @@ function TimeTrackingSection({
   ticketHumanId: string;
   ticketTitle: string;
   estimatedTime: number | null;
+  slaRefreshKey?: number | string;
   timeEntries: TimeEntrySummary[];
   myActiveTimerId: string | null;
   myActiveTimerStartedAt: string | null;
@@ -4346,7 +4599,11 @@ function TimeTrackingSection({
   currentUserName: string;
   currentUserAvatarUrl: string | null;
 }) {
-  const [estimatedTime, setEstimatedTime] = useState(initialEstimatedTime);
+  const [ticketEstimatedTime, setEstimatedTime] = useState(initialEstimatedTime);
+  const { indicator } = useSlaIndicator(ticketId, slaRefreshKey);
+  const mailboxTargetMins = indicator?.source === "mailbox" ? indicator.resolution.targetMs / 60_000 : null;
+  const estimatedTime = mailboxTargetMins ?? ticketEstimatedTime;
+  const estimateEditable = allowEstimateEdit && mailboxTargetMins === null;
   const [editingEst, setEditingEst] = useState(false);
   const [estInput, setEstInput] = useState(
     initialEstimatedTime ? formatMins(initialEstimatedTime) : "",
@@ -4555,6 +4812,8 @@ function TimeTrackingSection({
     }
   }
 
+  const [confirmReset, setConfirmReset] = useState(false);
+
   async function resetMyTime() {
     if (resetting) return;
     setResetting(true);
@@ -4578,14 +4837,23 @@ function TimeTrackingSection({
   async function saveEstimate() {
     const mins = parseTimeInput(estInput);
     setSavingEst(true);
-    await fetch(`/api/tickets/${ticketId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ estimatedTime: mins }),
-    });
-    setEstimatedTime(mins);
-    setSavingEst(false);
-    setEditingEst(false);
+    try {
+      const res = await fetch(`/api/tickets/${ticketId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estimatedTime: mins }),
+      });
+      if (!res.ok) {
+        await toastResponseError(res, "Couldn't save the estimate");
+        return;
+      }
+      setEstimatedTime(mins);
+      setEditingEst(false);
+    } catch (err) {
+      toastError("Couldn't save the estimate", err);
+    } finally {
+      setSavingEst(false);
+    }
   }
 
   const displayEntries = entries.slice().sort((a, b) => {
@@ -4811,13 +5079,16 @@ function TimeTrackingSection({
               >
                 {savingEst ? "…" : "Save"}
               </button>
-              <button
-                type="button"
-                onClick={() => setEditingEst(false)}
-                className="flex size-5 shrink-0 items-center justify-center rounded text-sts-subtle hover:text-sts-muted"
-              >
-                <X className="size-3" />
-              </button>
+              <Tip label="Cancel">
+                <button
+                  aria-label="Cancel editing estimate"
+                  type="button"
+                  onClick={() => setEditingEst(false)}
+                  className="flex size-5 shrink-0 items-center justify-center rounded text-sts-subtle hover:text-sts-muted"
+                >
+                  <X className="size-3" />
+                </button>
+              </Tip>
             </div>
           ) : (
             <div className="flex items-center gap-1.5">
@@ -4852,7 +5123,7 @@ function TimeTrackingSection({
                 )
               ) : (
                 <span className="ml-auto font-sans text-[11px] text-sts-subtle/60">
-                  rolled up
+                  {mailboxTargetMins !== null ? "SLA target" : "rolled up"}
                 </span>
               )}
             </div>
@@ -4875,16 +5146,17 @@ function TimeTrackingSection({
             />
           </div>
           {canReset && (
-            <button
-              type="button"
-              onClick={resetMyTime}
-              disabled={resetting}
-              title="Reset your time on this ticket to 0"
-              className="flex shrink-0 items-center justify-center gap-1 rounded-full px-2.5 py-[6px] font-sans text-[11.5px] font-medium text-sts-muted ring-1 ring-sts-card-border transition-all hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
-            >
-              <RotateCcw className="size-[11px]" />
-              {resetting ? "…" : "Reset"}
-            </button>
+            <Tip label="Reset your time on this ticket to 0">
+              <button
+                type="button"
+                onClick={() => setConfirmReset(true)}
+                disabled={resetting}
+                className="flex shrink-0 items-center justify-center gap-1 rounded-full px-2.5 py-[6px] font-sans text-[11.5px] font-medium text-sts-muted ring-1 ring-sts-card-border transition-all hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+              >
+                <RotateCcw className="size-[11px]" />
+                {resetting ? "…" : "Reset"}
+              </button>
+            </Tip>
           )}
         </div>
       ) : isAssignee ? (
@@ -4899,7 +5171,7 @@ function TimeTrackingSection({
           {canReset && (
             <button
               type="button"
-              onClick={resetMyTime}
+              onClick={() => setConfirmReset(true)}
               disabled={resetting}
               className="flex w-full items-center justify-center gap-1.5 rounded-full px-3 py-[6px] font-sans text-[11.5px] font-medium text-sts-muted ring-1 ring-sts-card-border transition-all hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
             >
@@ -4909,6 +5181,14 @@ function TimeTrackingSection({
           )}
         </div>
       ) : null}
+      <ConfirmDialog
+        open={confirmReset}
+        onOpenChange={setConfirmReset}
+        title="Reset your time?"
+        description="All time you've logged on this ticket will be set back to 0. This cannot be undone."
+        confirmLabel="Reset time"
+        onConfirm={resetMyTime}
+      />
     </div>
   );
 }

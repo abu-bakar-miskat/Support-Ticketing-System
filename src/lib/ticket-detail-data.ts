@@ -1,4 +1,8 @@
+import { getTicketStatusCategory } from "@/lib/status-category.server";
+import { getWorkCycleStart } from "@/lib/work-cycle";
+import { isMailboxReceipt } from "@/lib/mailbox-ticket-origin";
 import "server-only";
+import { personalEstimatesWithCreationFallback } from "@/lib/ticket-estimates";
 
 import { unstable_cache } from "next/cache";
 import type { Prisma } from "@/generated/prisma/client";
@@ -10,11 +14,15 @@ import {
 } from "@/lib/mentionable-users";
 import { fetchProjectDepartmentPeople } from "@/lib/project-department-people";
 import { canEditTicket, canEditTicketDescription, canDeleteTicket } from "@/lib/ticket-date-permissions";
-import { RESEND_RECEIVING_ENABLED } from "@/lib/email-config";
-import { isDueOverdue, isBlockedStatus } from "@/lib/format";
+import { resolveSenderMailbox } from "@/lib/mailbox-outbound";
+import { isDueOverdue } from "@/lib/format";
 import { serializeTicketDateIso } from "@/lib/ticket-datetime";
 import { buildGitHubDevData } from "@/lib/github/dev-data";
 import type { getProfile } from "@/lib/profile";
+import { presentPortalComment } from "@/lib/portal-comments";
+import { getMailboxTicketCustomer } from "@/lib/mailbox-ticket-customer";
+import { getMailboxOriginMessageId } from "@/lib/mailbox-ticket-origin";
+import { findMailboxOriginMessageId } from "@/lib/mailbox-origin-message";
 
 type Profile = NonNullable<Awaited<ReturnType<typeof getProfile>>>;
 
@@ -62,6 +70,7 @@ const ticketCoreInclude = {
   intake: {
     include: {
       formConfig: { select: { name: true, allowCustomerReplies: true } },
+      apiKey: { select: { createdById: true } },
     },
   },
   comments: {
@@ -93,6 +102,10 @@ const ticketCoreInclude = {
         },
       },
     },
+  },
+  attachments: {
+    where: { messageId: null, commentId: null },
+    select: { id: true, storageUrl: true, fileName: true, fileSize: true },
   },
   messages: {
     orderBy: { createdAt: "asc" as const },
@@ -150,15 +163,25 @@ const getCachedProjectMembers = (projectId: string) =>
     { revalidate: 300 },
   )();
 
-/** @all audience for a ticket: project members if attached, else subDepartment/dept. */
-export const getCachedTicketMentionable = (
+/**
+ * @mention autocomplete audience: project members (if attached) plus everyone
+ * mentionable in the ticket's subDepartment/department. Project-only lists
+ * left manual tickets showing just the assignee. Server-side @all still
+ * targets project members only (see lib/mentions.ts).
+ */
+export const getCachedTicketMentionable = async (
   projectId: string | null,
   departmentId: string | null,
   ticketSubDepartmentId: string,
-) =>
-  projectId
-    ? getCachedProjectMembers(projectId)
-    : getCachedMentionableUsers(departmentId, ticketSubDepartmentId);
+) => {
+  const [projectMembers, deptUsers] = await Promise.all([
+    projectId ? getCachedProjectMembers(projectId) : Promise.resolve([]),
+    getCachedMentionableUsers(departmentId, ticketSubDepartmentId),
+  ]);
+  const byUser = new Map(projectMembers.map((u) => [u.id, u]));
+  for (const u of deptUsers) if (!byUser.has(u.id)) byUser.set(u.id, u);
+  return [...byUser.values()].sort((a, b) => a.name.localeCompare(b.name));
+};
 
 const getCachedDeptPeople = (departmentId: string | null) =>
   unstable_cache(
@@ -415,8 +438,17 @@ export async function getTicketDetailPayload(
   const ticketDeptId = ticket.subDepartment.departmentId;
   const comments = ticket.comments;
   const messages = ticket.messages;
+  const mailboxOriginId = !ticket.intake ? await getMailboxOriginMessageId(ticket.id) : null;
+  const lastInbound = [...messages].reverse().find((m) => m.direction === "inbound");
+  const mailboxCustomer = !ticket.intake && !lastInbound?.fromEmail
+    ? await getMailboxTicketCustomer(ticket.id)
+    : null;
+  // Customer replies go out from and come back to a connected Microsoft 365
+  // mailbox (sub-department → department → tenant).
+  const hasReplyMailbox = !!(await resolveSenderMailbox({ subDepartmentId: ticket.subDepartmentId }));
   const activityLogs = ticket.activityLogs;
-  const ticketTimeEntries = ticket.timeEntries;
+  const cycleStart = await getWorkCycleStart(ticket.id);
+  const ticketTimeEntries = ticket.timeEntries.filter((entry) => !cycleStart || entry.startedAt >= cycleStart);
   // Statuses already load on the board via /api/sub-departments/:id/statuses.
   const subDepartmentStatuses: Awaited<
     ReturnType<typeof getCachedSubDepartmentStatuses>
@@ -431,19 +463,21 @@ export async function getTicketDetailPayload(
     viewerIsProjectMember: false,
   };
 
-  const mentionableUsers: Awaited<
-    ReturnType<typeof getCachedTicketMentionable>
-  > = [];
   // Users eligible to be assigned to THIS ticket — the ticket's own
   // sub-department plus department-wide grant holders. Kept in sync with the
   // server-side eligibility check so every option in the picker is accepted on
   // save (a whole-department roster would list members of sibling
   // sub-departments who then get rejected — see SD-06).
-  const subDepartmentMembers = await getEligibleAssigneesForTicket(
-    ticket.subDepartmentId,
-    ticketDeptId,
-    assigneeFallback,
-  );
+  // mentionableUsers feeds the @mention autocomplete in comment composers.
+  const [mentionableUsers, subDepartmentMembers] = await Promise.all([
+    getCachedTicketMentionable(ticket.projectId, ticketDeptId, ticket.subDepartmentId).catch(
+      (e: unknown) => {
+        console.error("[ticket-detail] mentionable users failed:", e);
+        return [] as Awaited<ReturnType<typeof getCachedTicketMentionable>>;
+      },
+    ),
+    getEligibleAssigneesForTicket(ticket.subDepartmentId, ticketDeptId, assigneeFallback),
+  ]);
   const github = { pullRequests: [], commits: [] } as Awaited<
     ReturnType<typeof buildGitHubDevData>
   >;
@@ -564,15 +598,15 @@ export async function getTicketDetailPayload(
     Math.floor((now - ticket.createdAt.getTime()) / 86_400_000),
   );
   const dueOverdue =
-    isDueOverdue(ticket.dueDate, new Date(now)) && !isBlockedStatus(ticket.status);
+    isDueOverdue(ticket.dueDate, new Date(now)) && (await getTicketStatusCategory(ticket.id, ticket.status)) !== "BLOCKED";
 
   // A sub-ticket counts as complete when its status is one flagged
-  // `isComplete` on its own subDepartment. Sub-tickets may live on a different subDepartment
+  // the Complete category on its own subDepartment. Sub-tickets may live on a different subDepartment
   // than the parent, so resolve the complete-status labels per subDepartment.
   const subSubDepartmentIds = [...new Set(ticket.subTickets.map((st) => st.subDepartmentId))];
   const completeStatusRows = subSubDepartmentIds.length
     ? await prisma.subDepartmentStatus.findMany({
-        where: { subDepartmentId: { in: subSubDepartmentIds }, isComplete: true },
+        where: { subDepartmentId: { in: subSubDepartmentIds }, category: "COMPLETE" },
         select: { subDepartmentId: true, label: true },
       })
     : [];
@@ -591,6 +625,7 @@ export async function getTicketDetailPayload(
     projectName: ticket.project?.name ?? "Miscellaneous",
     projectColor: ticket.project?.color ?? "#0a76b9",
     projectKind: ticket.project?.kind ?? "standard",
+    isPortalTicket: ticket.intake?.apiKeyId != null,
     projectModuleSystemEnabled: ticket.project?.moduleSystemEnabled ?? false,
     moduleId: ticket.moduleId ?? null,
     moduleName: ticket.module?.name ?? null,
@@ -639,11 +674,11 @@ export async function getTicketDetailPayload(
     canEditDescription,
     storyPoints: ticket.storyPoints ?? null,
     estimatedTime: ticket.estimatedTime ?? null,
-    personalEstimates: ticket.estimates.map((e) => ({
+    personalEstimates: personalEstimatesWithCreationFallback(ticket.estimates.map((e) => ({
       userId: e.userId,
       estimatedMinutes: e.estimatedMinutes ?? null,
       targetDateIso: e.targetDate ? serializeTicketDateIso(e.targetDate, "due") : null,
-    })),
+    })), ticket.assigneeId, ticket.estimatedTime),
     assetLinks: (ticket.assetLinks as { label: string; url: string }[]) ?? [],
     timeEntries: [...timeByUser.values()],
     subTicketTime,
@@ -671,39 +706,59 @@ export async function getTicketDetailPayload(
       assigneeAvatarUrl: st.assignee?.avatarUrl ?? null,
       canDelete: canDeleteTicket(profile, { creatorId: st.creatorId }),
     })),
-    comments: comments.map((c) => ({
-      id: c.id,
-      body: c.body,
-      createdAt: c.createdAt.toISOString(),
-      editedAt: c.editedAt?.toISOString() ?? null,
-      deletedAt: c.deletedAt?.toISOString() ?? null,
-      authorId: c.author.id,
-      authorName: c.author.name,
-      authorAvatarUrl: c.author.avatarUrl,
-      attachments: c.attachments.map((a) => ({
-        id: a.id,
-        storageUrl: a.storageUrl,
-        fileName: a.fileName,
-        fileSize: a.fileSize,
-      })),
-      replies: c.replies.map((r) => ({
-        id: r.id,
-        body: r.body,
-        createdAt: r.createdAt.toISOString(),
-        editedAt: r.editedAt?.toISOString() ?? null,
-        deletedAt: r.deletedAt?.toISOString() ?? null,
-        authorId: r.author.id,
-        authorName: r.author.name,
-        authorAvatarUrl: r.author.avatarUrl,
-        attachments: r.attachments.map((a) => ({
+    comments: comments.map((c) => {
+      const presented = presentPortalComment({
+        body: c.body,
+        authorId: c.author.id,
+        apiKeyCreatedById: ticket.intake?.apiKey?.createdById,
+        submitterName: ticket.intake?.submitterName,
+      });
+      return {
+        id: c.id,
+        body: presented.body,
+        createdAt: c.createdAt.toISOString(),
+        editedAt: c.editedAt?.toISOString() ?? null,
+        deletedAt: c.deletedAt?.toISOString() ?? null,
+        authorId: c.author.id,
+        authorName: presented.authorName ?? c.author.name,
+        authorAvatarUrl: presented.isPortalRequester ? null : c.author.avatarUrl,
+        externalAuthor: presented.isPortalRequester,
+        portalVisible: c.portalVisible,
+        attachments: c.attachments.map((a) => ({
           id: a.id,
           storageUrl: a.storageUrl,
           fileName: a.fileName,
           fileSize: a.fileSize,
         })),
-        replies: [],
-      })),
-    })),
+        replies: c.replies.map((r) => {
+          const replyPresented = presentPortalComment({
+            body: r.body,
+            authorId: r.author.id,
+            apiKeyCreatedById: ticket.intake?.apiKey?.createdById,
+            submitterName: ticket.intake?.submitterName,
+          });
+          return {
+            id: r.id,
+            body: replyPresented.body,
+            createdAt: r.createdAt.toISOString(),
+            editedAt: r.editedAt?.toISOString() ?? null,
+            deletedAt: r.deletedAt?.toISOString() ?? null,
+            authorId: r.author.id,
+            authorName: replyPresented.authorName ?? r.author.name,
+            authorAvatarUrl: replyPresented.isPortalRequester ? null : r.author.avatarUrl,
+            externalAuthor: replyPresented.isPortalRequester,
+            portalVisible: r.portalVisible,
+            attachments: r.attachments.map((a) => ({
+              id: a.id,
+              storageUrl: a.storageUrl,
+              fileName: a.fileName,
+              fileSize: a.fileSize,
+            })),
+            replies: [],
+          };
+        }),
+      };
+    }),
     activity: activityLogs.map((a) => ({
       id: a.id,
       action: a.action,
@@ -711,7 +766,13 @@ export async function getTicketDetailPayload(
       createdAt: a.createdAt.toISOString(),
       metadata: (a.metadata ?? {}) as Record<string, unknown>,
     })),
-    messages: messages.map((m) => ({
+    // Shown as the description; hidden from the reply thread.
+    descriptionAttachments: ticket.attachments,
+    originMessageId: mailboxOriginId ? null : findMailboxOriginMessageId(
+      { createdAt: ticket.createdAt, hasIntake: ticket.intake !== null },
+      messages,
+    ),
+    messages: messages.filter((m) => !isMailboxReceipt(m)).map((m) => ({
       id: m.id,
       direction: m.direction,
       status: m.status,
@@ -743,16 +804,14 @@ export async function getTicketDetailPayload(
       // Ticket #16: a mailbox-connection-originated ticket (#14) has no
       // `intake` row — fall back to the most recent inbound message's
       // sender so the Reply composer still works for those tickets.
-      const lastInbound = ticket.intake
-        ? null
-        : [...messages].reverse().find((m) => m.direction === "inbound");
-      const customerName = ticket.intake?.submitterName ?? lastInbound?.fromName ?? null;
-      const customerEmail = ticket.intake?.submitterEmail ?? lastInbound?.fromEmail ?? null;
+      const customerName = ticket.intake?.submitterName ?? lastInbound?.fromName ?? mailboxCustomer?.fromName ?? null;
+      const customerEmail = ticket.intake?.submitterEmail ?? lastInbound?.fromEmail ?? mailboxCustomer?.fromEmail ?? null;
       return {
-        // Composer shown only when receiving is configured, the form (when
-        // there is one) permits replies, and there's a known customer address.
+        // Composer shown only when a mailbox can carry the conversation, the
+        // form (when there is one) permits replies, and there's a known
+        // customer address.
         enabled:
-          RESEND_RECEIVING_ENABLED &&
+          hasReplyMailbox &&
           (!ticket.intake || ticket.intake.formConfig.allowCustomerReplies) &&
           !!customerEmail,
         customerName,

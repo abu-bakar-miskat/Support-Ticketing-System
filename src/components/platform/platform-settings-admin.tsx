@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Settings as SettingsIcon,
   Building2,
@@ -12,39 +12,19 @@ import {
   Power,
   FlaskConical,
   ExternalLink,
-  Mail,
-  RotateCcw,
 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { HtmlCodeEditor } from "@/components/ui/html-code-editor";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from "@/components/ui/select";
-import { PLATFORM_FEATURE_KEYS, type FeatureKey } from "@/lib/feature-keys";
+  MARKETPLACE_FEATURE_KEYS,
+  TEMPLATE_FEATURE_LABELS,
+  type MarketplaceFeatureKey,
+} from "@/lib/template-features";
 import { cn } from "@/lib/utils";
 
-const FEATURE_LABELS: Record<FeatureKey, string> = {
-  mailboxConnections: "Mailbox connections",
-  bulkReassign: "Bulk reassignment",
-  customReports: "Custom / cross-department reporting",
-  slaPolicies: "SLA policies",
-  assignmentRules: "Auto-assignment rules",
-  intakeForms: "Public intake forms",
-  recruitment: "Recruitment boards",
-  timeTracking: "Time tracking",
-};
-
-/** Feature keys shown as toggles on this page. `recruitment` is intentionally
- * hidden here while its flag/path-gating stays defined in feature-keys.ts. */
-const VISIBLE_FEATURE_KEYS = PLATFORM_FEATURE_KEYS.filter((k) => k !== "recruitment");
-
-type TenantOption = { id: string; name: string; slug: string; status: string };
 type Overview = {
   tenants: number;
   suspended: number;
@@ -56,31 +36,20 @@ type PlatformSettings = {
   platformName: string;
   supportEmail: string;
   devMode: boolean;
-  newTenantFeatureDefaults: Record<FeatureKey, boolean>;
+  newDepartmentFeatureDefaults: Record<MarketplaceFeatureKey, boolean>;
   templateEnablementRequiresApproval: boolean;
 };
-type OtpTemplate = { subject: string; bodyHtml: string };
 
 export function PlatformSettingsAdmin({
-  tenants: initialTenants,
   settings: initialSettings,
   overview,
   mailpitUiBase,
-  otpTemplate,
-  otpDefault,
 }: {
-  tenants: TenantOption[];
   settings: PlatformSettings;
   overview: Overview;
   /** Public Mailpit inbox URL (no credentials in the URL). */
   mailpitUiBase: string;
-  /** Current super-admin OTP override, or null when using the built-in default. */
-  otpTemplate: OtpTemplate | null;
-  /** The built-in OTP template — used to prefill and to reset. */
-  otpDefault: OtpTemplate;
 }) {
-  const [tenants, setTenants] = useState<TenantOption[]>(initialTenants);
-
   // ── Banners ────────────────────────────────────────────────────────────────
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
@@ -92,19 +61,15 @@ export function PlatformSettingsAdmin({
   const [supportEmail, setSupportEmail] = useState(initialSettings.supportEmail);
   const [devMode, setDevMode] = useState(initialSettings.devMode);
   const [savingDevMode, setSavingDevMode] = useState(false);
-  const [tenantDefaults, setTenantDefaults] = useState<Record<FeatureKey, boolean>>(
-    initialSettings.newTenantFeatureDefaults,
-  );
-  const [approvalRequired, setApprovalRequired] = useState(
-    initialSettings.templateEnablementRequiresApproval,
+  const [departmentDefaults, setDepartmentDefaults] = useState<Record<MarketplaceFeatureKey, boolean>>(
+    initialSettings.newDepartmentFeatureDefaults,
   );
   const [savingGeneral, setSavingGeneral] = useState(false);
 
   const generalDirty =
     platformName !== baseline.platformName ||
     supportEmail !== baseline.supportEmail ||
-    approvalRequired !== baseline.templateEnablementRequiresApproval ||
-    JSON.stringify(tenantDefaults) !== JSON.stringify(baseline.newTenantFeatureDefaults);
+    JSON.stringify(departmentDefaults) !== JSON.stringify(baseline.newDepartmentFeatureDefaults);
 
   async function saveGeneral() {
     setSavingGeneral(true);
@@ -117,8 +82,7 @@ export function PlatformSettingsAdmin({
         body: JSON.stringify({
           platformName,
           supportEmail,
-          newTenantFeatureDefaults: tenantDefaults,
-          templateEnablementRequiresApproval: approvalRequired,
+          newDepartmentFeatureDefaults: departmentDefaults,
         }),
       });
       const body = await res.json().catch(() => ({}));
@@ -130,8 +94,7 @@ export function PlatformSettingsAdmin({
       setPlatformName(body.platformName);
       setSupportEmail(body.supportEmail);
       setDevMode(Boolean(body.devMode));
-      setTenantDefaults(body.newTenantFeatureDefaults);
-      setApprovalRequired(Boolean(body.templateEnablementRequiresApproval));
+      setDepartmentDefaults(body.newDepartmentFeatureDefaults);
       setBaseline(body as PlatformSettings);
       setStatus("Platform settings saved");
     } finally {
@@ -173,162 +136,7 @@ export function PlatformSettingsAdmin({
     }
   }
 
-  // ── Per-tenant configuration ─────────────────────────────────────────────────
-  const [tenantId, setTenantId] = useState<string>(tenants[0]?.id ?? "");
-  const [flags, setFlags] = useState<Record<FeatureKey, boolean> | null>(null);
-  const [loadingFlags, setLoadingFlags] = useState(false);
-  const [statusBusy, setStatusBusy] = useState(false);
-
-  const selectedTenant = tenants.find((t) => t.id === tenantId);
-
-  useEffect(() => {
-    if (!tenantId) return;
-    let cancelled = false;
-    async function load() {
-      setLoadingFlags(true);
-      try {
-        const res = await fetch(`/api/admin/feature-flags?tenantId=${tenantId}`).then((r) => r.json());
-        if (cancelled) return;
-        setFlags(res.flags ?? null);
-      } catch {
-        if (!cancelled) setError("Failed to load feature flags for this tenant");
-      } finally {
-        if (!cancelled) setLoadingFlags(false);
-      }
-    }
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [tenantId]);
-
-  async function writeFlag(key: FeatureKey, enabled: boolean) {
-    const res = await fetch("/api/admin/feature-flags", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tenantId, key, enabled }),
-    });
-    if (!res.ok) throw new Error();
-  }
-
-  async function toggleFlag(key: FeatureKey, enabled: boolean) {
-    setError(null);
-    setFlags((prev) => (prev ? { ...prev, [key]: enabled } : prev));
-    try {
-      await writeFlag(key, enabled);
-    } catch {
-      setFlags((prev) => (prev ? { ...prev, [key]: !enabled } : prev));
-      setError("Failed to update feature flag");
-    }
-  }
-
-  async function setAllFlags(enabled: boolean) {
-    if (!flags) return;
-    setError(null);
-    const changed = PLATFORM_FEATURE_KEYS.filter((k) => flags[k] !== enabled);
-    if (changed.length === 0) return;
-    const prev = flags;
-    setFlags(Object.fromEntries(PLATFORM_FEATURE_KEYS.map((k) => [k, enabled])) as Record<FeatureKey, boolean>);
-    try {
-      await Promise.all(changed.map((k) => writeFlag(k, enabled)));
-    } catch {
-      setFlags(prev);
-      setError("Failed to update some feature flags");
-    }
-  }
-
-  async function setTenantStatus(next: "active" | "suspended") {
-    if (!tenantId || selectedTenant?.status === next) return;
-    setStatusBusy(true);
-    setError(null);
-    setStatus(null);
-    const prev = tenants;
-    setTenants((ts) => ts.map((t) => (t.id === tenantId ? { ...t, status: next } : t)));
-    try {
-      const res = await fetch(`/api/admin/tenants/${tenantId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: next }),
-      });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        throw new Error(body.error ?? "Failed to update tenant status");
-      }
-      setStatus(`${selectedTenant?.name ?? "Tenant"} is now ${next}`);
-    } catch (e) {
-      setTenants(prev);
-      setError(e instanceof Error ? e.message : "Failed to update tenant status");
-    } finally {
-      setStatusBusy(false);
-    }
-  }
-
-  // ── OTP sign-in email template ───────────────────────────────────────────────
-  // Platform-global: login is email-first, so there's no tenant/department context
-  // when a code is sent. Seed from the override, falling back to the built-in default.
-  const [otpSubject, setOtpSubject] = useState((otpTemplate ?? otpDefault).subject);
-  const [otpBodyHtml, setOtpBodyHtml] = useState((otpTemplate ?? otpDefault).bodyHtml);
-  const [otpBaseline, setOtpBaseline] = useState<OtpTemplate>(otpTemplate ?? otpDefault);
-  const [savingOtp, setSavingOtp] = useState(false);
-  const [resettingOtp, setResettingOtp] = useState(false);
-
-  const otpDirty = otpSubject !== otpBaseline.subject || otpBodyHtml !== otpBaseline.bodyHtml;
-  const otpPreviewHtml = otpBodyHtml
-    .replaceAll("{{code}}", "123456")
-    .replaceAll("{{platformName}}", platformName.trim() || "Global Support Portal");
-
-  async function saveOtp() {
-    setSavingOtp(true);
-    setError(null);
-    setStatus(null);
-    try {
-      const res = await fetch("/api/admin/platform-settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ otpEmailTemplate: { subject: otpSubject, bodyHtml: otpBodyHtml } }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(body.error ?? "Failed to save OTP email");
-        return;
-      }
-      const saved: OtpTemplate = body.otpEmailTemplate ?? otpDefault;
-      setOtpSubject(saved.subject);
-      setOtpBodyHtml(saved.bodyHtml);
-      setOtpBaseline(saved);
-      setStatus("OTP sign-in email saved");
-    } catch {
-      setError("Failed to save OTP email");
-    } finally {
-      setSavingOtp(false);
-    }
-  }
-
-  async function resetOtp() {
-    setResettingOtp(true);
-    setError(null);
-    setStatus(null);
-    try {
-      const res = await fetch("/api/admin/platform-settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ otpEmailTemplate: null }),
-      });
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(body.error ?? "Failed to reset OTP email");
-        return;
-      }
-      setOtpSubject(otpDefault.subject);
-      setOtpBodyHtml(otpDefault.bodyHtml);
-      setOtpBaseline(otpDefault);
-      setStatus("OTP sign-in email reset to default");
-    } catch {
-      setError("Failed to reset OTP email");
-    } finally {
-      setResettingOtp(false);
-    }
-  }
+  useUnsavedChangesGuard(generalDirty);
 
   const statCards = [
     { label: "Tenants", value: overview.tenants, icon: Building2 },
@@ -344,7 +152,7 @@ export function PlatformSettingsAdmin({
         <PageHeader
           icon={SettingsIcon}
           title="Platform settings"
-          description="Global platform configuration, new-tenant defaults, and per-tenant feature control. Changes are recorded in the Activity Log."
+          description="Global platform configuration and defaults for new departments. Changes are recorded in the Activity Log."
         />
 
         {(error || status) && (
@@ -390,13 +198,11 @@ export function PlatformSettingsAdmin({
           })}
         </div>
 
-        {/* Two-column layout — global settings (left) · per-tenant (right) */}
-        <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
-          {/* ── Global settings ─────────────────────────────────────────────── */}
+        <div className="mt-6">
           <div className="flex flex-col overflow-hidden rounded-xl border border-sts-card-border bg-sts-card shadow-sts-card">
             <div className="border-b border-sts-card-border px-[22px] py-4">
               <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Global settings</h2>
-              <p className="mt-0.5 font-sans text-[12px] text-sts-muted">Platform-wide identity and new-tenant defaults.</p>
+              <p className="mt-0.5 font-sans text-[12px] text-sts-muted">Platform-wide identity and defaults for new departments.</p>
             </div>
 
             {/* Identity */}
@@ -472,41 +278,27 @@ export function PlatformSettingsAdmin({
               </div>
             </div>
 
-            {/* Template enablement governance */}
+            {/* Features a new department is created with */}
             <div className="border-t border-sts-card-border px-[22px] py-5">
-              <div className="flex items-start justify-between gap-4">
-                <div className="min-w-0">
-                  <h3 className="font-sans text-[12.5px] font-semibold text-sts-foreground">
-                    Template enablement approval
-                  </h3>
-                  <p className="mt-1 font-sans text-[12px] text-sts-muted">
-                    When on, a Tenant Admin enable request stays Pending Approval and inactive until a Super Admin
-                    approves it. When off, Enable activates the template immediately.
-                  </p>
-                </div>
-                <Switch
-                  checked={approvalRequired}
-                  onCheckedChange={setApprovalRequired}
-                  size="sm"
-                  aria-label="Require approval to enable a template"
-                />
-              </div>
-            </div>
-
-            {/* New-tenant defaults */}
-            <div className="border-t border-sts-card-border px-[22px] py-5">
-              <h3 className="font-sans text-[12.5px] font-semibold text-sts-foreground">New-tenant feature defaults</h3>
+              <h3 className="font-sans text-[12.5px] font-semibold text-sts-foreground">
+                Default features for new departments
+              </h3>
               <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
-                Features toggled off here start disabled for tenants created afterwards. Existing tenants are unaffected.
+                Switched on here, a feature is available as soon as any department is created.
+                Switched off, a tenant admin requests it from the Features marketplace. Existing
+                departments are unchanged.
               </p>
               <div className="mt-3 flex flex-col divide-y divide-sts-card-border/60 rounded-lg border border-sts-card-border bg-sts-surface px-3.5">
-                {VISIBLE_FEATURE_KEYS.map((key) => (
+                {MARKETPLACE_FEATURE_KEYS.map((key) => (
                   <div key={key} className="flex items-center justify-between gap-3 py-2.5">
-                    <span className="font-sans text-[13px] text-sts-foreground">{FEATURE_LABELS[key]}</span>
+                    <span className="font-sans text-[13px] text-sts-foreground">{TEMPLATE_FEATURE_LABELS[key]}</span>
                     <Switch
-                      checked={tenantDefaults[key]}
-                      onCheckedChange={(checked) => setTenantDefaults((d) => ({ ...d, [key]: checked }))}
+                      checked={departmentDefaults[key]}
+                      onCheckedChange={(checked) =>
+                        setDepartmentDefaults((current) => ({ ...current, [key]: checked }))
+                      }
                       size="sm"
+                      aria-label={`${TEMPLATE_FEATURE_LABELS[key]} on new departments`}
                     />
                   </div>
                 ))}
@@ -524,192 +316,9 @@ export function PlatformSettingsAdmin({
               </Button>
             </div>
           </div>
-
-          {/* ── Per-tenant configuration ────────────────────────────────────── */}
-          <div className="flex flex-col overflow-hidden rounded-xl border border-sts-card-border bg-sts-card shadow-sts-card">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-sts-card-border px-[22px] py-4">
-              <div className="min-w-0">
-                <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Per-tenant configuration</h2>
-                <p className="mt-0.5 font-sans text-[12px] text-sts-muted">Feature flags and lifecycle status for one tenant.</p>
-              </div>
-              {tenants.length > 0 && (
-                <Select value={tenantId} onValueChange={(v) => v && setTenantId(v)}>
-                  <SelectTrigger className="h-9 w-[220px]">
-                    <span className="truncate font-sans text-[12.5px]">{selectedTenant?.name ?? "Select a tenant"}</span>
-                  </SelectTrigger>
-                  <SelectContent>
-                    {tenants.map((t) => (
-                      <SelectItem key={t.id} value={t.id} className="font-sans text-[12.5px]">
-                        {t.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-
-            {tenants.length === 0 ? (
-              <p className="px-[22px] py-8 text-center font-sans text-[12.5px] text-sts-muted">No tenants yet.</p>
-            ) : !tenantId ? (
-              <p className="px-[22px] py-8 text-center font-sans text-[12.5px] text-sts-muted">
-                Select a tenant to configure.
-              </p>
-            ) : (
-              <div className="flex flex-col gap-5 px-[22px] py-5">
-                {/* Tenant status */}
-                <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-sts-card-border bg-sts-surface px-3.5 py-3">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-sans text-[13px] font-medium text-sts-foreground">Status</span>
-                      <span
-                        className={cn(
-                          "rounded-full px-1.5 py-0.5 font-sans text-[10px] font-semibold uppercase",
-                          selectedTenant?.status === "suspended"
-                            ? "bg-destructive/15 text-destructive"
-                            : "bg-sts-green/15 text-sts-green",
-                        )}
-                      >
-                        {selectedTenant?.status ?? "active"}
-                      </span>
-                    </div>
-                    <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
-                      Suspending blocks all tenant access until reactivated.
-                    </p>
-                  </div>
-                  <div className="flex gap-0.5 rounded-lg border border-sts-card-border bg-sts-card p-0.5">
-                    {(["active", "suspended"] as const).map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        disabled={statusBusy}
-                        onClick={() => setTenantStatus(s)}
-                        className={cn(
-                          "rounded-full px-3 py-1 font-sans text-[11.5px] font-medium capitalize transition-colors disabled:opacity-50",
-                          selectedTenant?.status === s
-                            ? s === "suspended"
-                              ? "bg-destructive text-white"
-                              : "bg-sts-green text-white"
-                            : "text-sts-muted hover:text-sts-foreground",
-                        )}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Feature flags */}
-                <div>
-                  <div className="mb-2 flex items-center justify-between">
-                    <h3 className="font-sans text-[12.5px] font-semibold text-sts-foreground">Feature flags</h3>
-                    <div className="flex gap-1.5">
-                      <button
-                        type="button"
-                        disabled={loadingFlags || !flags}
-                        onClick={() => setAllFlags(true)}
-                        className="rounded-full border border-sts-card-border bg-sts-surface px-2.5 py-1 font-sans text-[11px] font-medium text-sts-muted transition-colors hover:text-sts-foreground disabled:opacity-50"
-                      >
-                        Enable all
-                      </button>
-                      <button
-                        type="button"
-                        disabled={loadingFlags || !flags}
-                        onClick={() => setAllFlags(false)}
-                        className="rounded-full border border-sts-card-border bg-sts-surface px-2.5 py-1 font-sans text-[11px] font-medium text-sts-muted transition-colors hover:text-sts-foreground disabled:opacity-50"
-                      >
-                        Disable all
-                      </button>
-                    </div>
-                  </div>
-                  <div className="relative flex flex-col divide-y divide-sts-card-border/60 rounded-lg border border-sts-card-border bg-sts-surface px-3.5">
-                    {loadingFlags && (
-                      <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-sts-surface/60">
-                        <Loader2 className="size-4 animate-spin text-sts-muted" />
-                      </div>
-                    )}
-                    {VISIBLE_FEATURE_KEYS.map((key) => (
-                      <div key={key} className="flex items-center justify-between gap-3 py-2.5">
-                        <span className="font-sans text-[13px] text-sts-foreground">{FEATURE_LABELS[key]}</span>
-                        <Switch
-                          checked={flags ? flags[key] : true}
-                          disabled={loadingFlags || !flags}
-                          onCheckedChange={(checked) => toggleFlag(key, checked)}
-                          size="sm"
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ── OTP sign-in email ─────────────────────────────────────────────── */}
-        <div className="mt-6 flex flex-col overflow-hidden rounded-xl border border-sts-card-border bg-sts-card shadow-sts-card">
-          <div className="flex items-center gap-3 border-b border-sts-card-border px-[22px] py-4">
-            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sts-blue-tint text-sts-blue">
-              <Mail className="size-4" />
-            </div>
-            <div className="min-w-0">
-              <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">OTP sign-in email</h2>
-              <p className="mt-0.5 font-sans text-[12px] text-sts-muted">
-                The passwordless sign-in code email, sent to everyone across the platform. Use{" "}
-                <code className="rounded bg-sts-surface px-1 py-0.5 font-mono text-[11px] text-sts-foreground">{"{{code}}"}</code>{" "}
-                where the numeric code should appear, and{" "}
-                <code className="rounded bg-sts-surface px-1 py-0.5 font-mono text-[11px] text-sts-foreground">{"{{platformName}}"}</code>{" "}
-                for the company name.
-              </p>
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-4 px-[22px] py-5">
-            {/* Subject — full width */}
-            <div className="flex flex-col gap-[5px]">
-              <label className="font-sans text-[13px] font-medium text-sts-foreground">Subject</label>
-              <Input value={otpSubject} onChange={(e) => setOtpSubject(e.target.value)} />
-            </div>
-
-            {/* Body editor + live preview, side by side and height-matched */}
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-              <div className="flex flex-col gap-[5px]">
-                <label className="font-sans text-[13px] font-medium text-sts-foreground">Body HTML</label>
-                <HtmlCodeEditor
-                  value={otpBodyHtml}
-                  onChange={setOtpBodyHtml}
-                  minHeight={420}
-                  maxHeight={420}
-                  className="h-[420px]"
-                />
-              </div>
-
-              <div className="flex flex-col gap-[5px]">
-                <label className="font-sans text-[13px] font-medium text-sts-foreground">Preview</label>
-                <div className="h-[420px] overflow-hidden rounded-lg border border-sts-card-border bg-white">
-                  <iframe
-                    title="OTP email preview"
-                    srcDoc={otpPreviewHtml}
-                    sandbox=""
-                    className="h-full w-full"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex items-center gap-2">
-              <Button onClick={saveOtp} disabled={!otpDirty || savingOtp}>
-                {savingOtp ? <Loader2 className="size-4 animate-spin" /> : <Save className="size-4" />}
-                Save
-              </Button>
-              <Button variant="outline" onClick={resetOtp} disabled={resettingOtp}>
-                {resettingOtp ? <Loader2 className="size-4 animate-spin" /> : <RotateCcw className="size-4" />}
-                Reset to default
-              </Button>
-            </div>
-          </div>
         </div>
       </div>
     </div>
   );
 }
+

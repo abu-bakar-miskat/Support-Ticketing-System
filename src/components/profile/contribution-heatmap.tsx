@@ -8,6 +8,7 @@ import {
   GitPullRequest,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tip } from "@/components/ui/tooltip";
 import type {
   ContributionCalendar,
   ContributionItem,
@@ -167,19 +168,23 @@ export function ContributionHeatmap({
                 {col.map((day) => {
                   const future = day.count < 0;
                   const clickable = day.count > 0;
-                  return (
+                  const label = future
+                    ? undefined
+                    : day.count === 0
+                      ? `No contributions on ${longDate(day.date)}`
+                      : `${day.count} contribution${day.count === 1 ? "" : "s"} on ${longDate(day.date)}`;
+                  const cell = (
                     <button
                       key={day.key}
                       type="button"
                       disabled={!clickable}
                       onClick={() => setSelected(day.key)}
-                      title={
-                        future
-                          ? undefined
-                          : day.count === 0
-                            ? `No contributions on ${longDate(day.date)}`
-                            : `${day.count} contribution${day.count === 1 ? "" : "s"} on ${longDate(day.date)}`
-                      }
+                      aria-label={label}
+                      aria-pressed={clickable ? selected === day.key : undefined}
+                      // Empty days are disabled; a Tip would wrap each in a
+                      // focusable span (hundreds of tab stops), so keep the
+                      // native hint for those.
+                      title={clickable ? undefined : label}
                       className={cn(
                         "aspect-square w-full rounded-[2px] transition-shadow",
                         future
@@ -193,6 +198,13 @@ export function ContributionHeatmap({
                         selected === day.key && "ring-2 ring-sts-id",
                       )}
                     />
+                  );
+                  return clickable ? (
+                    <Tip key={day.key} label={label}>
+                      {cell}
+                    </Tip>
+                  ) : (
+                    cell
                   );
                 })}
               </div>

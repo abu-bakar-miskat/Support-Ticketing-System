@@ -1,13 +1,19 @@
+import { getTicketStatusCategory } from "@/lib/status-category.server"
+import { getMailboxOriginMessageId, isMailboxReceipt } from "@/lib/mailbox-ticket-origin"
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth, assertTicketAccess } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { RESEND_RECEIVING_ENABLED, getEmailConfig } from "@/lib/email-config"
+import { getEmailConfig } from "@/lib/email-config"
 import { sendCustomerReplyEmail } from "@/lib/email"
 import { sanitizeInboundHtml } from "@/lib/inbound-email"
 import { OUTBOUND_MAX_TOTAL_BYTES } from "@/lib/message-attachments"
-import { normalizeStatus } from "@/components/board/board-types"
 import { stopFirstResponseOnPublicAgentMessage } from "@/lib/sla-engine"
 import { clearReopenedLabelOnReply } from "@/lib/ticket-column-moves"
+import { syncWorkTimerWithConversation } from "@/lib/timer-conversation-sync"
+import { startTimerOnStatusChange } from "@/lib/timer-autostart"
+import { isEscalatedLabel, labelsAfterDeEscalation } from "@/lib/ticket-escalation"
+import { getMailboxTicketCustomer } from "@/lib/mailbox-ticket-customer"
+import { resolveReplyMailbox } from "@/lib/mailbox-outbound"
 
 // GET /api/tickets/[id]/messages — fetch all messages for the chat tab (realtime refresh)
 export async function GET(
@@ -38,7 +44,7 @@ export async function GET(
   })
 
   return NextResponse.json(
-    messages.map((m) => ({
+    messages.filter((m) => !isMailboxReceipt(m)).map((m) => ({
       id: m.id,
       direction: m.direction,
       status: m.status,
@@ -92,7 +98,6 @@ export async function POST(
         select: {
           submitterName: true,
           submitterEmail: true,
-          replyToken: true,
           formConfig: { select: { allowCustomerReplies: true } },
         },
       },
@@ -105,11 +110,13 @@ export async function POST(
   const accessError = await assertTicketAccess(profile, ticket, { forWrite: true })
   if (accessError) return accessError
 
-  // Customer replies require receiving to be configured, and the form (when
-  // the ticket came from one) permitting replies.
-  if (!RESEND_RECEIVING_ENABLED) {
+  // Customer replies go out from — and come back to — a connected Microsoft
+  // 365 mailbox (sub-department → department → tenant), and need the form
+  // (when the ticket came from one) to permit replies.
+  const replyMailbox = await resolveReplyMailbox(ticket.subDepartment.departmentId, ticket.subDepartmentId)
+  if (!replyMailbox) {
     return NextResponse.json(
-      { error: "Customer replies are not enabled in this environment" },
+      { error: "Connect a Microsoft 365 mailbox for this department to reply to customers" },
       { status: 409 },
     )
   }
@@ -121,13 +128,12 @@ export async function POST(
   }
 
   // Ticket #16: a mailbox-connection-originated ticket (#14) has no `intake`
-  // row, so there's no submitterEmail/replyToken to fall back on — resolve
+  // row, so there's no submitterEmail to fall back on — resolve
   // the customer's address from the most recent inbound message instead.
   // Threading for these still works via In-Reply-To/References (and the
   // subject-reference fallback), so a reply-token isn't required either.
   let submitterName = ticket.intake?.submitterName ?? null
   let submitterEmail = ticket.intake?.submitterEmail ?? null
-  const replyToken = ticket.intake?.replyToken ?? null
   if (!submitterEmail) {
     const lastInbound = await prisma.ticketMessage.findFirst({
       where: { ticketId, direction: "inbound" },
@@ -136,6 +142,11 @@ export async function POST(
     })
     submitterEmail = lastInbound?.fromEmail ?? null
     submitterName = lastInbound?.fromName ?? null
+  }
+  if (!submitterEmail && !ticket.intake) {
+    const customer = await getMailboxTicketCustomer(ticketId)
+    submitterEmail = customer?.fromEmail ?? null
+    submitterName = customer?.fromName ?? null
   }
   if (!submitterEmail) {
     return NextResponse.json(
@@ -186,12 +197,15 @@ export async function POST(
   }
 
   // Resolve the In Progress status early (runs concurrently with other setup)
-  // so the DB update is ready to await before we respond.
-  const inProgressStatusPromise = normalizeStatus(ticket.status) === "To Do"
+  // so the DB update is ready to await before we respond. An agent replying to
+  // an escalated ticket has picked it up, so it moves to In Progress too.
+  // ("ESCALATED" normalizes to "Blocked", so it needs its own check.)
+  const currentCategory = await getTicketStatusCategory(ticketId, ticket.status)
+  const shouldMoveToInProgress = currentCategory === "TODO" || (currentCategory === "BLOCKED" && isEscalatedLabel(ticket.status))
+  const inProgressStatusPromise = shouldMoveToInProgress
     ? prisma.subDepartmentStatus.findFirst({
-        where: { subDepartmentId: ticket.subDepartmentId, isComplete: false },
+        where: { subDepartmentId: ticket.subDepartmentId, category: "IN_PROGRESS" },
         orderBy: { order: "asc" },
-        skip: 1,
       })
     : Promise.resolve(null)
 
@@ -237,8 +251,7 @@ export async function POST(
       humanId,
       ticketTitle: ticket.title,
       messageText: messageHtml,
-      replyToken,
-      inReplyTo: lastMessage?.providerMessageId ?? null,
+      inReplyTo: lastMessage?.providerMessageId ?? await getMailboxOriginMessageId(ticketId),
       attachments: emailAttachments.length > 0 ? emailAttachments : undefined,
       departmentId: ticket.subDepartment.departmentId,
       subDepartmentId: ticket.subDepartmentId,
@@ -255,7 +268,7 @@ export async function POST(
       status: "trusted",
       authorProfileId: profile.id,
       fromName: profile.name,
-      fromEmail: config.fromEmail,
+      fromEmail: sent?.fromEmail ?? config.fromEmail,
       bodyHtml: messageHtml,
       providerMessageId: sent?.providerMessageId ?? null,
       rawPayload: sent?.providerEmailId
@@ -266,7 +279,9 @@ export async function POST(
   })
 
   // SLA-03: the first PUBLIC agent message stops the first-response timer.
-  stopFirstResponseOnPublicAgentMessage(ticketId, message.createdAt).catch(() => undefined)
+  // Await this write before returning the message so the client cannot refresh
+  // its SLA snapshot while the timer still appears to be running.
+  await stopFirstResponseOnPublicAgentMessage(ticketId, message.createdAt)
 
   // Link uploaded attachments to this message
   if (outboundAttachments.length > 0) {
@@ -276,33 +291,60 @@ export async function POST(
     })
   }
 
-  const nextLabels = clearReopenedLabelOnReply(ticket.labels ?? [], "outbound")
-  const labelsChanged =
-    nextLabels.length !== (ticket.labels ?? []).length ||
-    nextLabels.some((l, i) => l !== (ticket.labels ?? [])[i])
+  const repliedLabels = clearReopenedLabelOnReply(ticket.labels ?? [], "outbound")
+  const labelsDiffer = (next: string[]) =>
+    next.length !== (ticket.labels ?? []).length ||
+    next.some((l, i) => l !== (ticket.labels ?? [])[i])
+  const labelsChanged = labelsDiffer(repliedLabels)
 
   // Auto-move to In Progress — awaited before responding so the DB change is
   // committed before the response is sent, ensuring postgres_changes picks it up.
   const inProgressStatus = await inProgressStatusPromise
+  let ticketStatus = ticket.status
   if (inProgressStatus) {
+    // Entering In Progress de-escalates, same as a manual status move.
+    const nextLabels = labelsAfterDeEscalation(repliedLabels, inProgressStatus.label)
+    const moveLabelsChanged = labelsDiffer(nextLabels)
     // Attribute the reopen to the agent who replied (via the GUC the
     // ActivityLog trigger reads) rather than falling back to the creator.
-    await prisma.$transaction(async (tx) => {
-      await tx.$executeRaw`SELECT set_config('app.current_user_id', ${profile.id}, true)`
-      await tx.ticket.update({
-        where: { id: ticketId },
-        data: { status: inProgressStatus.label, ...(labelsChanged ? { labels: nextLabels } : {}) },
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.$executeRaw`SELECT set_config('app.current_user_id', ${profile.id}, true)`
+        await tx.ticket.update({
+          where: { id: ticketId },
+          data: { status: inProgressStatus.label, ...(moveLabelsChanged ? { labels: nextLabels } : {}) },
+        })
       })
-    }).catch(() => undefined)
+      ticketStatus = inProgressStatus.label
+
+      // Follow the same work-timer rule as a manual move to In Progress. The
+      // conversation sync below then immediately pauses it because this outbound
+      // reply leaves the ticket Waiting for customer.
+      await startTimerOnStatusChange(ticketId, ticketStatus, {
+        id: profile.id,
+        name: profile.name,
+        avatarUrl: profile.avatarUrl,
+      }).catch((err) => console.error("[messages] failed to start work timer:", err))
+    } catch (err) {
+      // The email and conversation row already exist at this point. Do not turn
+      // a workflow-sync failure into a retry that could send the email twice.
+      console.error("[messages] failed to move ticket to In Progress:", err)
+    }
   } else {
     // Touch the ticket row so the existing Ticket-UPDATE realtime subscription
     // fires even when no status change occurs — that's what refreshes the
     // "Waiting for customer/assignee" badge on the task list and board views.
     await prisma.ticket.update({
       where: { id: ticketId },
-      data: { updatedAt: new Date(), ...(labelsChanged ? { labels: nextLabels } : {}) },
+      data: { updatedAt: new Date(), ...(labelsChanged ? { labels: repliedLabels } : {}) },
     }).catch(() => undefined)
   }
+
+  // The public reply changes the derived label to "Waiting for customer".
+  // Pause work tracking even though the workflow status remains In Progress.
+  await syncWorkTimerWithConversation(ticketId, "outbound").catch((err) =>
+    console.error("[messages] failed to pause work timer:", err),
+  )
 
   const serialized = {
     id: message.id,
@@ -315,6 +357,7 @@ export async function POST(
     authorName: message.author?.name ?? null,
     authorAvatarUrl: message.author?.avatarUrl ?? null,
     createdAt: message.createdAt.toISOString(),
+    ticketStatus,
     attachments: outboundAttachments.map((a) => ({ id: a.id, storageUrl: a.storageUrl, fileName: a.fileName, fileSize: a.fileSize })),
   }
 

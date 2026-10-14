@@ -1,7 +1,10 @@
-"use client";
+"use client"
+
+import { statusCategory, categoryForStatus, sortStatusesByCategory } from "@/lib/status-category";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { usePersistedView, VIEW_KEYS } from "@/hooks/use-persisted-view";
+import { useFeatureEnabled } from "@/components/dashboard/dashboard-context";
 import { useQueryClient } from "@tanstack/react-query";
 import { ticketKeys } from "@/hooks/queries/keys";
 import Link from "next/link";
@@ -53,6 +56,7 @@ import { ListCreatedCell, ListDueCell } from "@/components/tasks/task-list-cells
 import { sortCards } from "@/lib/sort-cards";
 import { useLinkedLabelMovePrompt } from "@/hooks/use-linked-label-move-prompt";
 import { Button } from "@/components/ui/button";
+import { Tip } from "@/components/ui/tooltip";
 
 const DRAG_TYPE = "PROJECT_CARD";
 type DragItem = { dbId: string; fromStatus: string };
@@ -152,7 +156,7 @@ function ProjectCard({ card: initialCard, href, canCreate = true }: { card: Boar
   const elapsedSecs = useLiveTimer(isRunning ? timerStartedAtMs : null);
   const displaySecs = initialCard.totalLoggedSecs + (isRunning ? elapsedSecs : 0);
   const canTrack =
-    normalizeStatus(initialCard.status) === "In Progress" &&
+    statusCategory({ label: initialCard.status, category: initialCard.statusCategory }) === "IN_PROGRESS" &&
     !!userId &&
     (initialCard.assigneeId === userId || initialCard.coAssignees.some((a) => a.id === userId));
 
@@ -354,31 +358,36 @@ function ProjectCard({ card: initialCard, href, canCreate = true }: { card: Boar
           </span>
         </div>
         {isRunning ? (
-          <button
-            type="button"
-            title="Pause timer"
-            onClick={handleStopTimer}
-            disabled={stoppingTimer}
-            className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-red transition-colors hover:bg-sts-red/10 disabled:cursor-wait"
-          >
-            <Pause className="size-[9px] fill-current" />
-          </button>
+          <Tip label="Pause timer">
+            <button
+              aria-label="Pause timer"
+              type="button"
+              onClick={handleStopTimer}
+              disabled={stoppingTimer}
+              className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-red transition-colors hover:bg-sts-red/10 disabled:cursor-wait"
+            >
+              <Pause className="size-[9px] fill-current" />
+            </button>
+          </Tip>
         ) : canTrack ? (
-          <button
-            type="button"
-            title="Start timer"
-            onClick={handleStartTimer}
-            disabled={startingTimer}
-            className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-subtle transition-opacity hover:bg-sts-surface hover:text-sts-blue disabled:cursor-wait"
-          >
-            <Play className="size-[10px]" />
-          </button>
+          <Tip label="Start timer">
+            <button
+              aria-label="Start timer"
+              type="button"
+              onClick={handleStartTimer}
+              disabled={startingTimer}
+              className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-subtle transition-opacity hover:bg-sts-surface hover:text-sts-blue disabled:cursor-wait"
+            >
+              <Play className="size-[10px]" />
+            </button>
+          </Tip>
         ) : null}
         <span className="flex-1" />
         {subTotal > 0 && (
           <button
             type="button"
             onClick={toggleExpanded}
+            aria-expanded={expanded}
             className={cn(
               "flex items-center gap-1 rounded px-1 py-0.5 font-sans text-[11.5px] font-medium transition-colors hover:bg-sts-surface",
               subtasksDone ? "text-sts-green" : "text-sts-muted",
@@ -389,15 +398,16 @@ function ProjectCard({ card: initialCard, href, canCreate = true }: { card: Boar
           </button>
         )}
         {canCreate && (
-          <button
-            type="button"
-            title="Add sub-task"
-            onClick={openSubTicketModal}
-            className="flex items-center gap-1 rounded px-1 py-0.5 font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-blue"
-          >
-            <Plus className="size-[11px] shrink-0" />
-            <span>Sub-task</span>
-          </button>
+          <Tip label="Add sub-task">
+            <button
+              type="button"
+              onClick={openSubTicketModal}
+              className="flex items-center gap-1 rounded px-1 py-0.5 font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-blue"
+            >
+              <Plus className="size-[11px] shrink-0" />
+              <span>Sub-task</span>
+            </button>
+          </Tip>
         )}
       </div>
       {subTotal > 0 && expanded && (
@@ -552,7 +562,7 @@ function ListRow({
   const displaySecs = card.totalLoggedSecs + (isRunning ? elapsedSecs : 0);
   const userId = useAuthStore((s) => s.user?.id);
   const canTrack =
-    normalizeStatus(liveStatus) === "In Progress" &&
+    categoryForStatus(liveStatus, statuses) === "IN_PROGRESS" &&
     (card.assigneeId === userId || card.coAssignees.some((a) => a.id === userId));
 
   async function handleStartTimer(e: React.MouseEvent) {
@@ -673,6 +683,8 @@ function ListRow({
                 <button
                   type="button"
                   onClick={() => setExpanded((v) => !v)}
+                  aria-expanded={expanded}
+                  aria-label={expanded ? "Collapse sub-tasks" : "Expand sub-tasks"}
                   className="flex shrink-0 items-center justify-center rounded p-0.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
                 >
                   <ChevronRight className={cn("size-[12px] transition-transform", expanded && "rotate-90")} />
@@ -766,25 +778,29 @@ function ListRow({
               {formatLoggedTime(displaySecs) ?? "—"}
             </span>
             {isRunning ? (
-              <button
-                type="button"
-                title="Pause timer"
-                onClick={handleStopTimer}
-                disabled={stoppingTimer}
-                className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-red transition-opacity hover:bg-sts-red/10 disabled:cursor-wait"
-              >
-                <Pause className="size-[9px] fill-current" />
-              </button>
+              <Tip label="Pause timer">
+                <button
+                  aria-label="Pause timer"
+                  type="button"
+                  onClick={handleStopTimer}
+                  disabled={stoppingTimer}
+                  className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-red transition-opacity hover:bg-sts-red/10 disabled:cursor-wait"
+                >
+                  <Pause className="size-[9px] fill-current" />
+                </button>
+              </Tip>
             ) : canTrack && (
-              <button
-                type="button"
-                title="Start timer"
-                onClick={handleStartTimer}
-                disabled={startingTimer}
-                className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-subtle transition-opacity hover:bg-sts-surface hover:text-sts-blue disabled:cursor-wait"
-              >
-                <Play className="size-[10px]" />
-              </button>
+              <Tip label="Start timer">
+                <button
+                  aria-label="Start timer"
+                  type="button"
+                  onClick={handleStartTimer}
+                  disabled={startingTimer}
+                  className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-subtle transition-opacity hover:bg-sts-surface hover:text-sts-blue disabled:cursor-wait"
+                >
+                  <Play className="size-[10px]" />
+                </button>
+              </Tip>
             )}
           </div>
         </td>
@@ -952,9 +968,9 @@ export function ProjectBoardPage({
   const { stopTimer: stopTimerOnMove } = useTimerActions();
   const { data: clientStatuses = [] } = useSubDepartmentStatuses(subDepartmentId ?? "");
   const effectiveStatuses = useMemo(() => {
-    if (subDepartmentId && clientStatuses.length > 0) return clientStatuses;
-    if (statuses.length > 0) return statuses;
-    if (clientStatuses.length > 0) return clientStatuses;
+    if (subDepartmentId && clientStatuses.length > 0) return sortStatusesByCategory(clientStatuses);
+    if (statuses.length > 0) return sortStatusesByCategory(statuses);
+    if (clientStatuses.length > 0) return sortStatusesByCategory(clientStatuses);
     return DEFAULT_STATUSES;
   }, [subDepartmentId, statuses, clientStatuses]);
 
@@ -968,7 +984,8 @@ export function ProjectBoardPage({
   }, [initialCards]);
 
   const [internalView, setInternalView] = usePersistedView(VIEW_KEYS.boardLayout, "board", ["board", "list"] as const);
-  const view = externalView ?? internalView;
+  const boardEnabled = useFeatureEnabled("board");
+  const view = boardEnabled ? (externalView ?? internalView) : "list";
   const setView = externalView === undefined ? setInternalView : () => {};
   const [createForStatus, setCreateForStatus] = useState<string | null>(null);
   const [createSubFor, setCreateSubFor] = useState<{ parentId: string; parentHumanId: string } | null>(null);
@@ -1096,7 +1113,7 @@ export function ProjectBoardPage({
   const doMove = useCallback((dbId: string, toStatus: string, chosenLabel?: string) => {
     if (
       moveTimerTicketDbId === dbId &&
-      normalizeStatus(toStatus) !== "In Progress"
+      categoryForStatus(toStatus, effectiveStatuses) !== "IN_PROGRESS"
     ) {
       stopTimerOnMove(moveTimerEntryId).catch(() => undefined);
     }
@@ -1120,10 +1137,10 @@ export function ProjectBoardPage({
           toast.error("Failed to move ticket", { description: getErrorMessage(err, "The card has been moved back.") });
         });
       return prev.map((c) =>
-        c.dbId === dbId ? { ...c, status: toStatus } : c,
+        c.dbId === dbId ? { ...c, status: toStatus, statusCategory: categoryForStatus(toStatus, effectiveStatuses), isComplete: categoryForStatus(toStatus, effectiveStatuses) === "COMPLETE" } : c,
       );
     });
-  }, [queryClient, moveTimerTicketDbId, moveTimerEntryId, stopTimerOnMove]);
+  }, [queryClient, moveTimerTicketDbId, moveTimerEntryId, stopTimerOnMove, effectiveStatuses]);
 
   const getCardSubDepartmentId = useCallback(
     (dbId: string) => localCards.find((c) => c.dbId === dbId)?.subDepartmentId,
@@ -1240,7 +1257,7 @@ export function ProjectBoardPage({
           </div>
         </div>
 
-        {externalView === undefined && (
+        {boardEnabled && externalView === undefined && (
           <div className={cn("flex shrink-0 items-center gap-2 px-4 sm:px-6 xl:px-8", view === "board" ? "mb-3 sm:mb-4" : "mb-0 border-b border-sts-card-border pb-2 pt-2")}>
             <div className="flex h-7 overflow-hidden rounded-full border border-sts-card-border bg-sts-card">
               {(["board", "list"] as const).map((v) => (

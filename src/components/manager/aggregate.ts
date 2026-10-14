@@ -1,3 +1,4 @@
+import type { StatusCategory } from "@/lib/status-category";
 // Pure aggregation for the manager Morning Briefing — no Prisma imports so it
 // stays unit-testable.
 
@@ -13,7 +14,7 @@ export const IN_REVIEW_STATUSES = ["Review", "In Review", "Code Review", "Needs 
 export const NOT_STARTED_STATUSES = ["Not Started", "To Do"];
 
 export type OpenTicketRow = {
-  id: string; humanId: string; title: string; status: string; priority: string;
+  id: string; humanId: string; title: string; status: string; category?: StatusCategory; priority: string;
   dueDate: string | null; updatedAt: string;
   assigneeId: string | null;
   projectId: string | null; projectName: string | null; projectColor: string | null;
@@ -31,7 +32,7 @@ export type MemberWorkload = {
 
 export type ProjectTicketRow = {
   projectId: string | null; projectName: string | null; projectColor: string | null;
-  status: string; dueDate: string | null;
+  status: string; category?: StatusCategory; dueDate: string | null;
 };
 
 export type ProjectHealth = {
@@ -39,16 +40,17 @@ export type ProjectHealth = {
   total: number; done: number; overdue: number; active: number;
 };
 
-function isOverdue(dueDate: string | null, status: string, startOfToday: Date) {
+function isOverdue(dueDate: string | null, status: string, startOfToday: Date, category?: StatusCategory) {
   return (
     !!dueDate &&
     new Date(dueDate) < startOfToday &&
-    !DONE_STATUSES.includes(status) &&
-    !isBlockedStatus(status)
+    !(category ? category === "COMPLETE" : DONE_STATUSES.includes(status)) &&
+    !isBlockedStatus(status, category)
   );
 }
 
-function isActive(status: string) {
+function isActive(status: string, category?: StatusCategory) {
+  if (category) return category === "IN_PROGRESS" || category === "BLOCKED";
   return !DONE_STATUSES.includes(status) && !NOT_STARTED_STATUSES.includes(status);
 }
 
@@ -68,11 +70,11 @@ export function buildMemberWorkloads(
 
   const out = members.map((m): MemberWorkload => {
     const tickets = byMember.get(m.id) ?? [];
-    const inReview = tickets.filter((t) => IN_REVIEW_STATUSES.includes(t.status));
-    const openNotReview = tickets.filter((t) => !IN_REVIEW_STATUSES.includes(t.status));
-    const overdue = openNotReview.filter((t) => isOverdue(t.dueDate, t.status, startOfToday));
+    const inReview = tickets.filter((t) => (t.category ? t.category === "IN_PROGRESS" : true) && IN_REVIEW_STATUSES.includes(t.status));
+    const openNotReview = tickets.filter((t) => !((t.category ? t.category === "IN_PROGRESS" : true) && IN_REVIEW_STATUSES.includes(t.status)));
+    const overdue = openNotReview.filter((t) => isOverdue(t.dueDate, t.status, startOfToday, t.category));
     const inProgress = openNotReview
-      .filter((t) => isActive(t.status))
+      .filter((t) => isActive(t.status, t.category))
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
     const current = inProgress[0]
       ? { id: inProgress[0].id, humanId: inProgress[0].humanId, title: inProgress[0].title }
@@ -104,9 +106,9 @@ export function buildProjectHealth(rows: ProjectTicketRow[], startOfToday: Date)
       total: 0, done: 0, overdue: 0, active: 0,
     };
     entry.total += 1;
-    if (DONE_STATUSES.includes(r.status)) entry.done += 1;
-    if (isOverdue(r.dueDate, r.status, startOfToday)) entry.overdue += 1;
-    if (isActive(r.status)) entry.active += 1;
+    if ((r.category ? r.category === "COMPLETE" : DONE_STATUSES.includes(r.status))) entry.done += 1;
+    if (isOverdue(r.dueDate, r.status, startOfToday, r.category)) entry.overdue += 1;
+    if (isActive(r.status, r.category)) entry.active += 1;
     byProject.set(key, entry);
   }
   return [...byProject.values()].sort((a, b) => b.total - a.total);
@@ -120,10 +122,11 @@ export type Distribution = {
 export function bucketDistribution(rows: ProjectTicketRow[], startOfToday: Date): Distribution {
   const d: Distribution = { done: 0, review: 0, overdue: 0, active: 0, todo: 0, total: rows.length };
   for (const r of rows) {
-    if (IN_REVIEW_STATUSES.includes(r.status)) d.review += 1;
-    else if (DONE_STATUSES.includes(r.status)) d.done += 1;
-    else if (isOverdue(r.dueDate, r.status, startOfToday)) d.overdue += 1;
-    else if (isActive(r.status)) d.active += 1;
+    if (r.category === "COMPLETE") d.done += 1;
+    else if ((!r.category || r.category === "IN_PROGRESS") && IN_REVIEW_STATUSES.includes(r.status)) d.review += 1;
+    else if (!r.category && DONE_STATUSES.includes(r.status)) d.done += 1;
+    else if (isOverdue(r.dueDate, r.status, startOfToday, r.category)) d.overdue += 1;
+    else if (isActive(r.status, r.category)) d.active += 1;
     else d.todo += 1;
   }
   return d;

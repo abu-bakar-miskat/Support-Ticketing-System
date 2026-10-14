@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAppPathname } from "@/hooks/use-app-pathname";
+import { useTenantHref } from "@/hooks/use-tenant-href";
 import { ArrowLeft } from "lucide-react";
 import {
   Select,
@@ -18,6 +19,18 @@ import {
   getSubDepartmentNav,
   type SubDepartmentNavItem,
 } from "@/components/sub-departments/sub-department-nav";
+import {
+  SETTINGS_NAV_COLOR_DEFAULTS,
+  type SettingsNavColors,
+} from "@/lib/sidebar-colors";
+import {
+  GROUP_CARD_CLASS,
+  GROUP_ITEM_IDLE_CLASS,
+  GROUP_LABEL_CLASS,
+  GROUP_NAV_ACTIVE_CLASS,
+  GROUP_NAV_ROW_CLASS,
+  groupStyle,
+} from "@/components/dashboard/sidebar-group-styles";
 
 /** Compare pathname and href tolerant of URL encoding of the [name] segment. */
 function isActiveHref(pathname: string, href: string) {
@@ -35,15 +48,13 @@ function SubDepartmentNavLink({
   item: SubDepartmentNavItem;
   active: boolean;
 }) {
+  // Prefix with the URL's tenant/dept so the proxy doesn't fall back to cookies.
+  const tenantHref = useTenantHref();
   return (
     <Link
-      href={item.href}
-      className={cn(
-        "flex h-7 items-center gap-[7px] rounded-full px-[9px] font-sans text-[13px] transition-colors",
-        active
-          ? "bg-sts-blue/10 font-semibold text-sts-blue"
-          : "font-normal text-sts-muted hover:bg-sts-blue/10 hover:text-sts-blue",
-      )}
+      href={tenantHref(item.href)}
+      aria-current={active ? "page" : undefined}
+      className={cn(GROUP_NAV_ROW_CLASS, active ? GROUP_NAV_ACTIVE_CLASS : GROUP_ITEM_IDLE_CLASS)}
     >
       <span className="truncate">{item.label}</span>
     </Link>
@@ -55,42 +66,48 @@ function SubDepartmentSubNav({
   title,
   subtitle,
   activeHref,
+  navColors,
 }: {
   name: string;
   title: string;
   subtitle?: string;
   activeHref: string;
+  navColors: SettingsNavColors;
 }) {
   const nav = getSubDepartmentNav(name);
+  const tenantHref = useTenantHref();
   return (
     <nav
       aria-label="Sub-department"
-      className="hidden w-[220px] shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-sts-card-border bg-sts-settings-subnav px-[18px] pt-[22px] pb-[18px] lg:flex lg:self-stretch"
+      className="hidden w-[260px] shrink-0 flex-col gap-1.5 overflow-y-auto border-r border-sts-card-border bg-sts-settings-subnav px-3 pt-3 pb-3 scrollbar-none lg:flex lg:self-stretch"
     >
-      <Link
-        href="/sub-departments"
-        className="flex items-center gap-1 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:text-sts-foreground"
-      >
-        <ArrowLeft className="size-3" />
-        Sub-departments
-      </Link>
-      <div className="h-2" />
-      <p className="truncate font-sans text-base font-semibold text-sts-foreground">
-        {title}
-      </p>
-      {subtitle && (
-        <p className="truncate font-sans text-[11.5px] text-sts-subtle">{subtitle}</p>
-      )}
-      <div className="h-3.5" />
+      <div className="px-2 pt-1 pb-1.5">
+        <Link
+          href={tenantHref("/sub-departments")}
+          className="flex items-center gap-1 font-sans text-[11.5px] font-medium text-sts-muted transition-colors hover:text-sts-foreground"
+        >
+          <ArrowLeft className="size-3" />
+          Sub-departments
+        </Link>
+        <p className="mt-2 truncate font-sans text-base font-semibold text-sts-foreground">
+          {title}
+        </p>
+        {subtitle && (
+          <p className="truncate font-sans text-[11.5px] text-sts-subtle">{subtitle}</p>
+        )}
+      </div>
 
-      {nav.map((group, groupIndex) => (
-        <div key={group.label}>
-          {groupIndex > 0 && <div className="h-3" />}
-          <p className="font-sans text-[11.5px] font-semibold tracking-[1px] text-sts-subtle">
-            {group.label}
-          </p>
-          <div className="h-[3px]" />
-          <div className="flex flex-col gap-0.5">
+      {nav.map((group) => (
+        <div
+          key={group.label}
+          role="group"
+          aria-label={group.label}
+          // Same accent as the Settings sidebar's Workspace card (tenant Branding).
+          style={groupStyle(navColors.workspace)}
+          className={cn(GROUP_CARD_CLASS, "flex flex-col rounded-xl p-1")}
+        >
+          <p className={GROUP_LABEL_CLASS}>{group.label}</p>
+          <div className="flex flex-col gap-px">
             {group.items.map((item) => (
               <SubDepartmentNavLink
                 key={item.href}
@@ -115,6 +132,7 @@ function SubDepartmentMobileNav({
   activeHref: string;
 }) {
   const router = useRouter();
+  const tenantHref = useTenantHref();
   const nav = getSubDepartmentNav(name);
   const allItems = nav.flatMap((g) => g.items);
   const activeItem =
@@ -123,7 +141,7 @@ function SubDepartmentMobileNav({
   return (
     <div className="flex items-center gap-2 border-b border-sts-card-border bg-sts-settings-subnav px-4 py-3 lg:hidden">
       <Link
-        href="/sub-departments"
+        href={tenantHref("/sub-departments")}
         aria-label="Back to sub-departments"
         className="flex size-9 shrink-0 items-center justify-center rounded-full border border-sts-card-border text-sts-muted hover:text-sts-foreground"
       >
@@ -132,7 +150,7 @@ function SubDepartmentMobileNav({
       <Select
         value={activeItem?.href}
         onValueChange={(href) => {
-          if (href) router.push(href);
+          if (href) router.push(tenantHref(href));
         }}
       >
         <SelectTrigger className="h-9 w-full font-sans text-[13px]">
@@ -166,11 +184,14 @@ export function SubDepartmentLayout({
   name,
   title,
   subtitle,
+  navColors = SETTINGS_NAV_COLOR_DEFAULTS,
 }: {
   children: React.ReactNode;
   name: string;
   title: string;
   subtitle?: string;
+  /** Settings sub-nav accents (tenant Branding page), shared with this sidebar. */
+  navColors?: SettingsNavColors;
 }) {
   const pathname = useAppPathname();
 
@@ -182,6 +203,7 @@ export function SubDepartmentLayout({
         title={title}
         subtitle={subtitle}
         activeHref={pathname}
+        navColors={navColors}
       />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
         {children}

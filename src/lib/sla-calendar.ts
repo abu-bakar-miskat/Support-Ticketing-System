@@ -40,7 +40,17 @@ function isHoliday(dateKey: string, holidays: WorkingHoursCalendar["holidays"]):
 
 /** `timeZone`'s offset from UTC (ms, positive east of UTC) at instant `t`. */
 function tzOffsetMs(t: Date, timeZone: string): number {
-  const parts = new Intl.DateTimeFormat("en-US", {
+  const parts = offsetFormatter(timeZone).formatToParts(t);
+  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
+  const asUtcFields = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second"));
+  return asUtcFields - Math.floor(t.getTime() / 1000) * 1000;
+}
+
+const offsetFormatters = new Map<string, Intl.DateTimeFormat>();
+function offsetFormatter(timeZone: string): Intl.DateTimeFormat {
+  const existing = offsetFormatters.get(timeZone);
+  if (existing) return existing;
+  const formatter = new Intl.DateTimeFormat("en-US", {
     timeZone,
     hourCycle: "h23",
     year: "numeric",
@@ -49,23 +59,55 @@ function tzOffsetMs(t: Date, timeZone: string): number {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
-  }).formatToParts(t);
-  const get = (type: string) => Number(parts.find((p) => p.type === type)?.value);
-  const asUtcFields = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"), get("second"));
-  return asUtcFields - t.getTime();
+  });
+  if (offsetFormatters.size >= 128) offsetFormatters.delete(offsetFormatters.keys().next().value!);
+  offsetFormatters.set(timeZone, formatter);
+  return formatter;
 }
 
-/**
- * Convert a wall-clock "HH:MM" on a given calendar date, local to `timeZone`,
- * into the corresponding instant (UTC `Date`). Uses the offset at the naive
- * UTC guess as a stand-in for the offset at the true instant — exact except
- * within a DST transition window, which is an acceptable approximation for
- * SLA accounting.
- */
-function zonedWallTimeToUtc(dateKey: string, time: string, timeZone: string): Date {
-  const naiveUtc = new Date(`${dateKey}T${time}:00.000Z`);
-  const offsetMs = tzOffsetMs(naiveUtc, timeZone);
-  return new Date(naiveUtc.getTime() - offsetMs);
+const DAY_MS = 24 * 60 * 60_000;
+const windowCache = new Map<string, { from: number; to: number }[]>();
+
+/** Intersect the local business window with each constant-offset UTC segment.
+ * This counts only real instants whose local time is inside the configured
+ * window: nonexistent spring times contribute zero; repeated autumn times
+ * count their actual occurrences. It also handles partial-hour DST changes. */
+function workingWindows(dateKey: string, start: string, end: string, timezone: string) {
+  const key = `${timezone}|${dateKey}|${start}|${end}`;
+  const cached = windowCache.get(key);
+  if (cached) return cached;
+  const wallStart = Date.parse(`${dateKey}T${start}:00.000Z`);
+  const wallEnd = Date.parse(`${dateKey}T${end}:00.000Z`);
+  const midnight = Date.parse(`${dateKey}T00:00:00.000Z`);
+  const rangeStart = midnight - DAY_MS;
+  const rangeEnd = midnight + 2 * DAY_MS;
+  const segments: { from: number; to: number; offset: number }[] = [];
+  let segmentStart = rangeStart;
+  let offset = tzOffsetMs(new Date(rangeStart), timezone);
+  // Locate timezone transitions, then find the exact transition second.
+  for (let probe = rangeStart + 6 * 60 * 60_000; probe <= rangeEnd; probe += 6 * 60 * 60_000) {
+    const nextOffset = tzOffsetMs(new Date(probe), timezone);
+    if (nextOffset === offset) continue;
+    let low = probe - 6 * 60 * 60_000;
+    let high = probe;
+    while (high - low > 1000) {
+      const mid = Math.floor((low + high) / 2000) * 1000;
+      if (tzOffsetMs(new Date(mid), timezone) === offset) low = mid;
+      else high = mid;
+    }
+    segments.push({ from: segmentStart, to: high, offset });
+    segmentStart = high;
+    offset = nextOffset;
+  }
+  segments.push({ from: segmentStart, to: rangeEnd, offset });
+  const windows = segments.flatMap((segment) => {
+    const from = Math.max(segment.from, wallStart - segment.offset);
+    const to = Math.min(segment.to, wallEnd - segment.offset);
+    return to > from ? [{ from, to }] : [];
+  });
+  if (windowCache.size >= 512) windowCache.delete(windowCache.keys().next().value!);
+  windowCache.set(key, windows);
+  return windows;
 }
 
 /**
@@ -86,11 +128,11 @@ export function elapsedWorkingMs(from: Date, to: Date, calendar: WorkingHoursCal
 
   while (dateKey <= endKey) {
     if (workingDays.includes(weekdayOf(dateKey)) && !isHoliday(dateKey, holidays)) {
-      const windowStart = zonedWallTimeToUtc(dateKey, workStartTime, timezone);
-      const windowEnd = zonedWallTimeToUtc(dateKey, workEndTime, timezone);
-      const overlapStart = Math.max(windowStart.getTime(), from.getTime());
-      const overlapEnd = Math.min(windowEnd.getTime(), to.getTime());
-      if (overlapEnd > overlapStart) total += overlapEnd - overlapStart;
+      for (const window of workingWindows(dateKey, workStartTime, workEndTime, timezone)) {
+        const overlapStart = Math.max(window.from, from.getTime());
+        const overlapEnd = Math.min(window.to, to.getTime());
+        if (overlapEnd > overlapStart) total += overlapEnd - overlapStart;
+      }
     }
     dateKey = addDaysKey(dateKey, 1);
   }
@@ -118,13 +160,16 @@ export function elapsedCountableMs(
 
   const fromMs = from.getTime();
   const toMs = to.getTime();
-  let paused = 0;
-  for (const pause of pauseIntervals) {
-    const pauseStart = Math.max(fromMs, pause.from.getTime());
-    const pauseEnd = Math.min(toMs, pause.to.getTime());
-    if (pauseEnd > pauseStart) {
-      paused += elapsedWorkingMs(new Date(pauseStart), new Date(pauseEnd), calendar);
-    }
+  const clipped = pauseIntervals.map((pause) => ({
+    from: Math.max(fromMs, pause.from.getTime()),
+    to: Math.min(toMs, pause.to.getTime()),
+  })).filter((pause) => pause.to > pause.from).sort((a, b) => a.from - b.from);
+  const merged: { from: number; to: number }[] = [];
+  for (const pause of clipped) {
+    const previous = merged.at(-1);
+    if (previous && pause.from <= previous.to) previous.to = Math.max(previous.to, pause.to);
+    else merged.push({ ...pause });
   }
+  const paused = merged.reduce((sum, pause) => sum + elapsedWorkingMs(new Date(pause.from), new Date(pause.to), calendar), 0);
   return Math.max(0, gross - paused);
 }

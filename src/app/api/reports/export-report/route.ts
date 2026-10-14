@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
           typeof (f as FormFieldFilter)?.fieldId === "string" && typeof (f as FormFieldFilter)?.value === "string",
       )
     : undefined;
-  const reportParams = { start, end, groupByFieldId, filters };
+  const reportParams = { start, end, groupByFieldId, filters, personId: typeof body?.personId === "string" ? body.personId : "all" };
 
   const scope = await resolveReportScope(profile!);
   if (scope.kind === "none") {

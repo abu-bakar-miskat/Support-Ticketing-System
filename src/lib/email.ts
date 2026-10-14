@@ -1,6 +1,5 @@
 import { Resend } from "resend";
 import { brandingFrom, fromHeader, getEmailConfig, getEmailTemplateOverrides } from "./email-config";
-import { buildReplyToAddress } from "./customer-conversation";
 import { renderCustomerReply } from "./email-templates/customer-reply";
 import { renderAssignment } from "./email-templates/assignment";
 import { renderIntakeConfirmation } from "./email-templates/intake-confirmation";
@@ -10,56 +9,29 @@ import { renderAssignmentFailedAlert } from "./email-templates/assignment-failed
 import { renderMailboxConnectionFailedAlert } from "./email-templates/mailbox-connection-failed-alert";
 import { renderInvite } from "./email-templates/invite";
 import { renderTenantInvite } from "./email-templates/tenant-invite";
+import { renderSuperAdminInvite } from "./email-templates/super-admin-invite";
 import { renderMention } from "./email-templates/mention";
 import { renderResolution } from "./email-templates/resolution";
 import { renderStatusChanged } from "./email-templates/status-changed";
 import { renderTicketCompleted } from "./email-templates/ticket-completed";
 import { renderTicketTransferred } from "./email-templates/ticket-transferred";
+import { renderTestEmail } from "./email-templates/test-email";
 import { renderSignatureHtml, renderSignatureText } from "./email-templates/signature";
 import { normalizeSignaturePrefs } from "./signature-prefs";
 import { formatMessageIdHeader, normalizeMessageId } from "./inbound-email";
 import { prisma } from "./db";
-import { isAuthEmailConfigured, isOutboundEmailDevMode, sendAuthEmail, sendOutboundEmail } from "./email-transport";
+import { isAuthEmailConfigured, isOutboundEmailDevMode, sendAuthEmail, sendOutboundEmail, type OutboundEmail } from "./email-transport";
+import { resolveSenderMailbox, sendViaReplyMailbox, type MailScope } from "./mailbox-outbound";
 
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null;
-
-/**
- * Sends through the dev-mode-aware transport (Mailpit in dev, Resend in prod)
- * while presenting Resend's `{ data, error }` result shape, so every existing
- * call site — and `logIfRejected` — keeps working unchanged. This is the single
- * point through which all business email now flows.
- */
-async function sendProviderEmail(message: {
-  from: string;
-  to: string | string[];
-  subject: string;
-  html: string;
-  text: string;
-  replyTo?: string;
-  headers?: Record<string, string>;
-  attachments?: { content: string | Buffer; filename: string }[];
-}): Promise<{ data: { id: string } | null; error: { message: string } | null }> {
-  const result = await sendOutboundEmail(message);
-  if (result.ok) return { data: result.id ? { id: result.id } : null, error: null };
-  return { data: null, error: { message: result.error } };
-}
 
 /** Threading id (RFC Message-ID) + Resend send id (bounce/delivery webhooks). */
 export type SentEmailIds = {
   providerMessageId: string | null;
   providerEmailId: string | null;
 };
-
-/** Resend returns 200 with an `error` field on rejection (bad domain, invalid recipient, etc.) — it
- * does not throw. Without checking this, a rejected send looks identical to a successful one. */
-function logIfRejected(kind: string, result: { data: { id: string } | null; error: { message: string } | null }) {
-  if (result.error) {
-    console.error(`[email] ${kind} rejected by Resend:`, result.error.message);
-  }
-  return result;
-}
 
 /**
  * After a successful send, prefer the RFC `message_id` (for In-Reply-To matching)
@@ -86,6 +58,65 @@ async function resolveSentMessageIds(emailId: string | null | undefined): Promis
     providerMessageId: normalizeMessageId(rfc ?? emailId) || null,
     providerEmailId: emailId,
   };
+}
+
+export type EmailDelivery = "mailbox" | "mailpit" | "resend";
+
+/** Pulls the tenant / department / sub-department ids off any email args object. */
+function scopeOf(args: { tenantId?: string | null; departmentId?: string | null; subDepartmentId?: string | null }): MailScope {
+  return { tenantId: args.tenantId, departmentId: args.departmentId, subDepartmentId: args.subDepartmentId };
+}
+
+/**
+ * The single chokepoint for tenant email (customers, staff, invitees). Sends
+ * as the most specific connected Microsoft 365 mailbox — sub-department →
+ * department → tenant — with Reply-To that same address. Only when none is
+ * connected does it fall back to the platform sender (Resend, or Mailpit in
+ * dev mode); `sent: false` when that isn't configured either.
+ *
+ * `throwOnMailboxError`: when the caller must surface a failure (an agent's
+ * reply, an invite) rather than log it.
+ */
+async function sendScoped(
+  kind: string,
+  scope: MailScope,
+  message: OutboundEmail,
+  { throwOnMailboxError = false }: { throwOnMailboxError?: boolean } = {},
+): Promise<{ sent: boolean; ids: SentEmailIds; fromEmail: string | null; via: EmailDelivery | null; error?: string }> {
+  const none = { providerMessageId: null, providerEmailId: null };
+  const mailbox = await resolveSenderMailbox(scope);
+  if (mailbox) {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- Reply-To is always the mailbox
+    const { replyTo, ...rest } = message;
+    const result = await sendViaReplyMailbox(mailbox, rest);
+    if (!result.ok) {
+      console.error(`[email] ${kind} via mailbox ${mailbox.address} failed:`, result.error);
+      if (throwOnMailboxError) throw new Error(result.error);
+      return { sent: false, ids: none, fromEmail: null, via: null, error: result.error };
+    }
+    return {
+      sent: true,
+      ids: { providerMessageId: normalizeMessageId(result.messageId) || null, providerEmailId: null },
+      fromEmail: result.fromEmail,
+      via: "mailbox",
+    };
+  }
+
+  const result = await sendOutboundEmail(message);
+  if (!result.ok) {
+    console.error(`[email] ${kind} rejected:`, result.error);
+    return { sent: false, ids: none, fromEmail: null, via: null, error: result.error };
+  }
+  return {
+    sent: true,
+    ids: await resolveSentMessageIds(result.id),
+    fromEmail: parseAddress(message.from),
+    via: result.via,
+  };
+}
+
+function parseAddress(from: string): string {
+  return (from.match(/<([^>]+)>/)?.[1] ?? from).trim();
 }
 
 async function isEmailPrefEnabled(userId: string, prefKey: string): Promise<boolean> {
@@ -131,7 +162,6 @@ export async function sendAssignmentEmail(args: {
   departmentId?: string | null;
   subDepartmentId?: string | null;
 }) {
-  if (!resend) return;
   const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
   if (!config.notifyAssignment) return;
   if (!await isEmailPrefEnabled(args.assigneeId, "emailOnAssign")) return;
@@ -145,17 +175,14 @@ export async function sendAssignmentEmail(args: {
     branding: brandingFrom(config),
     override: overrides.assignment,
   });
-  logIfRejected(
-    "assignment",
-    await sendProviderEmail({
-      from: fromHeader(config),
-      to,
-      subject,
-      html,
-      text,
-      replyTo: config.replyTo || undefined,
-    }),
-  );
+  await sendScoped("assignment", scopeOf(args), {
+    from: fromHeader(config),
+    to,
+    subject,
+    html,
+    text,
+    replyTo: config.replyTo || undefined,
+  });
 }
 
 export async function sendIntakeConfirmationEmail(args: {
@@ -167,13 +194,11 @@ export async function sendIntakeConfirmationEmail(args: {
   priority?: string;
   humanId?: string;
   responses?: { label: string; value: string }[];
-  replyToken?: string | null;
   departmentId?: string | null;
   subDepartmentId?: string | null;
 }): Promise<{ providerMessageId: string | null; providerEmailId: string | null; bodyText: string }> {
-  if (!resend) return { providerMessageId: null, providerEmailId: null, bodyText: "" };
+  // Always sent — departments cannot opt out of confirming receipt to submitters.
   const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
-  if (!config.notifyIntakeConfirmation) return { providerMessageId: null, providerEmailId: null, bodyText: "" };
   const overrides = await getEmailTemplateOverrides(args.departmentId, args.subDepartmentId);
   const { subject, html, text } = renderIntakeConfirmation({
     submitterName: args.submitterName,
@@ -185,27 +210,21 @@ export async function sendIntakeConfirmationEmail(args: {
     branding: brandingFrom(config),
     override: overrides.intakeConfirmation,
   });
-  const { data } = logIfRejected(
-    "intake confirmation",
-    await sendProviderEmail({
-      from: fromHeader(config),
-      to: args.to,
-      subject,
-      html,
-      text,
-      replyTo: args.replyToken
-        ? buildReplyToAddress(args.replyToken)
-        : (config.replyTo || undefined),
-    }),
-  );
-  const ids = await resolveSentMessageIds(data?.id ?? null);
+  const { ids } = await sendScoped("intake confirmation", scopeOf(args), {
+    from: fromHeader(config),
+    to: args.to,
+    subject,
+    html,
+    text,
+    replyTo: config.replyTo || undefined,
+  });
   return { ...ids, bodyText: text };
 }
 
-/** Double opt-in verification email. `skipped` = sending is unavailable (no provider or the dept
- * disabled intake confirmations) so the caller should fall back to creating the ticket directly;
- * `ok` = the provider accepted the send (a false `ok` means it was rejected and no ticket should
- * be created). */
+/** Double opt-in verification email. Mandatory for unverified submitters — there is no
+ * department opt-out and no fallback to creating the ticket unverified. `ok: false` means no
+ * ticket may be created: `reason: "unavailable"` = no email provider is configured,
+ * `reason: "rejected"` = the provider refused the send (usually a bad recipient). */
 export async function sendIntakeVerificationEmail(args: {
   to: string;
   submitterName: string;
@@ -213,28 +232,25 @@ export async function sendIntakeVerificationEmail(args: {
   verifyUrl: string;
   departmentId?: string | null;
   subDepartmentId?: string | null;
-}): Promise<{ ok: boolean; skipped: boolean }> {
-  if (!resend) return { ok: false, skipped: true };
+}): Promise<{ ok: true } | { ok: false; reason: "unavailable" | "rejected" }> {
   const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
-  if (!config.notifyIntakeConfirmation) return { ok: false, skipped: true };
   const { subject, html, text } = renderIntakeVerification({
     submitterName: args.submitterName,
     formName: args.formName,
     verifyUrl: args.verifyUrl,
     branding: brandingFrom(config),
   });
-  const { error } = logIfRejected(
-    "intake verification",
-    await sendProviderEmail({
-      from: fromHeader(config),
-      to: args.to,
-      subject,
-      html,
-      text,
-      replyTo: config.replyTo || undefined,
-    }),
-  );
-  return { ok: !error, skipped: false };
+  const hasMailbox = !!(await resolveSenderMailbox(scopeOf(args)));
+  if (!hasMailbox && !(await isAuthEmailConfigured())) return { ok: false, reason: "unavailable" };
+  const { sent } = await sendScoped("intake verification", scopeOf(args), {
+    from: fromHeader(config),
+    to: args.to,
+    subject,
+    html,
+    text,
+    replyTo: config.replyTo || undefined,
+  });
+  return sent ? { ok: true } : { ok: false, reason: "rejected" };
 }
 
 export async function sendIntakeManagerAlertEmail(args: {
@@ -249,7 +265,6 @@ export async function sendIntakeManagerAlertEmail(args: {
   departmentId?: string | null;
   subDepartmentId?: string | null;
 }) {
-  if (!resend) return;
   const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
   if (!await isEmailPrefEnabled(args.managerId, "emailOnIntakeManagerAlert")) return;
 
@@ -258,17 +273,14 @@ export async function sendIntakeManagerAlertEmail(args: {
     ...rest,
     branding: brandingFrom(config),
   });
-  logIfRejected(
-    "intake manager alert",
-    await sendProviderEmail({
-      from: fromHeader(config),
-      to,
-      subject,
-      html,
-      text,
-      replyTo: config.replyTo || undefined,
-    }),
-  );
+  await sendScoped("intake manager alert", scopeOf(args), {
+    from: fromHeader(config),
+    to,
+    subject,
+    html,
+    text,
+    replyTo: config.replyTo || undefined,
+  });
 }
 
 export async function sendAssignmentFailedAlertEmail(args: {
@@ -281,7 +293,6 @@ export async function sendAssignmentFailedAlertEmail(args: {
   departmentId?: string | null;
   subDepartmentId?: string | null;
 }) {
-  if (!resend) return;
   const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
   if (!config.notifyAssignmentFailed) return;
   if (!await isEmailPrefEnabled(args.managerId, "emailOnAssignmentFailed")) return;
@@ -291,17 +302,14 @@ export async function sendAssignmentFailedAlertEmail(args: {
     ...rest,
     branding: brandingFrom(config),
   });
-  logIfRejected(
-    "assignment failed alert",
-    await sendProviderEmail({
-      from: fromHeader(config),
-      to,
-      subject,
-      html,
-      text,
-      replyTo: config.replyTo || undefined,
-    }),
-  );
+  await sendScoped("assignment failed alert", scopeOf(args), {
+    from: fromHeader(config),
+    to,
+    subject,
+    html,
+    text,
+    replyTo: config.replyTo || undefined,
+  });
 }
 
 export async function sendMailboxConnectionFailedAlertEmail(args: {
@@ -309,26 +317,25 @@ export async function sendMailboxConnectionFailedAlertEmail(args: {
   managerName: string;
   address: string;
   error: string;
+  tenantId?: string | null;
+  departmentId?: string | null;
 }) {
-  if (!resend) return;
-  const config = await getEmailConfig(null);
+  const config = await getEmailConfig(args.departmentId ?? null);
 
-  const { to, ...rest } = args;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- scope ids aren't template fields
+  const { to, tenantId, departmentId, ...rest } = args;
   const { subject, html, text } = renderMailboxConnectionFailedAlert({
     ...rest,
     branding: brandingFrom(config),
   });
-  logIfRejected(
-    "mailbox connection failed alert",
-    await sendProviderEmail({
-      from: fromHeader(config),
-      to,
-      subject,
-      html,
-      text,
-      replyTo: config.replyTo || undefined,
-    }),
-  );
+  await sendScoped("mailbox connection failed alert", scopeOf(args), {
+    from: fromHeader(config),
+    to,
+    subject,
+    html,
+    text,
+    replyTo: config.replyTo || undefined,
+  });
 }
 
 export async function sendResolutionEmail(args: {
@@ -339,7 +346,6 @@ export async function sendResolutionEmail(args: {
   departmentId?: string | null;
   subDepartmentId?: string | null;
 }) {
-  if (!resend) return;
   const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
   if (!config.notifyResolution) return;
   const { to, departmentId, subDepartmentId, ...rest } = args;
@@ -349,17 +355,14 @@ export async function sendResolutionEmail(args: {
     branding: brandingFrom(config),
     override: overrides.resolution,
   });
-  logIfRejected(
-    "resolution",
-    await sendProviderEmail({
-      from: fromHeader(config),
-      to,
-      subject,
-      html,
-      text,
-      replyTo: config.replyTo || undefined,
-    }),
-  );
+  await sendScoped("resolution", { departmentId, subDepartmentId }, {
+    from: fromHeader(config),
+    to,
+    subject,
+    html,
+    text,
+    replyTo: config.replyTo || undefined,
+  });
 }
 
 export async function sendStatusChangedEmail(args: {
@@ -372,7 +375,6 @@ export async function sendStatusChangedEmail(args: {
   departmentId?: string | null;
   subDepartmentId?: string | null;
 }) {
-  if (!resend) return;
   const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
   if (!config.notifyStatusChanged) return;
   const { to, departmentId, subDepartmentId, ...rest } = args;
@@ -382,17 +384,14 @@ export async function sendStatusChangedEmail(args: {
     branding: brandingFrom(config),
     override: overrides.statusChanged,
   });
-  logIfRejected(
-    "status changed",
-    await sendProviderEmail({
-      from: fromHeader(config),
-      to,
-      subject,
-      html,
-      text,
-      replyTo: config.replyTo || undefined,
-    }),
-  );
+  await sendScoped("status changed", { departmentId, subDepartmentId }, {
+    from: fromHeader(config),
+    to,
+    subject,
+    html,
+    text,
+    replyTo: config.replyTo || undefined,
+  });
 }
 
 export async function sendTicketCompletedEmail(args: {
@@ -406,7 +405,6 @@ export async function sendTicketCompletedEmail(args: {
   departmentId?: string | null;
   subDepartmentId?: string | null;
 }) {
-  if (!resend) return;
   const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
   if (!config.notifyTicketCompleted) return;
   if (!await isEmailPrefEnabled(args.recipientId, "emailOnTicketComplete")) return;
@@ -418,17 +416,14 @@ export async function sendTicketCompletedEmail(args: {
     branding: brandingFrom(config),
     override: overrides.ticketCompleted,
   });
-  logIfRejected(
-    "ticket completed",
-    await sendProviderEmail({
-      from: fromHeader(config),
-      to,
-      subject,
-      html,
-      text,
-      replyTo: config.replyTo || undefined,
-    }),
-  );
+  await sendScoped("ticket completed", scopeOf(args), {
+    from: fromHeader(config),
+    to,
+    subject,
+    html,
+    text,
+    replyTo: config.replyTo || undefined,
+  });
 }
 
 export async function sendTicketTransferredEmail(args: {
@@ -444,7 +439,6 @@ export async function sendTicketTransferredEmail(args: {
   departmentId?: string | null;
   subDepartmentId?: string | null;
 }) {
-  if (!resend) return;
   const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
   if (!config.notifyTicketTransferred) return;
   if (!await isEmailPrefEnabled(args.recipientId, "emailOnTicketTransfer")) return;
@@ -454,17 +448,14 @@ export async function sendTicketTransferredEmail(args: {
     ...rest,
     branding: brandingFrom(config),
   });
-  logIfRejected(
-    "ticket transferred",
-    await sendProviderEmail({
-      from: fromHeader(config),
-      to,
-      subject,
-      html,
-      text,
-      replyTo: config.replyTo || undefined,
-    }),
-  );
+  await sendScoped("ticket transferred", scopeOf(args), {
+    from: fromHeader(config),
+    to,
+    subject,
+    html,
+    text,
+    replyTo: config.replyTo || undefined,
+  });
 }
 
 /**
@@ -481,15 +472,13 @@ export async function sendCustomerReplyEmail(args: {
   humanId: string;
   ticketTitle: string;
   messageText: string;
-  replyToken?: string | null;
   inReplyTo?: string | null;
   attachments?: Array<{ content: Buffer; filename: string }>;
   departmentId?: string | null;
   subDepartmentId?: string | null;
-}): Promise<SentEmailIds> {
-  if (!resend) return { providerMessageId: null, providerEmailId: null };
+}): Promise<SentEmailIds & { fromEmail?: string | null }> {
   const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
-  if (!config.notifyCustomerReply) return { providerMessageId: null, providerEmailId: null };
+  if (!config.notifyCustomerReply) return { providerMessageId: null, providerEmailId: null, fromEmail: null };
   const signature = config.hideSignature ? null : await getUserSignature(args.agentId);
   const overrides = await getEmailTemplateOverrides(args.departmentId, args.subDepartmentId);
 
@@ -510,22 +499,37 @@ export async function sendCustomerReplyEmail(args: {
     ? { "In-Reply-To": inReplyToHeader, References: inReplyToHeader }
     : undefined;
 
-  const { data } = logIfRejected(
+  const { ids, fromEmail, sent, error } = await sendScoped(
     "customer reply",
-    await sendProviderEmail({
+    scopeOf(args),
+    {
       from,
       to: args.to,
       subject,
       html,
       text,
-      replyTo: args.replyToken
-        ? buildReplyToAddress(args.replyToken)
-        : (config.replyTo || undefined),
+      replyTo: config.replyTo || undefined,
       headers,
       attachments: args.attachments?.map((a) => ({ content: a.content, filename: a.filename })),
-    }),
+    },
+    { throwOnMailboxError: true },
   );
-  return resolveSentMessageIds(data?.id ?? null);
+  if (!sent) throw new Error(error ?? "Email is not configured");
+  return { ...ids, fromEmail };
+}
+
+/**
+ * Invites go out from the tenant's (or the inviting department's) mailbox like
+ * any other tenant email; a failure throws so the caller can report it.
+ */
+async function sendInviteScoped(
+  kind: string,
+  scope: MailScope,
+  message: OutboundEmail,
+): Promise<{ ok: true; id: string | null; via: EmailDelivery }> {
+  const result = await sendScoped(kind, scope, message, { throwOnMailboxError: true });
+  if (!result.sent || !result.via) throw new Error(result.error ?? "Email is not configured");
+  return { ok: true, id: result.ids.providerMessageId, via: result.via };
 }
 
 export async function sendInviteEmail(args: {
@@ -541,9 +545,6 @@ export async function sendInviteEmail(args: {
   expiresAt: Date;
   isReminder?: boolean;
 }) {
-  if (!(await isAuthEmailConfigured())) {
-    throw new Error("Authentication email is not configured");
-  }
   const config = await getEmailConfig(args.departmentId);
   const signature = config.hideSignature ? null : await getUserSignature(args.inviterId);
   const overrides = await getEmailTemplateOverrides(args.departmentId);
@@ -561,7 +562,7 @@ export async function sendInviteEmail(args: {
     branding: brandingFrom(config),
     override: overrides.invite,
   });
-  const result = await sendAuthEmail({
+  return sendInviteScoped("invite", scopeOf(args), {
     from: fromHeader(config),
     to: args.to,
     subject,
@@ -569,11 +570,6 @@ export async function sendInviteEmail(args: {
     text,
     replyTo: config.replyTo || undefined,
   });
-  if (!result.ok) {
-    console.error("[email] invite rejected:", result.error);
-    throw new Error(result.error);
-  }
-  return result;
 }
 
 /**
@@ -596,9 +592,6 @@ export async function sendTenantInviteEmail(args: {
   expiresAt: Date;
   isReminder?: boolean;
 }) {
-  if (!(await isAuthEmailConfigured())) {
-    throw new Error("Authentication email is not configured");
-  }
   const config = await getEmailConfig(args.departmentId ?? undefined);
   const signature = config.hideSignature ? null : await getUserSignature(args.inviterId);
   const { subject, html, text } = renderTenantInvite({
@@ -613,6 +606,37 @@ export async function sendTenantInviteEmail(args: {
     signature,
     branding: brandingFrom(config),
   });
+  return sendInviteScoped("tenant invite", scopeOf(args), {
+    from: fromHeader(config),
+    to: args.to,
+    subject,
+    html,
+    text,
+    replyTo: config.replyTo || undefined,
+  });
+}
+
+/** Platform super-admin invitation. No account exists until the link is accepted. */
+export async function sendSuperAdminInviteEmail(args: {
+  to: string;
+  inviterName: string;
+  inviterId: string;
+  inviteToken: string;
+  expiresAt: Date;
+}) {
+  if (!(await isAuthEmailConfigured())) {
+    throw new Error("Authentication email is not configured");
+  }
+  const config = await getEmailConfig();
+  const signature = config.hideSignature ? null : await getUserSignature(args.inviterId);
+  const { subject, html, text } = renderSuperAdminInvite({
+    inviteeEmail: args.to,
+    inviterName: args.inviterName,
+    inviteToken: args.inviteToken,
+    expiresAt: args.expiresAt,
+    signature,
+    branding: brandingFrom(config),
+  });
   const result = await sendAuthEmail({
     from: fromHeader(config),
     to: args.to,
@@ -622,7 +646,7 @@ export async function sendTenantInviteEmail(args: {
     replyTo: config.replyTo || undefined,
   });
   if (!result.ok) {
-    console.error("[email] tenant invite rejected:", result.error);
+    console.error("[email] super-admin invite rejected:", result.error);
     throw new Error(result.error);
   }
   return result;
@@ -638,7 +662,6 @@ export async function sendMentionEmail(args: {
   departmentId?: string | null;
   subDepartmentId?: string | null;
 }) {
-  if (!resend) return;
   const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
   if (!config.notifyMention) return;
   if (!await isEmailPrefEnabled(args.mentionedUserId, "emailOnMention")) return;
@@ -652,15 +675,52 @@ export async function sendMentionEmail(args: {
     branding: brandingFrom(config),
     override: overrides.mention,
   });
-  logIfRejected(
-    "mention",
-    await sendProviderEmail({
+  await sendScoped("mention", scopeOf(args), {
+    from: fromHeader(config),
+    to,
+    subject,
+    html,
+    text,
+    replyTo: config.replyTo || undefined,
+  });
+}
+
+/**
+ * "Send a test email" on the email settings page: goes through exactly the
+ * mailbox a real email for this scope would use, and reports which one.
+ */
+export async function sendTestEmail(args: {
+  to: string;
+  recipientName: string;
+  tenantId?: string | null;
+  departmentId?: string | null;
+  subDepartmentId?: string | null;
+}): Promise<{ ok: true; from: string | null; via: EmailDelivery } | { ok: false; error: string }> {
+  const config = await getEmailConfig(args.departmentId, args.subDepartmentId);
+  const branding = brandingFrom(config);
+  const brandName = branding.headerTitle?.trim() || "Global Support Portal";
+  const { subject, html, text } = renderTestEmail({ recipientName: args.recipientName, brandName, branding });
+  try {
+    const result = await sendScoped("test email", scopeOf(args), {
       from: fromHeader(config),
-      to,
+      to: args.to,
       subject,
       html,
       text,
       replyTo: config.replyTo || undefined,
-    }),
-  );
+    }, { throwOnMailboxError: true });
+    if (!result.sent || !result.via) return { ok: false, error: result.error ?? "Email is not configured" };
+    return { ok: true, from: result.fromEmail, via: result.via };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Failed to send test email" };
+  }
 }
+
+/** Which address email for this scope goes out from: a connected mailbox, or the platform sender. */
+export async function describeSender(scope: MailScope): Promise<{ address: string; platform: boolean }> {
+  const mailbox = await resolveSenderMailbox(scope);
+  if (mailbox) return { address: mailbox.address, platform: false };
+  const config = await getEmailConfig(scope.departmentId, scope.subDepartmentId);
+  return { address: config.fromEmail, platform: true };
+}
+

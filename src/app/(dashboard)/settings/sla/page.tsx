@@ -18,9 +18,11 @@ export default async function SettingsSlaRoute() {
 
   if (!departmentId) {
     const tenantId = profile.activeTenantId ?? "__no_tenant__";
+    // Managers reach this page for the shared-mailbox SLA (department admins
+    // are a subset of managed departments).
     const where = isAdmin
       ? { tenantId }
-      : { id: { in: profile.departmentAdminIds ?? [] } };
+      : { id: { in: profile.managedDepartmentIds ?? [] } };
     const first = await runAsSystem(() => prisma.department.findFirst({
       where,
       orderBy: { name: "asc" },
@@ -40,13 +42,16 @@ export default async function SettingsSlaRoute() {
     },
   }));
   if (!department) redirect("/settings/departments");
-  if (!canAdminDeptSettings(profile, department.id)) redirect("/settings");
+  const canEditPolicies = canAdminDeptSettings(profile, department.id);
+  const isDeptManager = (profile.managedDepartmentIds ?? []).includes(department.id);
+  if (!canEditPolicies && !isDeptManager) redirect("/settings");
 
   return (
     <SlaSettingsPage
       departmentId={department.id}
       departmentName={department.name}
       subDepartments={department.subDepartments}
+      canEditPolicies={canEditPolicies}
     />
   );
 }

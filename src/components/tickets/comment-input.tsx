@@ -16,11 +16,13 @@ import {
   maxBytesFor,
   maxLabelFor,
 } from "@/lib/mime";
+import { Tip } from "@/components/ui/tooltip";
 
 export type CommentShape = {
   id: string; body: string; createdAt: string; editedAt: string | null;
   deletedAt: string | null; authorId: string; authorName: string;
   authorAvatarUrl: string | null;
+  portalVisible?: boolean;
   attachments: { id: string; storageUrl: string; fileName: string; fileSize: number }[];
   replies: CommentShape[];
 };
@@ -33,10 +35,12 @@ export function CommentInput({
   ticketId,
   subDepartmentMembers = [],
   onCommentAdded,
+  portalVisible = false,
 }: {
   ticketId: string;
   subDepartmentMembers?: MentionableUser[];
   onCommentAdded?: (comment: CommentShape) => void;
+  portalVisible?: boolean;
 }) {
   const textRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -212,6 +216,7 @@ export function CommentInput({
         body,
         hasAttachment: uploadedAttachments.length > 0,
         attachments: uploadedAttachments.map((a) => a.id),
+        portalVisible,
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to post comment";
@@ -230,6 +235,7 @@ export function CommentInput({
       authorId: data.author?.id ?? "",
       authorName: data.author?.name ?? "",
       authorAvatarUrl: data.author?.avatarUrl ?? null,
+      portalVisible,
       attachments: data.attachments ?? uploadedAttachments,
       replies: [],
     };
@@ -277,7 +283,9 @@ export function CommentInput({
       }
     }
 
-    if (e.key === "Enter" && !e.shiftKey) {
+    // Cmd/Ctrl+Enter posts (same as the customer reply composer) so a stray
+    // Enter adds a newline instead of posting a half-written comment.
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
       e.preventDefault();
       doSubmit();
     }
@@ -309,7 +317,11 @@ export function CommentInput({
           <textarea
             ref={textRef}
             rows={3}
-            placeholder="Write a comment… use @ to mention a teammate or @all"
+            placeholder={
+              portalVisible
+                ? "Write a reply… the portal requester can see this"
+                : "Write a comment… use @ to mention a teammate or @all"
+            }
             onChange={handleTextChange}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
@@ -334,6 +346,7 @@ export function CommentInput({
                 <button
                   type="button"
                   onClick={() => removeFile(entry.id)}
+                  aria-label={`Remove ${entry.file.name}`}
                   className="absolute -right-[5px] -top-[5px] flex size-[15px] items-center justify-center rounded-full bg-sts-surface text-sts-subtle shadow hover:text-sts-foreground"
                 >
                   <X className="size-[8px]" />
@@ -352,6 +365,7 @@ export function CommentInput({
                 <button
                   type="button"
                   onClick={() => removeFile(entry.id)}
+                  aria-label={`Remove ${entry.file.name}`}
                   className="absolute -right-[5px] -top-[5px] flex size-[15px] items-center justify-center rounded-full bg-sts-surface text-sts-subtle shadow hover:text-sts-foreground"
                 >
                   <X className="size-[8px]" />
@@ -378,17 +392,22 @@ export function CommentInput({
                 e.target.value = "";
               }}
             />
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              title="Attach files"
-              className="flex items-center gap-[5px] rounded-[5px] px-[8px] py-[4px] font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-muted"
-            >
-              <Paperclip className="size-[12px]" />
-              Attach
-            </button>
+            <Tip label="Attach files">
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="flex items-center gap-[5px] rounded-[5px] px-[8px] py-[4px] font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-muted"
+              >
+                <Paperclip className="size-[12px]" />
+                Attach
+              </button>
+            </Tip>
           </div>
 
+          <div className="flex items-center gap-2">
+          <span className="hidden font-sans text-[10.5px] text-sts-subtle sm:inline">
+            Ctrl/⌘ + Enter to post
+          </span>
           <button
             type="button"
             disabled={submitting || uploading}
@@ -403,10 +422,11 @@ export function CommentInput({
             ) : (
               <>
                 <SendHorizonal className="size-[12px]" />
-                Comment
+                {portalVisible ? "Reply" : "Comment"}
               </>
             )}
           </button>
+          </div>
         </div>
       </div>
 

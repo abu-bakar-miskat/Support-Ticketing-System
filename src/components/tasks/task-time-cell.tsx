@@ -1,24 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { statusCategory, type StatusCategory } from "@/lib/status-category";
+import { useMemo, useState } from "react";
 import { Play, Pause } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatTaskTimeDisplay, normalizeStatus } from "@/components/board/board-types";
+import { formatTaskTimeDisplay } from "@/components/board/board-types";
 import { useLiveTimer } from "@/hooks/use-live-timer";
 import { useTimerActions } from "@/hooks/use-timer-actions";
 import { useAuthStore, useTimerStore } from "@/store";
 import { toast } from "sonner";
 import { toastError } from "@/lib/toast-error";
+import { Tip } from "@/components/ui/tooltip";
 
 type Props = {
   ticketDbId: string;
   humanId: string;
   title: string;
   status: string;
+  category?: StatusCategory;
   assigneeId: string | null;
   coAssigneeIds: string[];
   userLoggedSecs: number;
   estimatedTime: number | null;
+  /** Ticket resolution clock; when set it replaces the viewer's own logged time. */
+  slaResolution?: { elapsedMs: number; running: boolean } | null;
 };
 
 export function TaskTimeCell({
@@ -26,10 +31,12 @@ export function TaskTimeCell({
   humanId,
   title,
   status,
+  category,
   assigneeId,
   coAssigneeIds,
   userLoggedSecs,
   estimatedTime,
+  slaResolution,
 }: Props) {
   const [startingTimer, setStartingTimer] = useState(false);
   const [stoppingTimer, setStoppingTimer] = useState(false);
@@ -41,11 +48,20 @@ export function TaskTimeCell({
 
   const isRunning = timerTicketDbId === ticketDbId;
   const elapsedSecs = useLiveTimer(isRunning ? timerStartedAtMs : null);
-  const displaySecs = userLoggedSecs + (isRunning ? elapsedSecs : 0);
+  // Anchor the SLA snapshot to the client clock so a running resolution
+  // clock ticks between refetches without trusting server time.
+  const slaAnchorMs = useMemo(
+    () => (slaResolution?.running ? Date.now() - slaResolution.elapsedMs : null),
+    [slaResolution?.running, slaResolution?.elapsedMs],
+  );
+  const slaLiveSecs = useLiveTimer(slaAnchorMs);
+  const displaySecs = slaResolution
+    ? slaResolution.running ? slaLiveSecs : Math.floor(slaResolution.elapsedMs / 1000)
+    : userLoggedSecs + (isRunning ? elapsedSecs : 0);
   const timeLabel = formatTaskTimeDisplay(displaySecs, estimatedTime);
 
   const canTrack =
-    normalizeStatus(status) === "In Progress" &&
+    statusCategory({ label: status, category }) === "IN_PROGRESS" &&
     !!userId &&
     (assigneeId === userId || coAssigneeIds.includes(userId));
 
@@ -94,25 +110,29 @@ export function TaskTimeCell({
       </span>
       {canTrack &&
         (isRunning ? (
-          <button
-            type="button"
-            title="Pause timer"
-            onClick={handleStopTimer}
-            disabled={stoppingTimer}
-            className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-red transition-colors hover:bg-sts-red/10 disabled:cursor-wait"
-          >
-            <Pause className="size-[9px] fill-current" />
-          </button>
+          <Tip label="Pause timer">
+            <button
+              aria-label="Pause timer"
+              type="button"
+              onClick={handleStopTimer}
+              disabled={stoppingTimer}
+              className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-red transition-colors hover:bg-sts-red/10 disabled:cursor-wait"
+            >
+              <Pause className="size-[9px] fill-current" />
+            </button>
+          </Tip>
         ) : (
-          <button
-            type="button"
-            title="Start timer"
-            onClick={handleStartTimer}
-            disabled={startingTimer}
-            className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-blue disabled:cursor-wait"
-          >
-            <Play className="size-[10px]" />
-          </button>
+          <Tip label="Start timer">
+            <button
+              aria-label="Start timer"
+              type="button"
+              onClick={handleStartTimer}
+              disabled={startingTimer}
+              className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-blue disabled:cursor-wait"
+            >
+              <Play className="size-[10px]" />
+            </button>
+          </Tip>
         ))}
     </div>
   );

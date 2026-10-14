@@ -7,6 +7,19 @@ import { TenantManageClient } from "@/components/platform/tenant-manage-client"
 
 export const dynamic = "force-dynamic"
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  // Same super-admin gate as the page, so the tenant name never leaks in the tab title.
+  const profile = await getProfile()
+  if (!profile?.isSuperAdmin) return { title: "Tenant — Global Support Portal" }
+  const { id } = await params
+  const tenant = await prisma.tenant.findUnique({ where: { id }, select: { name: true } })
+  return { title: `${tenant?.name ?? "Tenant"} — Global Support Portal` }
+}
+
 export default async function TenantManagePage({
   params,
 }: {
@@ -41,11 +54,11 @@ export default async function TenantManagePage({
     await Promise.all([
       prisma.tenantMembership.findMany({
         where: { tenantId: id, isActive: true },
-        select: { userId: true },
+        select: { userId: true, createdAt: true },
       }),
       prisma.subDepartmentMembership.findMany({
         where: { isActive: true, subDepartment: { tenantId: id } },
-        select: { userId: true },
+        select: { userId: true, joinedAt: true },
       }),
       prisma.department.findMany({
         where: { tenantId: id },
@@ -66,6 +79,15 @@ export default async function TenantManagePage({
     ]),
   ]
 
+  // When each person joined this tenant — the earliest of their memberships.
+  const joinedAtByUser = new Map<string, Date>()
+  const noteJoined = (userId: string, at: Date) => {
+    const prev = joinedAtByUser.get(userId)
+    if (!prev || at < prev) joinedAtByUser.set(userId, at)
+  }
+  for (const m of tenantMemberRows) noteJoined(m.userId, m.createdAt)
+  for (const m of subDeptMemberRows) noteJoined(m.userId, m.joinedAt)
+
   const memberProfiles = await prisma.profile.findMany({
     where: { id: { in: memberUserIds }, deletedAt: null },
     orderBy: { name: "asc" },
@@ -79,6 +101,7 @@ export default async function TenantManagePage({
     avatarUrl: p.avatarUrl ?? null,
     role: p.role,
     isActive: p.isActive,
+    joinedAt: joinedAtByUser.get(p.id)?.toISOString() ?? null,
   }))
 
   return (

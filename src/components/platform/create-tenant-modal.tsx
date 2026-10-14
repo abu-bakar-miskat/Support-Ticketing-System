@@ -1,5 +1,6 @@
 "use client";
 
+import { Tip } from "@/components/ui/tooltip";
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { toast } from "sonner";
@@ -176,14 +177,17 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
       <div className="sts-glass-panel flex max-h-[calc(90vh/var(--sts-font-scale,1))] w-full max-w-md flex-col overflow-hidden rounded-[8px] ring-1 ring-white/35 dark:ring-white/10">
         <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-sts-card-border px-[22px]">
           <h2 className="sts-text-modal-title">Create tenant</h2>
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
-            className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
-          >
-            <X size={17} strokeWidth={2} />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+            >
+              <X size={17} strokeWidth={2} />
+            </button>
+          </Tip>
         </div>
 
         <form onSubmit={handleSubmit} className="flex-1 space-y-4 overflow-y-auto px-[22px] py-5">
@@ -221,7 +225,7 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
               </SelectContent>
             </Select>
             <p className="font-sans text-[11px] text-sts-subtle">
-              Manage the available types under Platform → Tenant Types.
+              Manage the available types under Platform → Tenant configuration.
             </p>
           </div>
 
@@ -367,13 +371,16 @@ export function CreateTenantModal({ onClose }: { onClose: () => void }) {
                   v{AGREEMENT_POLICY_VERSION}
                 </span>
               </h2>
-              <button
-                type="button"
-                onClick={() => setPolicyOpen(false)}
-                className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
-              >
-                <X size={17} strokeWidth={2} />
-              </button>
+              <Tip label="Close">
+                <button
+                  aria-label="Close"
+                  type="button"
+                  onClick={() => setPolicyOpen(false)}
+                  className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
+                >
+                  <X size={17} strokeWidth={2} />
+                </button>
+              </Tip>
             </div>
 
             <div className="flex-1 space-y-4 overflow-y-auto px-[22px] py-5">

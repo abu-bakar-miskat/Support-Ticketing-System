@@ -2,15 +2,22 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Plus, Trash2, X, Clock, Timer, FileText, Flag, Save } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, X, Clock, Timer, FileText, Flag, Save, Mail } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Switch } from "@/components/ui/switch";
+import { useTenantHref } from "@/hooks/use-tenant-href";
+import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { TimezoneSelect } from "@/components/settings/timezone-select";
 import { UI_PRIORITY_DOT_HEX, type UiPriority } from "@/components/board/board-types";
+import { Tip } from "@/components/ui/tooltip";
+import { ListSearchInput, SortDropdown, byDateAsc, byDateDesc, byText, useListControls } from "@/components/ui/list-controls";
 
 const PRIORITIES = ["Low", "Medium", "High", "Critical", "Urgent"] as const;
 type Priority = (typeof PRIORITIES)[number];
+/** Highest priority first; policies with no priority goal sort last. */
+const priorityRank = (p: Priority | null) => (p ? PRIORITIES.length - PRIORITIES.indexOf(p) : 0);
 
 type SlaPolicy = {
   id: string;
@@ -23,6 +30,8 @@ type SlaPolicy = {
   formConfigId: string | null;
   subDepartmentId: string | null;
   priority: Priority | null;
+  /** ISO timestamp — drives the Newest / Oldest sorts. */
+  createdAt?: string;
 };
 
 type SubDepartmentOption = { id: string; name: string };
@@ -42,6 +51,7 @@ function SkeletonRows({ count = 3, height = "h-9" }: { count?: number; height?: 
 type SlaConfig = {
   pauseOutsideHours: boolean;
   pauseWhenWaitingForCustomer: boolean;
+  firstResponseActiveStatuses: string[];
   atRiskPct: number;
 };
 type BusinessHours = { timezone: string; workingDays: number[]; workStartTime: string; workEndTime: string };
@@ -56,6 +66,27 @@ function formatMins(mins: number): string {
   return [d && `${d}d`, h && `${h}h`, m && `${m}m`].filter(Boolean).join(" ") || "0m";
 }
 
+/** Parse a "HH:MM" (24-hour) string to minutes since midnight, or null if malformed. */
+function parseTimeToMins(value: string): number | null {
+  const m = /^(\d{1,2}):(\d{2})$/.exec(value.trim());
+  if (!m) return null;
+  const h = Number(m[1]);
+  const min = Number(m[2]);
+  if (h < 0 || h > 23 || min < 0 || min > 59) return null;
+  return h * 60 + min;
+}
+
+/** "17:00" → "5:00 PM". Returns the raw value if it can't be parsed. */
+function formatTime12(value: string): string {
+  const mins = parseTimeToMins(value);
+  if (mins === null) return value || "—";
+  const h24 = Math.floor(mins / 60);
+  const m = mins % 60;
+  const period = h24 < 12 ? "AM" : "PM";
+  const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${period}`;
+}
+
 async function jsonOrThrow(res: Response) {
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -64,10 +95,6 @@ async function jsonOrThrow(res: Response) {
   return res.json();
 }
 
-const SUB_DEPT_OPTIONS = (subDepartments: SubDepartmentOption[]) => [
-  { value: "", label: "None (form default)" },
-  ...subDepartments.map((s) => ({ value: s.id, label: s.name })),
-];
 
 export function SlaSettingsPage({
   departmentId,
@@ -75,6 +102,8 @@ export function SlaSettingsPage({
   subDepartments,
   hideBackLink = false,
   showSubDepartment = true,
+  canEditPolicies = true,
+  showMailboxSla = true,
 }: {
   departmentId: string;
   departmentName: string;
@@ -88,11 +117,21 @@ export function SlaSettingsPage({
    * managed on the department's own settings page instead.
    */
   showSubDepartment?: boolean;
+  /**
+   * False for department managers: they may only set the shared-mailbox SLA;
+   * form policies and working hours are shown read-only.
+   */
+  canEditPolicies?: boolean;
+  /** Shared mailbox configuration belongs only on department settings. */
+  showMailboxSla?: boolean;
 }) {
   const [policies, setPolicies] = useState<SlaPolicy[] | null>(null);
   const [forms, setForms] = useState<FormOption[]>([]);
   const [slaConfig, setSlaConfig] = useState<SlaConfig | null>(null);
+  const [availableActiveStatuses, setAvailableActiveStatuses] = useState<string[]>([]);
   const [businessHours, setBusinessHours] = useState<BusinessHours | null>(null);
+  // Snapshot of the last-saved settings, used to detect unsaved changes.
+  const [savedSnapshot, setSavedSnapshot] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [newPolicyFor, setNewPolicyFor] = useState<string | null>(null);
@@ -109,6 +148,10 @@ export function SlaSettingsPage({
         if (cancelled) return;
         setSlaConfig(settingsRes.slaConfig);
         setBusinessHours(settingsRes.businessHours);
+        setAvailableActiveStatuses(settingsRes.availableStatuses ?? []);
+        setSavedSnapshot(
+          JSON.stringify({ slaConfig: settingsRes.slaConfig, businessHours: settingsRes.businessHours }),
+        );
       })
       .catch((e) => {
         if (!cancelled) setError(e.message);
@@ -196,16 +239,26 @@ export function SlaSettingsPage({
 
   async function saveSettings() {
     if (!slaConfig || !businessHours) return;
+    const startMins = parseTimeToMins(businessHours.workStartTime);
+    const endMins = parseTimeToMins(businessHours.workEndTime);
+    if (startMins === null || endMins === null || endMins <= startMins) {
+      setError("Fix the working-hours start and end times before saving.");
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
-      await jsonOrThrow(
+      const settingsRes = await jsonOrThrow(
         await fetch(`/api/departments/${departmentId}/sla-settings`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ slaConfig, businessHours }),
         }),
       );
+      setSlaConfig(settingsRes.slaConfig);
+      setBusinessHours(settingsRes.businessHours);
+      setAvailableActiveStatuses(settingsRes.availableStatuses ?? []);
+      setSavedSnapshot(JSON.stringify({ slaConfig: settingsRes.slaConfig, businessHours: settingsRes.businessHours }));
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to save SLA settings");
     } finally {
@@ -224,6 +277,26 @@ export function SlaSettingsPage({
     });
   }
 
+  // Working-hours start/end validation + derived day length (for the summary line).
+  const startMins = businessHours ? parseTimeToMins(businessHours.workStartTime) : null;
+  const endMins = businessHours ? parseTimeToMins(businessHours.workEndTime) : null;
+  const hoursError =
+    !businessHours
+      ? null
+      : startMins === null || endMins === null
+        ? "Enter both times as HH:MM."
+        : endMins <= startMins
+          ? "End time must be after the start time."
+          : null;
+  const workdayMins =
+    startMins !== null && endMins !== null && endMins > startMins ? endMins - startMins : null;
+
+  // Only enable the save button once the user has changed something.
+  const isDirty =
+    savedSnapshot !== null && JSON.stringify({ slaConfig, businessHours }) !== savedSnapshot;
+  useUnsavedChangesGuard(isDirty);
+  const tenantHref = useTenantHref();
+
   // In department-wide mode only department-level policies (no sub-department)
   // are managed here; sub-department-scoped ones live on the sub-department page.
   const visiblePolicies =
@@ -233,15 +306,44 @@ export function SlaSettingsPage({
         ? policies
         : policies.filter((p) => !p.subDepartmentId);
 
+  // Display-only search/sort — when several policies match a ticket the strictest target wins,
+  // so list order has no effect on which policy applies.
+  const policyList = useListControls(visiblePolicies ?? [], {
+    searchText: (p) =>
+      [
+        p.name,
+        p.priority ?? "",
+        subDeptList.find((s) => s.id === p.subDepartmentId)?.name ?? "",
+        forms.find((f) => f.id === p.formConfigId)?.name ?? "",
+        p.enabled ? "enabled active" : "disabled",
+      ].join(" "),
+    sortOptions: [
+      { id: "default", label: "Default order", compare: (a, b) => a.order - b.order },
+      { id: "name", label: "Name A–Z", compare: byText((p: SlaPolicy) => p.name) },
+      { id: "newest", label: "Newest first", compare: byDateDesc((p: SlaPolicy) => p.createdAt) },
+      { id: "oldest", label: "Oldest first", compare: byDateAsc((p: SlaPolicy) => p.createdAt) },
+      { id: "priority", label: "Highest priority", compare: (a, b) => priorityRank(b.priority) - priorityRank(a.priority) },
+      { id: "first-response", label: "Fastest first response", compare: (a, b) => a.firstResponseMins - b.firstResponseMins },
+      { id: "resolution", label: "Fastest resolution", compare: (a, b) => a.resolutionMins - b.resolutionMins },
+    ],
+  });
+  const filteringPolicies = policyList.isFiltering;
+
   const policiesByForm = new Map<string, SlaPolicy[]>();
   const noFormPolicies: SlaPolicy[] = [];
-  for (const p of visiblePolicies ?? []) {
-    if (p.formConfigId && forms.some((f) => f.id === p.formConfigId)) {
+  // Policies authored against a support form that has since been deleted. No
+  // ticket can match them, so they're surfaced separately for clean-up rather
+  // than mislabelled as department-level SLA.
+  const deletedFormPolicies: SlaPolicy[] = [];
+  for (const p of visiblePolicies === null ? [] : policyList.visible) {
+    if (!p.formConfigId) {
+      noFormPolicies.push(p);
+    } else if (forms.some((f) => f.id === p.formConfigId)) {
       const arr = policiesByForm.get(p.formConfigId) ?? [];
       arr.push(p);
       policiesByForm.set(p.formConfigId, arr);
     } else {
-      noFormPolicies.push(p);
+      deletedFormPolicies.push(p);
     }
   }
 
@@ -249,7 +351,7 @@ export function SlaSettingsPage({
     <div className="w-full px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
       {!hideBackLink && (
         <Link
-          href="/settings/departments"
+          href={tenantHref("/settings/departments")}
           className="mb-4 inline-flex items-center gap-1.5 font-sans text-[12.5px] text-sts-muted hover:text-sts-foreground"
         >
           <ArrowLeft className="size-3.5" /> Back to departments
@@ -269,8 +371,11 @@ export function SlaSettingsPage({
         </div>
       )}
 
+      {showMailboxSla && <MailboxSlaCard departmentId={departmentId} />}
+
       <div className="mb-8">
-        <div className="mb-3">
+        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
           <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Policies</h2>
           {visiblePolicies !== null && (
             <p className="mt-0.5 font-sans text-[11px] text-sts-subtle">
@@ -280,9 +385,20 @@ export function SlaSettingsPage({
             </p>
           )}
         </div>
+        {visiblePolicies !== null && visiblePolicies.length > 0 && (
+          <div className="flex items-center gap-2">
+            <ListSearchInput value={policyList.query} onChange={policyList.setQuery} placeholder="Search policies…" />
+            <SortDropdown value={policyList.sortKey} onChange={policyList.setSortKey} options={policyList.sortDropdownOptions} />
+          </div>
+        )}
+        </div>
 
         {visiblePolicies === null ? (
           <SkeletonRows count={3} height="h-44" />
+        ) : filteringPolicies && policyList.visible.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-sts-card-border px-3 py-8 text-center font-sans text-[12.5px] text-sts-muted">
+            No policies match &ldquo;{policyList.query.trim()}&rdquo;
+          </p>
         ) : !showSubDepartment ? (
           // Department-wide: one flat list of the department's SLA policies —
           // not split by support form. Each policy is created directly under the
@@ -296,8 +412,9 @@ export function SlaSettingsPage({
             onSave={savePolicy}
             onDelete={deletePolicy}
             emptyHint="No SLA policies yet. Add one to set first-response and resolution targets for this department."
+            readOnly={!canEditPolicies}
           />
-        ) : forms.length === 0 && noFormPolicies.length === 0 ? (
+        ) : forms.length === 0 && noFormPolicies.length === 0 && deletedFormPolicies.length === 0 ? (
           <div className="flex flex-col items-center gap-2 rounded-2xl border border-dashed border-sts-card-border py-10 text-center">
             <div className="flex size-10 items-center justify-center rounded-full bg-sts-blue/10">
               <FileText className="size-5 text-sts-blue" />
@@ -309,7 +426,7 @@ export function SlaSettingsPage({
           </div>
         ) : (
           <div className="flex flex-col gap-5">
-            {forms.map((form) => (
+            {forms.filter((form) => !filteringPolicies || policiesByForm.has(form.id)).map((form) => (
               <PolicyGroup
                 key={form.id}
                 title={form.name}
@@ -320,6 +437,7 @@ export function SlaSettingsPage({
                 onSave={savePolicy}
                 onDelete={deletePolicy}
                 emptyHint="No SLA policies for this form yet."
+                readOnly={!canEditPolicies}
               />
             ))}
 
@@ -336,6 +454,21 @@ export function SlaSettingsPage({
                 readOnly
               />
             )}
+
+            {deletedFormPolicies.length > 0 && (
+              <PolicyGroup
+                title="Deleted support form — no longer applied"
+                policies={deletedFormPolicies}
+                subDepartments={subDeptList}
+                showSubDepartment={showSubDepartment}
+                onNewPolicy={() => {}}
+                onSave={savePolicy}
+                onDelete={deletePolicy}
+                emptyHint=""
+                hideNewPolicy
+                readOnly={!canEditPolicies}
+              />
+            )}
           </div>
         )}
       </div>
@@ -345,95 +478,170 @@ export function SlaSettingsPage({
         {!slaConfig || !businessHours ? (
           <SkeletonRows count={4} height="h-10" />
         ) : (
-          <div className="flex flex-col gap-4">
-            <label className="flex w-fit cursor-pointer items-center gap-2 font-sans text-[12.5px] text-sts-foreground">
-              <Switch
-                checked={slaConfig.pauseOutsideHours}
-                onCheckedChange={(v) => setSlaConfig({ ...slaConfig, pauseOutsideHours: v })}
-              />
-              Pause SLA timers outside working hours
-            </label>
-
-            <label className="flex w-fit cursor-pointer items-center gap-2 font-sans text-[12.5px] text-sts-foreground">
-              <Switch
-                checked={slaConfig.pauseWhenWaitingForCustomer}
-                onCheckedChange={(v) =>
-                  setSlaConfig({ ...slaConfig, pauseWhenWaitingForCustomer: v })
-                }
-              />
-              Pause resolution SLA while waiting for customer
-            </label>
-
-            <label className="flex items-center gap-2 font-sans text-[12.5px] text-sts-foreground">
-              At-risk threshold (%)
-              <input
-                type="number"
-                min={1}
-                max={100}
-                value={slaConfig.atRiskPct}
-                onChange={(e) => setSlaConfig({ ...slaConfig, atRiskPct: Number(e.target.value) })}
-                className="w-20 rounded-md border border-sts-card-border bg-sts-surface px-2 py-1 font-sans text-[12px] text-sts-foreground outline-none"
-              />
-            </label>
-
-            <div>
-              <p className="mb-1.5 font-sans text-[11.5px] font-medium text-sts-muted">
-                Fallback business calendar (used when an assignee has no personal schedule)
+          <fieldset disabled={!canEditPolicies} className="flex min-w-0 flex-col gap-4">
+            {!canEditPolicies && (
+              <p className="font-sans text-[11.5px] text-sts-muted">
+                Only admins can change working hours.
               </p>
-              <div className="flex flex-wrap items-center gap-3">
-                <label className="flex items-center gap-1.5 font-sans text-[11.5px] text-sts-muted">
-                  Timezone
-                  <input
+            )}
+            <p className="font-sans text-[12px] text-sts-muted">
+              Support form, Portal, and shared mailbox SLA clocks count only configured working hours
+              and pause resolution while waiting for the customer. Calendar and warning settings are
+              saved on new tickets; existing tickets keep their saved settings.
+            </p>
+            <div className="flex flex-col gap-1 font-sans text-[12.5px] text-sts-foreground">
+              <span id={`form-active-statuses-${departmentId}`} className="font-medium">Support form and Portal first-response active statuses</span>
+              <span className="text-[11.5px] text-sts-muted">Select one or more workflow statuses. Entering one stops first response, as does a public reply.</span>
+              <Select
+                multiple
+                value={slaConfig.firstResponseActiveStatuses}
+                onValueChange={(statuses) => setSlaConfig({ ...slaConfig, firstResponseActiveStatuses: statuses })}
+                disabled={!canEditPolicies}
+              >
+                <SelectTrigger aria-labelledby={`form-active-statuses-${departmentId}`} className="w-full font-sans text-[12px]">
+                  <SelectValue>{slaConfig.firstResponseActiveStatuses.length ? slaConfig.firstResponseActiveStatuses.join(", ") : "Select active statuses"}</SelectValue>
+                </SelectTrigger>
+                <SelectContent>
+                  {[...new Set([...availableActiveStatuses, ...slaConfig.firstResponseActiveStatuses])].map((status) => (
+                    <SelectItem key={status} value={status}>
+                      {status}{availableActiveStatuses.includes(status) ? "" : " (no longer available)"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="h-px bg-sts-card-border/70" />
+
+            <label className="flex items-center justify-between gap-3 font-sans text-[12.5px] text-sts-foreground">
+              <span className="flex flex-col gap-0.5">
+                <span className="font-medium">At-risk threshold</span>
+                <span className="text-[11.5px] text-sts-muted">
+                  Flag a ticket as at-risk once it has used this share of its SLA budget.
+                </span>
+              </span>
+              <span className="relative shrink-0">
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={slaConfig.atRiskPct}
+                  onChange={(e) => setSlaConfig({ ...slaConfig, atRiskPct: Number(e.target.value) })}
+                  className="h-8 w-[4.5rem] rounded-md border border-sts-card-border bg-sts-surface pl-2.5 pr-6 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-blue/60"
+                />
+                <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 font-sans text-[11px] text-sts-subtle">
+                  %
+                </span>
+              </span>
+            </label>
+
+            <div className="rounded-xl border border-sts-card-border p-4">
+              <p className="font-sans text-[12px] font-semibold text-sts-foreground">
+                Fallback business calendar
+              </p>
+              <p className="mt-0.5 font-sans text-[11.5px] text-sts-muted">
+                Used when an assignee has no personal schedule.
+              </p>
+
+              <div className="mt-3.5 flex flex-wrap items-start gap-3">
+                <div className="flex flex-col">
+                  <span className="mb-1.5 font-sans text-[10.5px] font-semibold uppercase tracking-[0.5px] text-sts-subtle">
+                    Timezone
+                  </span>
+                  <TimezoneSelect
                     value={businessHours.timezone}
-                    onChange={(e) => setBusinessHours({ ...businessHours, timezone: e.target.value })}
-                    className="w-40 rounded-md border border-sts-card-border bg-sts-surface px-2 py-1 font-sans text-[12px] text-sts-foreground outline-none"
+                    onChange={(v) => setBusinessHours({ ...businessHours, timezone: v })}
                   />
-                </label>
-                <label className="flex items-center gap-1.5 font-sans text-[11.5px] text-sts-muted">
-                  Start
+                </div>
+                <label className="flex flex-col">
+                  <span className="mb-1.5 font-sans text-[10.5px] font-semibold uppercase tracking-[0.5px] text-sts-subtle">
+                    Start
+                  </span>
                   <input
+                    type="time"
                     value={businessHours.workStartTime}
+                    aria-invalid={hoursError !== null}
                     onChange={(e) => setBusinessHours({ ...businessHours, workStartTime: e.target.value })}
-                    className="w-20 rounded-md border border-sts-card-border bg-sts-surface px-2 py-1 font-sans text-[12px] text-sts-foreground outline-none"
+                    className={cn(
+                      "h-8 w-28 rounded-md border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none",
+                      hoursError ? "border-sts-red" : "border-sts-card-border focus:border-sts-blue/60",
+                    )}
                   />
                 </label>
-                <label className="flex items-center gap-1.5 font-sans text-[11.5px] text-sts-muted">
-                  End
+                <label className="flex flex-col">
+                  <span className="mb-1.5 font-sans text-[10.5px] font-semibold uppercase tracking-[0.5px] text-sts-subtle">
+                    End
+                  </span>
                   <input
+                    type="time"
                     value={businessHours.workEndTime}
+                    aria-invalid={hoursError !== null}
                     onChange={(e) => setBusinessHours({ ...businessHours, workEndTime: e.target.value })}
-                    className="w-20 rounded-md border border-sts-card-border bg-sts-surface px-2 py-1 font-sans text-[12px] text-sts-foreground outline-none"
+                    className={cn(
+                      "h-8 w-28 rounded-md border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none",
+                      hoursError ? "border-sts-red" : "border-sts-card-border focus:border-sts-blue/60",
+                    )}
                   />
                 </label>
               </div>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {DAY_LABELS.map((label, day) => (
-                  <button
-                    key={day}
-                    type="button"
-                    onClick={() => toggleWorkingDay(day)}
-                    className={cn(
-                      "rounded-full px-2 py-1 font-sans text-[11px] font-medium",
-                      businessHours.workingDays.includes(day)
-                        ? "bg-sts-blue text-sts-blue-fg"
-                        : "bg-sts-surface text-sts-muted",
-                    )}
-                  >
-                    {label}
-                  </button>
-                ))}
+
+              <p
+                className={cn(
+                  "mt-2 font-sans text-[11.5px]",
+                  hoursError ? "text-sts-red" : "text-sts-muted",
+                )}
+              >
+                {hoursError ?? (
+                  <>
+                    {formatTime12(businessHours.workStartTime)} – {formatTime12(businessHours.workEndTime)}
+                    <span className="mx-1.5 text-sts-subtle">·</span>
+                    <span className="font-medium text-sts-foreground">{formatMins(workdayMins ?? 0)}</span> per
+                    working day
+                  </>
+                )}
+              </p>
+
+              <div className="mt-4">
+                <p className="mb-2 font-sans text-[10.5px] font-semibold uppercase tracking-[0.5px] text-sts-subtle">
+                  Working days
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {DAY_LABELS.map((label, day) => {
+                    const on = businessHours.workingDays.includes(day);
+                    return (
+                      <button
+                        key={day}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => toggleWorkingDay(day)}
+                        className={cn(
+                          "rounded-full px-2.5 py-1 font-sans text-[11px] font-medium transition-colors",
+                          on
+                            ? "bg-sts-blue text-sts-blue-fg"
+                            : "border border-sts-card-border bg-sts-surface text-sts-muted hover:text-sts-foreground",
+                        )}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
-            <button
-              type="button"
-              onClick={saveSettings}
-              disabled={saving}
-              className="w-fit rounded-full bg-sts-blue px-3 py-1.5 font-sans text-[12px] font-medium text-sts-blue-fg hover:bg-sts-blue/90 disabled:opacity-60"
-            >
-              {saving ? "Saving…" : "Save working-hours settings"}
-            </button>
-          </div>
+            {canEditPolicies && (
+              <div className="mt-1 flex justify-end border-t border-sts-card-border pt-4">
+                <button
+                  type="button"
+                  onClick={saveSettings}
+                  disabled={saving || hoursError !== null || !isDirty}
+                  className="shrink-0 rounded-full bg-sts-blue px-4 py-1.5 font-sans text-[12px] font-medium text-sts-blue-fg transition-colors hover:bg-sts-blue/90 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {saving ? "Saving…" : "Save working hours"}
+                </button>
+              </div>
+            )}
+          </fieldset>
         )}
       </div>
 
@@ -453,6 +661,223 @@ export function SlaSettingsPage({
   );
 }
 
+type MailboxSla = {
+  firstResponseMins: number | null; resolutionMins: number | null; canEdit: boolean; activeStatuses: string[]; availableStatuses: string[];
+  mailboxes: { id: string; address: string; firstResponseMins: number | null; resolutionMins: number | null }[];
+};
+
+/**
+ * Department-wide SLA for tickets created from the department's shared
+ * mailboxes. Form policies never apply to those tickets, so this is their only
+ * SLA. Editable by the department's managers as well as admins.
+ */
+function MailboxSlaCard({ departmentId }: { departmentId: string }) {
+  const [saved, setSaved] = useState<MailboxSla | null>(null);
+  const [activeStatuses, setActiveStatuses] = useState<string[]>(["In Progress"]);
+  const [draft, setDraft] = useState<{ firstResponseMins: number | ""; resolutionMins: number | "" }>({
+    firstResponseMins: "",
+    resolutionMins: "",
+  });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/departments/${departmentId}/mailbox-sla`)
+      .then(jsonOrThrow)
+      .then((res: MailboxSla) => {
+        if (cancelled) return;
+        setSaved(res);
+        setActiveStatuses(res.activeStatuses);
+        setDraft({ firstResponseMins: res.firstResponseMins ?? "", resolutionMins: res.resolutionMins ?? "" });
+      })
+      .catch((e) => {
+        if (!cancelled) setError(e.message);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [departmentId]);
+
+  const dirty =
+    saved !== null &&
+    (JSON.stringify([...activeStatuses].sort()) !== JSON.stringify([...saved.activeStatuses].sort()) || draft.firstResponseMins !== (saved.firstResponseMins ?? "") ||
+      draft.resolutionMins !== (saved.resolutionMins ?? ""));
+  useUnsavedChangesGuard(dirty);
+
+  const bothSet = Number(draft.firstResponseMins) > 0 && Number(draft.resolutionMins) > 0;
+  const bothEmpty = draft.firstResponseMins === "" && draft.resolutionMins === "";
+  const valid = (bothSet || bothEmpty) && activeStatuses.length > 0 && activeStatuses.every((status) => saved?.availableStatuses.includes(status));
+  const enabled = saved?.firstResponseMins != null && saved?.resolutionMins != null;
+  const readOnly = saved !== null && !saved.canEdit;
+
+  async function save(next: { firstResponseMins: number | null; resolutionMins: number | null }) {
+    setSaving(true);
+    setError(null);
+    try {
+      const res: MailboxSla = await jsonOrThrow(
+        await fetch(`/api/departments/${departmentId}/mailbox-sla`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...next, activeStatuses }),
+        }),
+      );
+      setSaved(res);
+      setActiveStatuses(res.activeStatuses);
+      setDraft({ firstResponseMins: res.firstResponseMins ?? "", resolutionMins: res.resolutionMins ?? "" });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to save mailbox SLA");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const numCls =
+    "h-8 w-24 rounded-md border border-sts-card-border bg-sts-surface px-2.5 font-sans text-[12px] text-sts-foreground outline-none focus:border-sts-blue/60 focus:ring-2 focus:ring-sts-blue/15 read-only:cursor-default read-only:focus:ring-0";
+
+  return (
+    <div className="mb-8 rounded-2xl border border-sts-card-border bg-sts-card p-5">
+      <div className="mb-1 flex items-center gap-1.5">
+        <Mail className="size-3.5 shrink-0 text-sts-subtle" />
+        <h2 className="font-sans text-[13.5px] font-semibold text-sts-foreground">Shared mailbox SLA</h2>
+        {saved !== null && (
+          <span
+            className={cn(
+              "ml-1 rounded-full px-2 py-0.5 font-sans text-[10.5px] font-medium",
+              enabled ? "bg-sts-blue/10 text-sts-blue" : "bg-sts-surface text-sts-subtle",
+            )}
+          >
+            {enabled ? "Department defaults" : "Department targets off"}
+          </span>
+        )}
+      </div>
+      <p className="mb-4 font-sans text-[11.5px] text-sts-muted">
+        Each mailbox can override these department targets. Shared mailbox SLA is configured only within the department.
+        When neither has targets, no shared mailbox SLA applies.
+        Changes affect new tickets only. Mailbox clocks always count configured working hours and pause while waiting for the customer.
+      </p>
+
+      {error && (
+        <p className="mb-3 font-sans text-[11.5px] text-sts-red">{error}</p>
+      )}
+
+      {saved === null ? (
+        <SkeletonRows count={1} height="h-10" />
+      ) : (
+        <div className="flex flex-wrap items-end gap-4">
+          <label className="flex flex-col">
+            <span className="mb-1.5 font-sans text-[10.5px] font-semibold uppercase tracking-[0.5px] text-sts-subtle">
+              Time to first response (mins)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <input
+                type="number"
+                min={1}
+                placeholder="e.g. 60"
+                value={draft.firstResponseMins}
+                readOnly={readOnly}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, firstResponseMins: e.target.value === "" ? "" : Number(e.target.value) }))
+                }
+                className={numCls}
+              />
+              {draft.firstResponseMins !== "" && (
+                <span className="whitespace-nowrap font-sans text-[10.5px] text-sts-subtle">
+                  {formatMins(draft.firstResponseMins)}
+                </span>
+              )}
+            </span>
+          </label>
+          <label className="flex flex-col">
+            <span className="mb-1.5 font-sans text-[10.5px] font-semibold uppercase tracking-[0.5px] text-sts-subtle">
+              Time to resolution (mins)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <input
+                type="number"
+                min={1}
+                placeholder="e.g. 480"
+                value={draft.resolutionMins}
+                readOnly={readOnly}
+                onChange={(e) =>
+                  setDraft((d) => ({ ...d, resolutionMins: e.target.value === "" ? "" : Number(e.target.value) }))
+                }
+                className={numCls}
+              />
+              {draft.resolutionMins !== "" && (
+                <span className="whitespace-nowrap font-sans text-[10.5px] text-sts-subtle">
+                  {formatMins(draft.resolutionMins)}
+                </span>
+              )}
+            </span>
+          </label>
+
+          {!readOnly && (
+            <div className="ml-auto flex items-center gap-2">
+              {enabled && (
+                <button
+                  type="button"
+                  disabled={saving}
+                  onClick={() => save({ firstResponseMins: null, resolutionMins: null })}
+                  className="rounded-full border border-sts-card-border px-3.5 py-1.5 font-sans text-[12px] font-medium text-sts-muted transition-colors hover:text-sts-foreground disabled:opacity-60"
+                >
+                  Turn off department targets
+                </button>
+              )}
+              <button
+                type="button"
+                disabled={saving || !dirty || !valid}
+                onClick={() =>
+                  save(
+                    bothEmpty
+                      ? { firstResponseMins: null, resolutionMins: null }
+                      : {
+                          firstResponseMins: Number(draft.firstResponseMins),
+                          resolutionMins: Number(draft.resolutionMins),
+                        },
+                  )
+                }
+                className="rounded-full bg-sts-blue px-4 py-1.5 font-sans text-[12px] font-medium text-sts-blue-fg transition-colors hover:bg-sts-blue/90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {saving ? "Saving…" : "Save mailbox SLA"}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      {!valid && (
+        <p className="mt-2 font-sans text-[11.5px] text-sts-red">
+          Set both targets (greater than 0), or clear both. Select at least one current active status.
+        </p>
+      )}
+      {saved && (
+        <div className="mt-5 space-y-4 border-t border-sts-card-border pt-4">
+          <div className="flex flex-col gap-1.5 font-sans text-[11.5px] text-sts-muted">
+            <span id={`mailbox-active-statuses-${departmentId}`}>Active statuses that stop first response</span>
+            <Select multiple value={activeStatuses} onValueChange={setActiveStatuses} disabled={readOnly}>
+              <SelectTrigger aria-labelledby={`mailbox-active-statuses-${departmentId}`} className="w-full font-sans text-[12px]">
+                <SelectValue>{activeStatuses.length ? activeStatuses.join(", ") : "Select active statuses"}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {[...new Set([...saved.availableStatuses, ...activeStatuses])].map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {status}{saved.availableStatuses.includes(status) ? "" : " (no longer available)"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p>Select one or more statuses from this department&apos;s workflows.</p>
+          </div>
+          {saved.mailboxes.map((mailbox) => (
+            <MailboxTargetRow key={mailbox.id} mailbox={mailbox} departmentId={departmentId} canEdit={saved.canEdit}
+              onSaved={(updated) => setSaved(updated)} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PolicyGroup({
   title,
   policies,
@@ -463,6 +888,7 @@ function PolicyGroup({
   onDelete,
   emptyHint,
   readOnly = false,
+  hideNewPolicy = false,
 }: {
   title: string;
   policies: SlaPolicy[];
@@ -473,6 +899,8 @@ function PolicyGroup({
   onDelete: (id: string) => Promise<void>;
   emptyHint: string;
   readOnly?: boolean;
+  /** Hide "New policy" while keeping rows editable/deletable. */
+  hideNewPolicy?: boolean;
 }) {
   return (
     <div className="rounded-2xl border border-sts-card-border bg-sts-card p-5">
@@ -484,7 +912,7 @@ function PolicyGroup({
             · {policies.length} {policies.length === 1 ? "policy" : "policies"}
           </span>
         </div>
-        {!readOnly && (
+        {!readOnly && !hideNewPolicy && (
           <button
             type="button"
             onClick={onNewPolicy}
@@ -549,7 +977,13 @@ function PolicyRow({
   onDelete: (id: string) => Promise<void>;
   readOnly?: boolean;
 }) {
-  const [draft, setDraft] = useState({
+  const [draft, setDraft] = useState<{
+    name: string;
+    priority: Priority | null;
+    firstResponseMins: number | "";
+    resolutionMins: number | "";
+    subDepartmentId: string | null;
+  }>({
     name: policy.name,
     priority: policy.priority,
     firstResponseMins: policy.firstResponseMins,
@@ -569,13 +1003,18 @@ function PolicyRow({
     draft.firstResponseMins !== policy.firstResponseMins ||
     draft.resolutionMins !== policy.resolutionMins ||
     draft.subDepartmentId !== policy.subDepartmentId;
+  useUnsavedChangesGuard(dirty);
 
+  // Sub-department is required whenever the department has sub-departments to
+  // pick from (mirrors the create path).
+  const subDepartmentRequired = showSubDepartment && subDepartments.length > 0;
   const canSave =
     dirty &&
     !saving &&
     draft.name.trim().length > 0 &&
-    draft.firstResponseMins > 0 &&
-    draft.resolutionMins > 0;
+    Number(draft.firstResponseMins) > 0 &&
+    Number(draft.resolutionMins) > 0 &&
+    (!subDepartmentRequired || Boolean(draft.subDepartmentId));
 
   async function save() {
     if (!canSave) return;
@@ -584,8 +1023,8 @@ function PolicyRow({
       const patch: Partial<SlaPolicy> = {
         name: draft.name.trim(),
         priority: draft.priority,
-        firstResponseMins: draft.firstResponseMins,
-        resolutionMins: draft.resolutionMins,
+        firstResponseMins: Number(draft.firstResponseMins),
+        resolutionMins: Number(draft.resolutionMins),
       };
       if (draft.subDepartmentId) {
         patch.subDepartmentId = draft.subDepartmentId;
@@ -622,8 +1061,8 @@ function PolicyRow({
               <SearchableSelect
                 value={draft.subDepartmentId ?? ""}
                 onChange={(v) => set("subDepartmentId", v || null)}
-                options={SUB_DEPT_OPTIONS(subDepartments)}
-                placeholder="None (form default)"
+                options={subDepartments.map((s) => ({ value: s.id, label: s.name }))}
+                placeholder="Select a sub-department"
                 searchable={false}
                 size="sm"
                 aria-label="Sub-department concerned"
@@ -658,12 +1097,15 @@ function PolicyRow({
           <input
             type="number"
             min={1}
+            placeholder="e.g. 60"
             value={draft.firstResponseMins}
-            onChange={(e) => set("firstResponseMins", Number(e.target.value))}
+            onChange={(e) => set("firstResponseMins", e.target.value === "" ? "" : Number(e.target.value))}
             readOnly={readOnly}
             className={cn(numCls, readOnly && "cursor-default focus:border-sts-card-border focus:ring-0")}
           />
-          <span className="whitespace-nowrap font-sans text-[10.5px] text-sts-subtle">{formatMins(draft.firstResponseMins)}</span>
+          {draft.firstResponseMins !== "" && (
+            <span className="whitespace-nowrap font-sans text-[10.5px] text-sts-subtle">{formatMins(draft.firstResponseMins)}</span>
+          )}
         </div>
       </td>
       <td className={cell}>
@@ -671,34 +1113,40 @@ function PolicyRow({
           <input
             type="number"
             min={1}
+            placeholder="e.g. 480"
             value={draft.resolutionMins}
-            onChange={(e) => set("resolutionMins", Number(e.target.value))}
+            onChange={(e) => set("resolutionMins", e.target.value === "" ? "" : Number(e.target.value))}
             readOnly={readOnly}
             className={cn(numCls, readOnly && "cursor-default focus:border-sts-card-border focus:ring-0")}
           />
-          <span className="whitespace-nowrap font-sans text-[10.5px] text-sts-subtle">{formatMins(draft.resolutionMins)}</span>
+          {draft.resolutionMins !== "" && (
+            <span className="whitespace-nowrap font-sans text-[10.5px] text-sts-subtle">{formatMins(draft.resolutionMins)}</span>
+          )}
         </div>
       </td>
       <td className={cell}>
         {!readOnly && (
           <div className="flex items-center justify-end gap-1.5">
-            <button
-              type="button"
-              onClick={save}
-              disabled={!canSave}
-              className="inline-flex items-center gap-1 rounded-full bg-sts-blue px-2 py-1 font-sans text-[11.5px] font-medium text-white transition-opacity hover:bg-sts-blue/90 disabled:opacity-40"
-              title="Save changes"
-            >
-              <Save className="size-3.5" /> {saving ? "Saving…" : "Update"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setConfirmOpen(true)}
-              className="rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
-              title="Delete policy"
-            >
-              <Trash2 className="size-3.5" />
-            </button>
+            <Tip label="Save changes">
+              <button
+                type="button"
+                onClick={save}
+                disabled={!canSave}
+                className="inline-flex items-center gap-1 rounded-full bg-sts-blue px-2 py-1 font-sans text-[11.5px] font-medium text-white transition-opacity hover:bg-sts-blue/90 disabled:opacity-40"
+              >
+                <Save className="size-3.5" /> {saving ? "Saving…" : "Update"}
+              </button>
+            </Tip>
+            <Tip label="Delete policy">
+              <button
+                aria-label="Delete policy"
+                type="button"
+                onClick={() => setConfirmOpen(true)}
+                className="rounded-full p-1.5 text-sts-subtle hover:bg-red-50 hover:text-red-500 dark:hover:bg-red-900/20"
+              >
+                <Trash2 className="size-3.5" />
+              </button>
+            </Tip>
             <ConfirmDialog
               open={confirmOpen}
               onOpenChange={setConfirmOpen}
@@ -744,8 +1192,8 @@ function NewPolicyModal({
   const formConfigId = initialFormConfigId;
   const [name, setName] = useState("");
   const [priority, setPriority] = useState<Priority | "">("");
-  const [firstResponseMins, setFirstResponseMins] = useState(60);
-  const [resolutionMins, setResolutionMins] = useState(480);
+  const [firstResponseMins, setFirstResponseMins] = useState<number | "">("");
+  const [resolutionMins, setResolutionMins] = useState<number | "">("");
   const [subDepartmentId, setSubDepartmentId] = useState("");
 
   useEffect(() => {
@@ -759,15 +1207,23 @@ function NewPolicyModal({
   const submit = () =>
     onCreate({
       name: name.trim(),
-      firstResponseMins,
-      resolutionMins,
+      firstResponseMins: Number(firstResponseMins),
+      resolutionMins: Number(resolutionMins),
       formConfigId: formConfigId || null,
       priority: priority || null,
       subDepartmentId: subDepartmentId || null,
     });
 
   const formName = forms.find((f) => f.id === formConfigId)?.name ?? null;
-  const canSubmit = name.trim().length > 0 && firstResponseMins > 0 && resolutionMins > 0 && !creating;
+  // Sub-department is required whenever the department has sub-departments to pick
+  // from. Departments with none fall back to department-level policies.
+  const subDepartmentRequired = showSubDepartment && subDepartments.length > 0;
+  const canSubmit =
+    name.trim().length > 0 &&
+    Number(firstResponseMins) > 0 &&
+    Number(resolutionMins) > 0 &&
+    (!subDepartmentRequired || subDepartmentId.length > 0) &&
+    !creating;
 
   const fieldCls =
     "h-9 w-full rounded-[6px] border border-sts-card-border bg-sts-bg px-2.5 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-blue focus:ring-1 focus:ring-sts-blue/30";
@@ -780,14 +1236,17 @@ function NewPolicyModal({
       >
         <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-sts-card-border px-[22px]">
           <h2 className="sts-text-modal-title">New SLA policy</h2>
-          <button
-            type="button"
-            onClick={onCancel}
-            disabled={creating}
-            className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
-          >
-            <X size={17} strokeWidth={2} />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              type="button"
+              onClick={onCancel}
+              disabled={creating}
+              className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-50"
+            >
+              <X size={17} strokeWidth={2} />
+            </button>
+          </Tip>
         </div>
 
         <div className="flex flex-col gap-4 overflow-y-auto px-[22px] py-5">
@@ -821,19 +1280,18 @@ function NewPolicyModal({
 
           {showSubDepartment && subDepartments.length > 0 && (
             <div className="space-y-1.5">
-              <label className="sts-text-label">Sub-department concerned (optional)</label>
+              <label className="sts-text-label">Sub-department concerned</label>
               <SearchableSelect
                 value={subDepartmentId}
                 onChange={(v) => setSubDepartmentId(v ?? "")}
-                options={SUB_DEPT_OPTIONS(subDepartments)}
-                placeholder="None (form default)"
+                options={subDepartments.map((s) => ({ value: s.id, label: s.name }))}
+                placeholder="Select a sub-department"
                 searchable={false}
                 size="md"
                 aria-label="Sub-department concerned"
               />
               <p className="font-sans text-[11px] text-sts-subtle">
-                When set, tickets for this issue land in that sub-department. Otherwise the form or
-                department default applies.
+                Tickets for this issue land in the selected sub-department.
               </p>
             </div>
           )}
@@ -866,11 +1324,14 @@ function NewPolicyModal({
               <input
                 type="number"
                 min={1}
+                placeholder="e.g. 60"
                 value={firstResponseMins}
-                onChange={(e) => setFirstResponseMins(Number(e.target.value))}
+                onChange={(e) => setFirstResponseMins(e.target.value === "" ? "" : Number(e.target.value))}
                 className={fieldCls}
               />
-              <p className="font-sans text-[11px] text-sts-subtle">{formatMins(firstResponseMins)}</p>
+              {firstResponseMins !== "" && (
+                <p className="font-sans text-[11px] text-sts-subtle">{formatMins(firstResponseMins)}</p>
+              )}
             </div>
             <div className="space-y-1.5">
               <label className="sts-text-label flex items-center gap-1.5">
@@ -879,11 +1340,14 @@ function NewPolicyModal({
               <input
                 type="number"
                 min={1}
+                placeholder="e.g. 480"
                 value={resolutionMins}
-                onChange={(e) => setResolutionMins(Number(e.target.value))}
+                onChange={(e) => setResolutionMins(e.target.value === "" ? "" : Number(e.target.value))}
                 className={fieldCls}
               />
-              <p className="font-sans text-[11px] text-sts-subtle">{formatMins(resolutionMins)}</p>
+              {resolutionMins !== "" && (
+                <p className="font-sans text-[11px] text-sts-subtle">{formatMins(resolutionMins)}</p>
+              )}
             </div>
           </div>
         </div>
@@ -907,6 +1371,45 @@ function NewPolicyModal({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+
+function MailboxTargetRow({ mailbox, departmentId, canEdit, onSaved }: {
+  mailbox: MailboxSla["mailboxes"][number]; departmentId: string; canEdit: boolean; onSaved: (saved: MailboxSla) => void;
+}) {
+  const [first, setFirst] = useState(mailbox.firstResponseMins?.toString() ?? "");
+  const [resolution, setResolution] = useState(mailbox.resolutionMins?.toString() ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const dirty = first !== (mailbox.firstResponseMins?.toString() ?? "") || resolution !== (mailbox.resolutionMins?.toString() ?? "");
+  useUnsavedChangesGuard(dirty);
+  async function save() {
+    setSaving(true); setError(null);
+    try {
+      const updated = await jsonOrThrow(await fetch(`/api/departments/${departmentId}/mailbox-sla`, {
+        method: "PATCH", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mailboxConnectionId: mailbox.id, firstResponseMins: first === "" ? null : Number(first), resolutionMins: resolution === "" ? null : Number(resolution) }),
+      }));
+      onSaved(updated);
+    } catch (error) { setError(error instanceof Error ? error.message : "Could not save mailbox targets"); }
+    finally { setSaving(false); }
+  }
+  return (
+    <div className="space-y-2 font-sans text-[11.5px]">
+      <p className="font-medium text-sts-foreground">{mailbox.address}</p>
+      <div className="flex flex-wrap items-end gap-3">
+        <label className="flex flex-col gap-1 text-sts-muted">First response (mins)
+          <input type="number" min={1} value={first} readOnly={!canEdit} placeholder="Inherit" onChange={(event) => setFirst(event.target.value)} className="h-8 w-28 rounded-md border border-sts-card-border bg-sts-surface px-2 text-sts-foreground" />
+        </label>
+        <label className="flex flex-col gap-1 text-sts-muted">Resolution (mins)
+          <input type="number" min={1} value={resolution} readOnly={!canEdit} placeholder="Inherit" onChange={(event) => setResolution(event.target.value)} className="h-8 w-28 rounded-md border border-sts-card-border bg-sts-surface px-2 text-sts-foreground" />
+        </label>
+        {canEdit && <button onClick={save} disabled={saving || !dirty} className="rounded-full bg-sts-blue px-3 py-1.5 text-sts-blue-fg disabled:opacity-50">{saving ? "Saving…" : "Save targets"}</button>}
+      </div>
+      <p className="text-sts-subtle">Leave both empty to inherit department targets. If department targets are off, no SLA applies.</p>
+      {error && <p className="text-sts-red">{error}</p>}
     </div>
   );
 }

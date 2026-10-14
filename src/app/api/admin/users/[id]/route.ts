@@ -111,17 +111,24 @@ export async function PATCH(
           { status: 403 },
         )
       }
-      const departmentId = await resolveRoleChangeDepartmentId(
-        id,
-        profile!.activeTenantId,
-        typeof body.departmentId === "string" ? body.departmentId : null,
-      )
-      if (!departmentId) {
+      const tenantId = profile!.activeTenantId
+      if (!tenantId) {
         return NextResponse.json(
-          { error: "departmentId is required for scoped role changes" },
+          { error: "An active tenant is required to change roles" },
           { status: 400 },
         )
       }
+      // "Admin" is tenant-wide and needs no department; every other role is
+      // department/sub-department scoped. Resolving a department only matters for
+      // those — a member with no department can still be promoted to tenant admin.
+      const departmentId =
+        body.role === "admin"
+          ? null
+          : await resolveRoleChangeDepartmentId(
+              id,
+              tenantId,
+              typeof body.departmentId === "string" ? body.departmentId : null,
+            )
       const subDepartmentId =
         typeof body.subDepartmentId === "string"
           ? body.subDepartmentId
@@ -132,8 +139,9 @@ export async function PATCH(
               })
             )?.subDepartmentId ?? null
       try {
-        const current = await loadUserRoleChanges(id, profile!.activeTenantId ?? undefined)
+        const current = await loadUserRoleChanges(id, tenantId)
         scopedRoleChanges = planLegacyDepartmentRoleUpdate({
+          tenantId,
           departmentId,
           subDepartmentId,
           newRole: body.role as Role,
@@ -165,10 +173,12 @@ export async function PATCH(
     data.subDepartmentId = nextSubDepartmentId
   }
 
-  // Move a member's primary department (tenant-wide Members view).
-  // Agents/sub-managers may keep sub-department memberships in other departments;
-  // this only clears the primary Profile.subDepartmentId so a new home can be chosen.
+  // Move a member's home department (tenant-wide Members view).
+  // Sub-department memberships stay additive — this records the department the
+  // roster shows, and clears only the primary Profile.subDepartmentId so a new
+  // sub-department in that department can be chosen afterwards.
   let moveToDepartmentId: string | null | undefined
+  let moveDepartmentTenantId: string | null = null
   if ("departmentId" in body && !("subDepartmentId" in body) && !("role" in body) && !("roleChanges" in body)) {
     moveToDepartmentId = body.departmentId ?? null
     if (moveToDepartmentId) {
@@ -179,6 +189,7 @@ export async function PATCH(
       if (!dept || (profile!.activeTenantId && dept.tenantId !== profile!.activeTenantId)) {
         return NextResponse.json({ error: "Department not found" }, { status: 404 })
       }
+      moveDepartmentTenantId = dept.tenantId
       // Managers may only move users into departments they manage.
       if (isManager && !(profile!.managedDepartmentIds ?? []).includes(moveToDepartmentId)) {
         return NextResponse.json({ error: "Department is outside your scope" }, { status: 403 })
@@ -292,12 +303,73 @@ export async function PATCH(
     await broadcastForceLogout([id], "Your account has been restricted. Contact your administrator for access.")
   }
 
-  // Primary department change: drop legacy DepartmentMember rows only.
-  // Sub-department memberships are additive across departments — do not deactivate them.
-  if (moveToDepartmentId !== undefined) {
-    await prisma.departmentMember.deleteMany({
-      where: { userId: id },
-    })
+  // Persist the home department the members roster reads back.
+  // Managers are stored on DepartmentManager (that is what puts them under a
+  // department). Everyone else — including an admin just demoted to agent, who
+  // has no sub-department yet — is stored on DepartmentMember. Deleting those
+  // rows without writing the new one is why the department dropdown snapped
+  // back to "No department" after refresh.
+  // Sub-department memberships stay additive; this does not deactivate them.
+  if (moveToDepartmentId) {
+    const tenantId = moveDepartmentTenantId
+    const [tenantMembership, managerRows] = await Promise.all([
+      tenantId
+        ? prisma.tenantMembership.findFirst({
+            where: { userId: id, tenantId, isActive: true },
+            select: { role: true },
+          })
+        : Promise.resolve(null),
+      tenantId
+        ? prisma.departmentManager.findMany({
+            where: { userId: id, department: { tenantId } },
+            select: { departmentId: true, role: true },
+          })
+        : Promise.resolve([] as { departmentId: string; role: string }[]),
+    ])
+    const managesDepartment = managerRows.some((row) => row.role === "manager" || row.role === "admin")
+    const isManagerHome = (tenantMembership?.role === "manager" || managesDepartment) && tenantMembership?.role !== "admin"
+
+    if (isManagerHome) {
+      // Single-department members are moved; someone already managing several
+      // departments keeps the others and gains this one.
+      if (managerRows.length <= 1) {
+        await prisma.departmentManager.deleteMany({
+          where: {
+            userId: id,
+            departmentId: { not: moveToDepartmentId },
+            ...(tenantId ? { department: { tenantId } } : {}),
+          },
+        })
+      }
+      await prisma.departmentManager.upsert({
+        where: { departmentId_userId: { departmentId: moveToDepartmentId, userId: id } },
+        create: {
+          departmentId: moveToDepartmentId,
+          userId: id,
+          role: "manager",
+          assignedBy: profile!.id,
+        },
+        update: {},
+      })
+      await prisma.departmentMember.deleteMany({ where: { userId: id } })
+      const { syncUserRoleAssignments } = await import("@/lib/role-assignment")
+      await syncUserRoleAssignments(id)
+    } else {
+      await prisma.departmentMember.deleteMany({
+        where: { userId: id, departmentId: { not: moveToDepartmentId } },
+      })
+      await prisma.departmentMember.upsert({
+        where: { departmentId_userId: { departmentId: moveToDepartmentId, userId: id } },
+        create: {
+          departmentId: moveToDepartmentId,
+          userId: id,
+          addedBy: profile!.id,
+        },
+        update: {},
+      })
+    }
+  } else if (moveToDepartmentId === null) {
+    await prisma.departmentMember.deleteMany({ where: { userId: id } })
   }
 
   // Keep SubDepartmentMembership in sync with Profile.subDepartmentId.

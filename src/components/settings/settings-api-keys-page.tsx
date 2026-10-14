@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bot, ChevronDown, Copy, Check, Info, Plus, X, Key } from "lucide-react";
+import Link from "next/link";
+import { BookOpen, Bot, ChevronDown, Copy, Check, Info, Plus, X, Key } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { SearchableSelect } from "@/components/ui/searchable-select";
@@ -15,6 +16,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  PortalApiFormsSection,
+  type PortalApiFormRow,
+} from "@/components/departments/portal-api-forms-section";
+import { PortalApiDocumentation } from "@/components/departments/portal-api-documentation";
+import { Tip } from "@/components/ui/tooltip";
+import { ListSearchInput, SortDropdown, byDateAsc, byDateDesc, byText, useListControls } from "@/components/ui/list-controls";
 
 export type ApiKeyRow = {
   id: string;
@@ -23,14 +33,24 @@ export type ApiKeyRow = {
   scope: string;
   department: string;
   created: string;
+  /** Raw ISO creation date (`created` is pre-formatted relative text). */
+  createdAt?: string;
   createdBy: string;
   lastUsed: string;
   revoked: boolean;
+  formId?: string | null;
+  formName?: string | null;
 };
 
 export type DepartmentOption = {
   id: string;
   name: string;
+  forms?: {
+    id: string;
+    name: string;
+    isActive: boolean;
+    isConnected: boolean;
+  }[];
 };
 
 // ── Sub-components ─────────────────────────────────────────────────────────────
@@ -40,11 +60,9 @@ function ClaudeConnectGuide() {
   const [open, setOpen] = useState(false);
   const [keyInput, setKeyInput] = useState("");
   const [copied, setCopied] = useState(false);
-  const [origin, setOrigin] = useState("https://ticketing-system.pengroup.com");
-
-  useEffect(() => {
-    if (typeof window !== "undefined") setOrigin(window.location.origin);
-  }, []);
+  const origin = typeof window === "undefined"
+    ? "https://ticketing-system.pengroup.com"
+    : window.location.origin;
 
   const trimmed = keyInput.trim();
   const url = `${origin}/api/mcp/${trimmed || "<your-api-key>"}/mcp`;
@@ -101,15 +119,17 @@ function ClaudeConnectGuide() {
                 />
                 <div className="flex min-w-0 flex-1 items-center gap-1.5 rounded-[8px] border border-sts-card-border bg-sts-bg px-2.5">
                   <code className="min-w-0 flex-1 truncate font-mono text-[11px] text-sts-id">{url}</code>
-                  <button
-                    type="button"
-                    onClick={copyUrl}
-                    disabled={!trimmed}
-                    className="shrink-0 rounded p-1 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-40"
-                    title="Copy URL"
-                  >
-                    {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
-                  </button>
+                  <Tip label={copied ? "Copied!" : "Copy URL"}>
+                    <button
+                      aria-label="Copy URL"
+                      type="button"
+                      onClick={copyUrl}
+                      disabled={!trimmed}
+                      className="shrink-0 rounded p-1 text-sts-muted hover:bg-sts-surface hover:text-sts-foreground disabled:opacity-40"
+                    >
+                      {copied ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
+                    </button>
+                  </Tip>
                 </div>
               </div>
               <p className="mt-1 text-[11.5px] text-sts-muted">
@@ -132,9 +152,9 @@ function ClaudeConnectGuide() {
                 Try &quot;show me ticket WEB-12&quot; or &quot;create a bug for the WEB subDepartment&quot;.
                 Actions taken by Claude are attributed to the key&apos;s owner and send the same
                 notifications as the web app. Full tool reference in the{" "}
-                <a href="/docs#claude-connector" className="text-sts-blue hover:underline">
+                <Link href="/docs#claude-connector" className="text-sts-blue hover:underline">
                   user manual
-                </a>
+                </Link>
                 .
               </span>
             </li>
@@ -175,29 +195,43 @@ function GenerateKeyModal({
   isAdmin,
   onClose,
   onCreated,
+  portalMode = false,
+  editKey,
+  onSaved,
 }: {
   departments: DepartmentOption[];
   isAdmin: boolean;
   onClose: () => void;
   onCreated: (rawKey: string, keyName: string) => void;
+  portalMode?: boolean;
+  editKey?: ApiKeyRow;
+  onSaved?: () => void;
 }) {
-  const [name, setName] = useState("");
-  const [deptId, setDeptId] = useState(departments[0]?.id ?? "");
+  const [name, setName] = useState(editKey?.name ?? "");
+  const [deptId, setDeptId] = useState(
+    editKey
+      ? departments.find((department) => department.forms?.some((form) => form.id === editKey.formId))?.id ?? ""
+      : departments[0]?.id ?? "",
+  );
+  const [formId, setFormId] = useState(editKey?.formId ?? "");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim() || (portalMode && (!deptId || !formId))) return;
     setLoading(true);
     setErr(null);
     try {
-      const res = await fetch("/api/settings/api-keys", {
-        method: "POST",
+      const res = await fetch(editKey ? `/api/settings/api-keys/${editKey.id}` : "/api/settings/api-keys", {
+        method: editKey ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: name.trim(),
           departmentId: deptId || undefined,
+          purpose: portalMode ? "portal" : undefined,
+          formConfigId: portalMode ? formId : undefined,
+          action: editKey ? "update-form" : undefined,
         }),
       });
       const data = await res.json();
@@ -205,7 +239,8 @@ function GenerateKeyModal({
         setErr(data.error ?? "Failed to create key");
         return;
       }
-      onCreated(data.rawKey, data.name);
+      if (editKey) onSaved?.();
+      else onCreated(data.rawKey, data.name);
     } catch {
       setErr("Network error — please try again");
     } finally {
@@ -215,15 +250,18 @@ function GenerateKeyModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center sts-overlay-backdrop p-4">
-      <div className="w-full max-w-md rounded-xl border border-sts-card-border bg-sts-card shadow-xl">
+      <div role="dialog" aria-modal="true" aria-labelledby="api-key-modal-title" className="w-full max-w-md rounded-xl border border-sts-card-border bg-sts-card shadow-xl">
         <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
-          <h2 className="sts-text-modal-title">Generate API key</h2>
-          <button
-            onClick={onClose}
-            className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
-          >
-            <X className="size-4" />
-          </button>
+          <h2 id="api-key-modal-title" className="sts-text-modal-title">{editKey ? "Edit linked support form" : "Generate API key"}</h2>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              onClick={onClose}
+              className="flex size-7 items-center justify-center rounded-full text-sts-muted hover:bg-sts-surface hover:text-sts-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          </Tip>
         </div>
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4 p-5">
@@ -236,6 +274,7 @@ function GenerateKeyModal({
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. GitHub Actions, Zapier integration"
               className="h-9 font-sans text-[13px]"
+              disabled={Boolean(editKey)}
               autoFocus
             />
           </div>
@@ -243,23 +282,58 @@ function GenerateKeyModal({
           {departments.length > 0 && (
             <div className="flex flex-col gap-1.5">
               <label className="font-sans text-[12px] font-medium text-sts-foreground">
-                Department scope
+                {portalMode ? "Department" : "Department scope"}
               </label>
               <SearchableSelect
                 value={deptId}
-                onChange={setDeptId}
+                onChange={(value) => {
+                  setDeptId(value);
+                  if (portalMode) setFormId("");
+                }}
                 options={[
-                  ...(isAdmin
+                  ...(!portalMode && isAdmin
                     ? [{ value: "", label: "Global (all departments)" }]
                     : []),
                   ...departments.map((d) => ({ value: d.id, label: d.name })),
                 ]}
                 placeholder="Select department…"
                 className="bg-sts-bg"
-                aria-label="Department scope"
+                aria-label={portalMode ? "Department" : "Department scope"}
               />
               <p className="font-sans text-[11px] text-sts-muted">
-                Key will only be able to read data from this department.
+                {portalMode
+                  ? "Choose the department that owns the support form."
+                  : "Key will only be able to read data from this department."}
+              </p>
+            </div>
+          )}
+
+          {portalMode && (
+            <div className="flex flex-col gap-1.5">
+              <label className="font-sans text-[12px] font-medium text-sts-foreground">
+                Support form
+              </label>
+              <SearchableSelect
+                value={formId}
+                onChange={setFormId}
+                options={(departments.find((department) => department.id === deptId)?.forms ?? []).map((form) => ({
+                  value: form.id,
+                  label: form.name,
+                  description: form.isConnected && form.id !== editKey?.formId
+                    ? "Already connected"
+                    : !form.isActive
+                      ? "Inactive"
+                      : undefined,
+                  disabled: form.id !== editKey?.formId && (form.isConnected || !form.isActive),
+                }))}
+                placeholder={deptId ? "Select support form…" : "Select a department first"}
+                emptyLabel={deptId ? "No support forms in this department" : "Select a department first"}
+                disabled={!deptId}
+                className="bg-sts-bg"
+                aria-label="Support form"
+              />
+              <p className="font-sans text-[11px] text-sts-muted">
+                The API will use this form&apos;s existing fields, issues, routing, and SLA settings.
               </p>
             </div>
           )}
@@ -270,12 +344,15 @@ function GenerateKeyModal({
               strokeWidth={2}
             />
             <p className="font-sans text-[11.5px] leading-snug text-sts-muted">
-              Keys are read-only and scoped to the selected department. The raw
-              key is shown once — store it securely.
+              {editKey
+                ? "Future submissions will use the selected form. Your API key and existing tickets are preserved."
+                : portalMode
+                ? "The key will be linked to the selected support form. It can submit that form, view its tickets, and add requester comments. The raw key is shown once."
+                : "Keys are read-only and scoped to the selected department. The raw key is shown once — store it securely."}
             </p>
           </div>
 
-          {err && <p className="font-sans text-[12px] text-sts-red">{err}</p>}
+          {err && <p role="alert" className="font-sans text-[12px] text-sts-red">{err}</p>}
 
           <div className="flex justify-end gap-2">
             <Button
@@ -290,10 +367,10 @@ function GenerateKeyModal({
             <Button
               type="submit"
               size="sm"
-              disabled={loading || !name.trim()}
+              disabled={loading || !name.trim() || (portalMode && (!deptId || !formId))}
               className="gap-1.5 bg-sts-blue font-sans text-[12.5px] text-white dark:text-gray-900 hover:bg-sts-blue/90"
             >
-              {loading ? "Generating…" : "Generate"}
+              {editKey ? (loading ? "Saving…" : "Save changes") : (loading ? "Generating…" : "Generate")}
             </Button>
           </div>
         </form>
@@ -341,17 +418,19 @@ function KeyRevealModal({
             <code className="flex-1 overflow-x-auto whitespace-nowrap font-mono text-[12px] text-sts-foreground">
               {rawKey}
             </code>
-            <button
-              onClick={copy}
-              className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
-              title="Copy key"
-            >
-              {copied ? (
-                <Check className="size-3.5 text-sts-green" />
-              ) : (
-                <Copy className="size-3.5" />
-              )}
-            </button>
+            <Tip label={copied ? "Copied!" : "Copy key"}>
+              <button
+                aria-label="Copy key"
+                onClick={copy}
+                className="flex size-7 shrink-0 items-center justify-center rounded-full text-sts-muted transition-colors hover:bg-sts-surface hover:text-sts-foreground"
+              >
+                {copied ? (
+                  <Check className="size-3.5 text-sts-green" />
+                ) : (
+                  <Copy className="size-3.5" />
+                )}
+              </button>
+            </Tip>
           </div>
 
           <div className="flex items-start gap-2 rounded-[8px] bg-amber-50 px-3 py-2.5 dark:bg-amber-900/20">
@@ -360,7 +439,7 @@ function KeyRevealModal({
               strokeWidth={2}
             />
             <p className="font-sans text-[11.5px] leading-snug text-amber-700 dark:text-amber-300">
-              Store this key somewhere safe. You won't be able to view it again.
+              Store this key somewhere safe. You won&apos;t be able to view it again.
             </p>
           </div>
 
@@ -385,18 +464,46 @@ export function SettingsApiKeysPage({
   apiKeys: initialKeys,
   departments,
   isAdmin,
+  portalMode = false,
+  portalForms = [],
 }: {
   apiKeys: ApiKeyRow[];
   departments: DepartmentOption[];
   isAdmin: boolean;
+  portalMode?: boolean;
+  portalForms?: PortalApiFormRow[];
 }) {
   const router = useRouter();
   const [showGenerate, setShowGenerate] = useState(false);
+  const [editKey, setEditKey] = useState<ApiKeyRow | null>(null);
   const [revealKey, setRevealKey] = useState<{
     raw: string;
     name: string;
   } | null>(null);
   const [revoking, setRevoking] = useState<string | null>(null);
+  const [keyToRevoke, setKeyToRevoke] = useState<string | null>(null);
+  const [routeCopied, setRouteCopied] = useState(false);
+  const [showDocumentation, setShowDocumentation] = useState(false);
+  // Newest / Oldest keep revoked keys last, matching the server's default order.
+  const list = useListControls(initialKeys, {
+    searchText: (k) => `${k.name} ${k.maskedKey} ${k.department} ${k.scope} ${k.createdBy} ${k.formName ?? ""}`,
+    sortOptions: [
+      {
+        id: "newest",
+        label: "Newest first",
+        compare: (a, b) => Number(a.revoked) - Number(b.revoked) || byDateDesc((k: ApiKeyRow) => k.createdAt)(a, b),
+      },
+      {
+        id: "oldest",
+        label: "Oldest first",
+        compare: (a, b) => Number(a.revoked) - Number(b.revoked) || byDateAsc((k: ApiKeyRow) => k.createdAt)(a, b),
+      },
+      { id: "name", label: "Name A–Z", compare: byText((k: ApiKeyRow) => k.name) },
+      { id: "name-desc", label: "Name Z–A", compare: (a, b) => byText((k: ApiKeyRow) => k.name)(b, a) },
+      { id: "department", label: "Department", compare: byText((k: ApiKeyRow) => k.department) },
+      { id: "status", label: "Active first", compare: (a, b) => Number(a.revoked) - Number(b.revoked) },
+    ],
+  });
 
   function handleCreated(rawKey: string, keyName: string) {
     setShowGenerate(false);
@@ -408,24 +515,98 @@ export function SettingsApiKeysPage({
     router.refresh();
   }
 
-  async function handleRevoke(id: string) {
+  // Revoking breaks live integrations, so it always goes through a confirm.
+  function handleRevoke(id: string) {
+    setKeyToRevoke(id);
+  }
+
+  async function revokeKey(id: string) {
     setRevoking(id);
     try {
-      await fetch(`/api/settings/api-keys/${id}`, { method: "DELETE" });
+      const res = await fetch(`/api/settings/api-keys/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error((data as { error?: string }).error ?? "Failed to revoke key");
+      }
       router.refresh();
     } finally {
       setRevoking(null);
     }
   }
 
+  async function handleRestore(id: string) {
+    setRevoking(id);
+    try {
+      const res = await fetch(`/api/settings/api-keys/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "restore" }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error((data as { error?: string }).error ?? "Failed to restore key");
+        return;
+      }
+      toast.success("Key restored.");
+      router.refresh();
+    } finally {
+      setRevoking(null);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    const response = await fetch(`/api/settings/api-keys/${id}?permanent=true`, {
+      method: "DELETE",
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error((data as { error?: string }).error ?? "Failed to delete connection");
+    }
+    router.refresh();
+  }
+
+  async function copyPortalRoute() {
+    await navigator.clipboard.writeText(`${window.location.origin}/api/portal/v1`);
+    setRouteCopied(true);
+    setTimeout(() => setRouteCopied(false), 2000);
+  }
+
   return (
     <>
+      <ConfirmDialog
+        open={keyToRevoke !== null}
+        onOpenChange={(o) => { if (!o) setKeyToRevoke(null); }}
+        title="Revoke this key?"
+        description="Integrations using this key will stop working immediately. You can restore it later."
+        confirmLabel="Revoke"
+        successMessage="Key revoked."
+        onConfirm={async () => {
+          if (keyToRevoke) await revokeKey(keyToRevoke);
+        }}
+      />
       {showGenerate && (
         <GenerateKeyModal
           departments={departments}
           isAdmin={isAdmin}
+          portalMode={portalMode}
           onClose={() => setShowGenerate(false)}
           onCreated={handleCreated}
+        />
+      )}
+
+      {editKey && (
+        <GenerateKeyModal
+          departments={departments}
+          isAdmin={isAdmin}
+          portalMode
+          editKey={editKey}
+          onClose={() => setEditKey(null)}
+          onCreated={handleCreated}
+          onSaved={() => {
+            setEditKey(null);
+            toast.success("Linked support form updated.");
+            router.refresh();
+          }}
         />
       )}
 
@@ -437,12 +618,19 @@ export function SettingsApiKeysPage({
         />
       )}
 
+      <PortalApiDocumentation
+        open={showDocumentation}
+        onClose={() => setShowDocumentation(false)}
+      />
+
       <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
           <div className="min-w-0 flex-1">
-            <h1 className="sts-text-admin-title">API keys</h1>
+            <h1 className="sts-text-admin-title">{portalMode ? "Generate API" : "API keys"}</h1>
             <p className="mt-[3px] font-sans text-[13px] text-sts-muted">
-              Programmatic read-only access for external platform integration.
+              {portalMode
+                ? "Connect an external portal to this tenant's departments and support forms."
+                : "Programmatic read-only access for external platform integration."}
             </p>
           </div>
           <Button
@@ -454,42 +642,83 @@ export function SettingsApiKeysPage({
           </Button>
         </div>
 
-        <div className="flex items-start gap-2.5 rounded-[8px] bg-sts-surface px-3.5 py-2.5">
-          <Info
-            className="mt-px size-3.5 shrink-0 text-sts-muted"
-            strokeWidth={2}
-            aria-hidden
+        {portalMode ? (
+          <div className="flex flex-col gap-3 rounded-xl border border-sts-card-border bg-sts-card px-4 py-3.5 shadow-[0_10px_30px_-28px_rgba(74,44,35,0.4)] sm:flex-row sm:items-center sm:justify-between sm:px-5">
+            <div className="flex min-w-0 items-start gap-3">
+              <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-sts-surface text-sts-muted">
+                <Info className="size-3.5" strokeWidth={1.8} aria-hidden />
+              </span>
+              <div>
+                <p className="font-sans text-[12px] font-semibold text-sts-foreground">Server-side integration</p>
+                <p className="mt-0.5 max-w-2xl font-sans text-[11.5px] leading-relaxed text-sts-muted">
+                  Send the key as <code className="font-mono text-[11px] text-sts-foreground">Authorization: Bearer &lt;key&gt;</code>. Never expose it in browser code.
+                </p>
+              </div>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2 rounded-lg bg-sts-surface px-2.5 py-2 ring-1 ring-sts-card-border/70">
+                <code className="font-mono text-[11.5px] text-sts-foreground">/api/portal/v1</code>
+                <button
+                  type="button"
+                  onClick={copyPortalRoute}
+                  className="inline-flex h-7 items-center gap-1.5 rounded-md bg-sts-card px-2.5 font-sans text-[11px] font-semibold text-sts-foreground shadow-sm ring-1 ring-sts-card-border transition-colors hover:text-sts-id focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-id/30 active:translate-y-px"
+                  aria-label="Copy portal API route"
+                >
+                  {routeCopied ? <Check className="size-3 text-sts-green" aria-hidden /> : <Copy className="size-3" aria-hidden />}
+                  {routeCopied ? "Copied" : "Copy"}
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowDocumentation(true)}
+                className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-sts-card-border bg-sts-card px-3 font-sans text-[11.5px] font-semibold text-sts-foreground shadow-sm transition-colors hover:border-sts-id/30 hover:text-sts-id focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sts-id/30 active:translate-y-px"
+              >
+                <BookOpen className="size-3.5" strokeWidth={1.8} />
+                Documentation
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-start gap-2.5 rounded-[8px] bg-sts-surface px-3.5 py-2.5">
+            <Info className="mt-px size-3.5 shrink-0 text-sts-muted" strokeWidth={2} aria-hidden />
+            <p className="font-sans text-[11.5px] leading-snug text-sts-muted">
+              Keys use Bearer token auth:{" "}
+              <code className="rounded bg-sts-card px-1 font-mono text-[11px]">Authorization: Bearer &lt;key&gt;</code>
+              . Access is scoped to the key&apos;s department. Available endpoints:{" "}
+              <code className="rounded bg-sts-card px-1 font-mono text-[11px]">GET /api/v1/projects</code>
+              {" — list projects (with member counts), "}
+              <code className="rounded bg-sts-card px-1 font-mono text-[11px]">GET /api/v1/projects/:id</code>
+              {" — project with members, tickets & sub-tickets, "}
+              <code className="rounded bg-sts-card px-1 font-mono text-[11px]">GET /api/v1/projects/:id/tickets</code>
+              {" — tickets list, "}
+              <code className="rounded bg-sts-card px-1 font-mono text-[11px]">GET /api/v1/tickets/:id</code>
+              {" — ticket detail."}
+            </p>
+          </div>
+        )}
+
+        {!portalMode && <ClaudeConnectGuide />}
+
+        {portalMode ? (
+          <PortalApiFormsSection
+            apiKeys={initialKeys}
+            forms={portalForms}
+            revokingId={revoking}
+            onRevoke={handleRevoke}
+            onRestore={handleRestore}
+            onDelete={handleDelete}
+            onEdit={(id) => setEditKey(initialKeys.find((key) => key.id === id) ?? null)}
           />
-          <p className="font-sans text-[11.5px] leading-snug text-sts-muted">
-            Keys use Bearer token auth:{" "}
-            <code className="rounded bg-sts-card px-1 font-mono text-[11px]">
-              Authorization: Bearer &lt;key&gt;
-            </code>
-            . Access is scoped to the key&apos;s department. Available
-            endpoints:{" "}
-            <code className="rounded bg-sts-card px-1 font-mono text-[11px]">
-              GET /api/v1/projects
-            </code>
-            {" — list projects (with member counts), "}
-            <code className="rounded bg-sts-card px-1 font-mono text-[11px]">
-              GET /api/v1/projects/:id
-            </code>
-            {" — project with members, tickets & sub-tickets, "}
-            <code className="rounded bg-sts-card px-1 font-mono text-[11px]">
-              GET /api/v1/projects/:id/tickets
-            </code>
-            {" — tickets list, "}
-            <code className="rounded bg-sts-card px-1 font-mono text-[11px]">
-              GET /api/v1/tickets/:id
-            </code>
-            {" — ticket detail."}
-          </p>
-        </div>
-
-        <ClaudeConnectGuide />
-
-        <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
-          <Table className="min-w-[760px]">
+        ) : (
+          <>
+          {initialKeys.length > 0 && (
+            <div className="flex items-center justify-between gap-2">
+              <ListSearchInput value={list.query} onChange={list.setQuery} placeholder="Search API keys…" />
+              <SortDropdown value={list.sortKey} onChange={list.setSortKey} options={list.sortDropdownOptions} />
+            </div>
+          )}
+          <div className="overflow-hidden rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-2">
+            <Table className="min-w-[760px]">
             <TableHeader>
               <TableRow className="border-[#f0f4f8] hover:bg-transparent dark:border-[#3a3a37]">
                 <TableHead className="h-8 w-[22%]">
@@ -522,7 +751,18 @@ export function SettingsApiKeysPage({
                 </TableRow>
               )}
 
-              {initialKeys.map((apiKey) => (
+              {initialKeys.length > 0 && list.visible.length === 0 && (
+                <TableRow className="hover:bg-transparent">
+                  <TableCell
+                    colSpan={6}
+                    className="h-14 px-0 font-sans text-[12.5px] text-sts-muted"
+                  >
+                    No API keys match &ldquo;{list.query.trim()}&rdquo;.
+                  </TableCell>
+                </TableRow>
+              )}
+
+              {list.visible.map((apiKey) => (
                 <TableRow
                   key={apiKey.id}
                   className={cn(
@@ -566,27 +806,42 @@ export function SettingsApiKeysPage({
                   <TableCell className="py-0 text-right">
                     <div className="flex h-[50px] items-center justify-end">
                       {apiKey.revoked ? (
-                        <span className="font-sans text-[11.5px] font-medium text-sts-subtle">
-                          Revoked
-                        </span>
+                        <div className="flex items-center justify-end gap-3">
+                          <span className="font-sans text-[11.5px] font-medium text-sts-subtle">
+                            Revoked
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            disabled={revoking === apiKey.id}
+                            onClick={() => handleRestore(apiKey.id)}
+                            className="h-auto px-0 py-0 font-sans text-[11.5px] font-semibold text-sts-id hover:bg-transparent hover:text-sts-id/80 disabled:opacity-50"
+                          >
+                            {revoking === apiKey.id ? "Restoring…" : "Restore"}
+                          </Button>
+                        </div>
                       ) : (
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          disabled={revoking === apiKey.id}
-                          onClick={() => handleRevoke(apiKey.id)}
-                          className="h-auto px-0 py-0 font-sans text-[11.5px] font-semibold text-sts-red hover:bg-transparent hover:text-sts-red/80 disabled:opacity-50"
-                        >
-                          {revoking === apiKey.id ? "Revoking…" : "Revoke"}
-                        </Button>
+                        <div className="flex items-center justify-end gap-3">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            disabled={revoking === apiKey.id}
+                            onClick={() => handleRevoke(apiKey.id)}
+                            className="h-auto px-0 py-0 font-sans text-[11.5px] font-semibold text-sts-red hover:bg-transparent hover:text-sts-red/80 disabled:opacity-50"
+                          >
+                            {revoking === apiKey.id ? "Revoking…" : "Revoke"}
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
-          </Table>
-        </div>
+            </Table>
+          </div>
+          </>
+        )}
       </div>
     </>
   );

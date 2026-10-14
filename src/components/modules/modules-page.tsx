@@ -1,5 +1,6 @@
 "use client";
 
+import { Tip } from "@/components/ui/tooltip";
 import { Suspense, use, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AlertDialog } from "@base-ui/react/alert-dialog";
@@ -314,13 +315,16 @@ function ModuleTicketsPanel({
               {status ? ` · ${status}` : ""}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-          >
-            <X className="size-4" />
-          </button>
+          <Tip label="Close">
+            <button
+              aria-label="Close"
+              type="button"
+              onClick={onClose}
+              className="flex size-7 items-center justify-center rounded-full text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+            >
+              <X className="size-4" />
+            </button>
+          </Tip>
         </div>
 
         {/* Status filter chips — exact workflow labels */}
@@ -1063,31 +1067,32 @@ export function ModulesPage({
 
             <div className="flex h-8 items-center gap-1 rounded-full border border-sts-card-border bg-sts-surface px-1.5">
               {PRIORITY_OPTIONS.map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  title={`Priority: ${p}`}
-                  onClick={() =>
-                    setPriorityFilter((prev) => {
-                      const next = new Set(prev);
-                      if (next.has(p)) next.delete(p);
-                      else next.add(p);
-                      return next;
-                    })
-                  }
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-full px-2 py-1 font-sans text-[12px] transition-colors",
-                    priorityFilter.has(p)
-                      ? "bg-sts-card font-semibold text-sts-foreground shadow-sm"
-                      : "text-sts-muted hover:text-sts-foreground",
-                  )}
-                >
-                  <span
-                    className="size-1.5 rounded-full"
-                    style={{ backgroundColor: UI_PRIORITY_DOT_HEX[uiPriorityFromDb(p)] }}
-                  />
-                  {p}
-                </button>
+                <Tip key={p} label={`Priority: ${p}`}>
+                  <button
+                    aria-pressed={priorityFilter.has(p)}
+                    type="button"
+                    onClick={() =>
+                      setPriorityFilter((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(p)) next.delete(p);
+                        else next.add(p);
+                        return next;
+                      })
+                    }
+                    className={cn(
+                      "flex items-center gap-1.5 rounded-full px-2 py-1 font-sans text-[12px] transition-colors",
+                      priorityFilter.has(p)
+                        ? "bg-sts-card font-semibold text-sts-foreground shadow-sm"
+                        : "text-sts-muted hover:text-sts-foreground",
+                    )}
+                  >
+                    <span
+                      className="size-1.5 rounded-full"
+                      style={{ backgroundColor: UI_PRIORITY_DOT_HEX[uiPriorityFromDb(p)] }}
+                    />
+                    {p}
+                  </button>
+                </Tip>
               ))}
             </div>
 

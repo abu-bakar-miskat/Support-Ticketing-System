@@ -4,7 +4,9 @@ import { IntakeForm } from "@/components/support/intake-form"
 import { IntakeChat } from "@/components/support/intake-chat"
 import { resolveIntakeDefaultFields } from "@/lib/intake-default-fields"
 import { getEmailConfig, brandingFrom } from "@/lib/email-config"
-import { resolveFormBranding } from "@/lib/form-branding"
+import { publicFormBrandDefaults, resolveFormBranding } from "@/lib/form-branding"
+import { getTenantBranding } from "@/lib/tenant-config"
+import { deriveAccentPalette } from "@/lib/tenant-accent"
 import { segmentSlug } from "@/lib/support-form-path"
 import { runAsSystem } from "@/lib/request-scope"
 
@@ -132,65 +134,76 @@ export default async function PublicIntakeFormPage({
 
   const isChat = form.displayMode === "CHAT"
 
-  // DS-01: department branding is the fallback layer between the form's own
-  // override (most specific) and the workspace/tenant default (least specific)
-  // — passing departmentId here is what makes a department's logo/colors
-  // actually reach this customer-facing form when the form hasn't set its own.
+  // Form design wins. Otherwise the page uses this tenant's logo and accent,
+  // then the department email brand.
   const ws = brandingFrom(await runAsSystem(() => getEmailConfig(form.department.id)))
-  const brand = resolveFormBranding(form.branding, {
-    logoUrl: ws.logoUrl,
-    headerColor: ws.headerColor,
-    accentColor: ws.brandColor,
-  })
+  const tenantBrand = await runAsSystem(() => getTenantBranding(form.department.tenantId))
+  const brand = resolveFormBranding(
+    form.branding,
+    publicFormBrandDefaults({
+      tenantLogoUrl: tenantBrand?.logoUrl,
+      tenantHideLogo: tenantBrand?.hideLogo,
+      tenantAccent: tenantBrand?.accentColor,
+      emailLogoUrl: ws.logoUrl,
+      emailHeaderColor: ws.headerColor,
+      emailAccent: ws.brandColor,
+    }),
+  )
+  const palette = deriveAccentPalette(brand.accentColor)
+  const accent = palette?.light.accent ?? brand.accentColor
+  const accentFg = palette?.light.fg ?? "#ffffff"
+  const pageBg = brand.backgroundColor ?? palette?.light.tint ?? undefined
+  const tenantName = tenantBrand?.displayName ?? form.department.tenant.name
 
   return (
     <main
       className="sts-light-scope h-full min-h-screen overflow-y-auto bg-sts-bg"
-      style={brand.backgroundColor ? { background: brand.backgroundColor } : undefined}
+      style={pageBg ? { background: pageBg } : undefined}
     >
-      {brand.logoUrl && (
-        <div style={{ background: brand.headerColor }} className="w-full px-4 py-5 sm:px-6">
-          <div className="mx-auto flex max-w-2xl items-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
+      <div className="mx-auto max-w-4xl px-4 pt-12 pb-16 sm:px-6 lg:pt-16 lg:pb-24">
+        <div className="mb-8 flex items-center gap-4">
+          {brand.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={brand.logoUrl}
-              alt={form.department.name}
-              className="h-9 w-auto"
+              alt={tenantName}
+              className="size-14 shrink-0 rounded-2xl bg-white object-contain p-1.5 shadow-[0_1px_2px_rgba(16,24,40,0.06)]"
             />
+          ) : null}
+          <div className="min-w-0">
+            <p
+              className="font-poppins text-[11px] font-semibold uppercase tracking-[1.4px]"
+              style={{ color: accent }}
+            >
+              {form.department.name}
+              {form.intakeSubDepartment?.name && (
+                <span className="opacity-70"> · {form.intakeSubDepartment.name}</span>
+              )}
+            </p>
+            <h1 className="mt-1 font-poppins text-[32px] font-semibold leading-tight text-sts-foreground">
+              {form.name}
+            </h1>
+            <p className="mt-1.5 font-poppins text-[14px] leading-relaxed text-sts-muted">
+              {brand.introText
+                ? brand.introText
+                : isChat
+                  ? "Answer a few quick questions and we'll get back to you as soon as possible."
+                  : "Fill in the details below and we'll get back to you as soon as possible."}
+            </p>
           </div>
-        </div>
-      )}
-      <div className="mx-auto max-w-2xl px-4 pt-12 pb-16 sm:px-6 lg:pt-16 lg:pb-24">
-        {/* Page header */}
-        <div className="mb-8">
-          <p className="font-poppins text-[11px] font-semibold uppercase tracking-[1.4px] text-sts-muted">
-            {form.department.name}
-            {form.intakeSubDepartment?.name && (
-              <span className="text-sts-muted/70"> · {form.intakeSubDepartment.name}</span>
-            )}
-          </p>
-          <h1 className="mt-1.5 font-poppins text-[28px] font-semibold leading-tight text-sts-foreground">
-            {form.name}
-          </h1>
-          <p className="mt-2 font-poppins text-[13px] text-sts-muted">
-            {brand.introText
-              ? brand.introText
-              : isChat
-                ? "Answer a few quick questions and we'll get back to you as soon as possible."
-                : "Fill in the details below and we'll get back to you as soon as possible."}
-          </p>
         </div>
 
         {isChat ? (
           <IntakeChat formId={form.id} fields={fields} issues={issues} />
         ) : (
-          <div className="rounded-2xl border border-sts-card-border bg-sts-card p-6 shadow-sm sm:p-8">
+          <div className="rounded-3xl border border-black/5 bg-white p-6 shadow-[0_12px_40px_rgba(16,24,40,0.06)] sm:p-10">
             <IntakeForm
               formId={form.id}
               fields={fields}
               issues={issues}
               defaultFields={defaultFields}
-              accentColor={brand.accentColor}
+              accentColor={accent}
+              accentFg={accentFg}
               confirmationText={brand.confirmationText}
             />
           </div>

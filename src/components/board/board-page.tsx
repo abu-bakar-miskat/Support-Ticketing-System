@@ -1,4 +1,6 @@
-"use client";
+"use client"
+
+import { statusCategory, categoryForStatus, sortStatusesByCategory, STATUS_CATEGORY_LABELS } from "@/lib/status-category";
 
 import React, {
   useCallback,
@@ -72,8 +74,6 @@ import {
   matchesPriorityFilter,
   matchesDateFilter,
   matchesDueRange,
-  matchesTargetDateFilter,
-  matchesTargetDateRange,
   matchesIntakeFilter,
   matchesProjectFilter,
   matchesLabelFilter,
@@ -86,6 +86,7 @@ import {
   collectModules,
   countAssigneeMatches,
 } from "@/components/board/board-filters";
+import { Tip } from "@/components/ui/tooltip";
 
 // ── DnD types ─────────────────────────────────────────────────────────────────
 
@@ -169,7 +170,7 @@ function BoardCard({
   const currentUser = useCurrentUser();
   const userId = currentUser?.id;
   const canTrack =
-    normalizeStatus(initialCard.status) === "In Progress" &&
+    statusCategory(statuses.find((s) => s.label === initialCard.status) ?? { label: initialCard.status, category: initialCard.statusCategory }) === "IN_PROGRESS" &&
     (initialCard.assigneeId === userId ||
       initialCard.coAssignees.some((a) => a.id === userId));
 
@@ -458,31 +459,36 @@ function BoardCard({
           </span>
         </div>
         {isRunning ? (
-          <button
-            type="button"
-            title="Pause timer"
-            onClick={handleStopTimer}
-            disabled={stoppingTimer}
-            className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-red transition-colors hover:bg-sts-red/10 disabled:cursor-wait"
-          >
-            <Pause className="size-[9px] fill-current" />
-          </button>
+          <Tip label="Pause timer">
+            <button
+              aria-label="Pause timer"
+              type="button"
+              onClick={handleStopTimer}
+              disabled={stoppingTimer}
+              className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-red transition-colors hover:bg-sts-red/10 disabled:cursor-wait"
+            >
+              <Pause className="size-[9px] fill-current" />
+            </button>
+          </Tip>
         ) : canTrack ? (
-          <button
-            type="button"
-            title="Start timer"
-            onClick={handleStartTimer}
-            disabled={startingTimer}
-            className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-subtle transition-opacity hover:bg-sts-surface hover:text-sts-blue disabled:cursor-wait"
-          >
-            <Play className="size-[10px]" />
-          </button>
+          <Tip label="Start timer">
+            <button
+              aria-label="Start timer"
+              type="button"
+              onClick={handleStartTimer}
+              disabled={startingTimer}
+              className="flex size-[18px] shrink-0 items-center justify-center rounded text-sts-subtle transition-opacity hover:bg-sts-surface hover:text-sts-blue disabled:cursor-wait"
+            >
+              <Play className="size-[10px]" />
+            </button>
+          </Tip>
         ) : null}
         <span className="flex-1" />
         {subTotal > 0 && (
           <button
             type="button"
             onClick={toggleExpanded}
+            aria-expanded={expanded}
             className={cn(
               "flex items-center gap-1 rounded px-1 py-0.5 font-sans text-[11.5px] font-medium transition-colors hover:bg-sts-surface",
               subtasksDone ? "text-sts-green" : "text-sts-muted",
@@ -497,15 +503,16 @@ function BoardCard({
             {subDone}/{subTotal} sub-tickets
           </button>
         )}
-        <button
-          type="button"
-          title="Add sub-task"
-          onClick={openSubTicketModal}
-          className="flex items-center gap-1 rounded px-1 py-0.5 font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-blue"
-        >
-          <Plus className="size-[11px] shrink-0" />
-          <span>Sub-task</span>
-        </button>
+        <Tip label="Add sub-task">
+          <button
+            type="button"
+            onClick={openSubTicketModal}
+            className="flex items-center gap-1 rounded px-1 py-0.5 font-sans text-[11.5px] text-sts-subtle transition-colors hover:bg-sts-surface hover:text-sts-blue"
+          >
+            <Plus className="size-[11px] shrink-0" />
+            <span>Sub-task</span>
+          </button>
+        </Tip>
       </div>
       {subTotal > 0 && expanded && (
         <div className="mx-3 mb-2 border-t border-sts-card-border pt-1">
@@ -585,6 +592,7 @@ function BoardColumn({
           : undefined
       }
     >
+      <p className="font-sans text-[10px] font-medium text-sts-muted uppercase tracking-wide">{STATUS_CATEGORY_LABELS[statusCategory(status)]}</p>
       <div className="flex h-6 shrink-0 items-center gap-2">
         <span
           className="block size-[7px] shrink-0 rounded-full"
@@ -654,12 +662,15 @@ type Props = {
   cards: BoardCardData[];
   subDepartmentBoardGroups: SubDepartmentBoardGroup[];
   defaultSubDepartmentId?: string | null;
+  /** Preset filters from the department's operation template. */
+  lists?: { name: string; statuses: string[] }[];
 };
 
 export function BoardPage({
   cards: initialCards,
   subDepartmentBoardGroups,
   defaultSubDepartmentId,
+  lists = [],
 }: Props) {
   const currentUser = useCurrentUser();
   const currentUserId = currentUser?.id ?? "";
@@ -704,10 +715,6 @@ export function BoardPage({
     setStatusFilter,
     dueRange,
     setDueRange,
-    targetDateFilter,
-    setTargetDateFilter,
-    targetRange,
-    setTargetRange,
     sortKey,
     setSortKey,
     clearFilters,
@@ -800,7 +807,7 @@ export function BoardPage({
       subDepartmentId: "all",
       subDepartmentName: "All sub departments",
       cards: [],
-      statuses: mergedStatuses,
+      statuses: sortStatusesByCategory(mergedStatuses),
     };
   }, [subDepartmentBoardGroups.length, boardSubDepartmentIds, subDepartmentStatusesBySubDepartmentId]);
 
@@ -821,7 +828,7 @@ export function BoardPage({
         : fallbackStatuses;
     }
     const live = subDepartmentStatusesBySubDepartmentId.get(activeSubDepartmentId);
-    return live?.length ? live : fallbackStatuses;
+    return sortStatusesByCategory(live?.length ? live : fallbackStatuses);
   }, [
     activeSubDepartmentId,
     allSubDepartmentsMergedGroup,
@@ -929,13 +936,14 @@ export function BoardPage({
       prev.map((c) => {
         if (c.dbId !== dbId) return c;
         const target = resolveStatusesForCard(c.subDepartmentId).find((s) => s.label === toStatus);
-        const isComplete = !!target?.isComplete || toStatus === "Live";
-        return { ...c, status: toStatus, isComplete };
+        const category = statusCategory(target ?? { label: toStatus });
+        const isComplete = category === "COMPLETE";
+        return { ...c, status: toStatus, statusCategory: category, isComplete };
       }),
     );
     if (
       timerTicketDbId === dbId &&
-      normalizeStatus(toStatus) !== "In Progress"
+      categoryForStatus(toStatus, resolveStatusesForCard(previousCard.subDepartmentId)) !== "IN_PROGRESS"
     ) {
       stopTimerOnMove(timerEntryId).catch(() => undefined);
     }
@@ -954,7 +962,7 @@ export function BoardPage({
         setLocalCards((prev) =>
           prev.map((c) =>
             c.dbId === dbId && c.status === toStatus
-              ? { ...c, status: previousCard.status, isComplete: previousCard.isComplete }
+              ? { ...c, status: previousCard.status, isComplete: previousCard.isComplete, statusCategory: previousCard.statusCategory }
               : c,
           ),
         );
@@ -1008,7 +1016,6 @@ export function BoardPage({
         modules.length > 0 ? { id: "module", label: "Module" } : null,
         { id: "priority", label: "Priority" },
         { id: "dueDate", label: "Due date" },
-        { id: "targetDate", label: "Target date" },
         { id: "intake", label: "Intake source" },
         { id: "status", label: "Status" },
         { id: "labels", label: "Labels" },
@@ -1057,8 +1064,6 @@ export function BoardPage({
         matchesPriorityFilter(c, priorityFilter) &&
         matchesDateFilter(c, dateFilter) &&
         matchesDueRange(c, dueRange) &&
-        matchesTargetDateFilter(c, targetDateFilter) &&
-        matchesTargetDateRange(c, targetRange) &&
         matchesIntakeFilter(c, intakeFilter) &&
         matchesLabelFilter(c, labelFilter) &&
         matchesStatusFilter(c, statusFilter)
@@ -1074,8 +1079,6 @@ export function BoardPage({
     priorityFilter,
     dateFilter,
     dueRange,
-    targetDateFilter,
-    targetRange,
     intakeFilter,
     labelFilter,
     statusFilter,
@@ -1092,8 +1095,6 @@ export function BoardPage({
     priorityFilter !== "all" ||
     dateFilter !== "all" ||
     dueRange !== null ||
-    targetDateFilter !== "all" ||
-    targetRange !== null ||
     intakeFilter !== "all" ||
     labelFilter.length > 0 ||
     statusFilter.length > 0;
@@ -1193,10 +1194,6 @@ export function BoardPage({
                 onDateFilterChange={setDateFilter}
                 dueRange={dueRange}
                 onDueRangeChange={setDueRange}
-                targetDateFilter={targetDateFilter}
-                onTargetDateFilterChange={setTargetDateFilter}
-                targetRange={targetRange}
-                onTargetRangeChange={setTargetRange}
                 intakeFilter={intakeFilter}
                 onIntakeFilterChange={setIntakeFilter}
                 labelFilter={labelFilter}
@@ -1252,6 +1249,30 @@ export function BoardPage({
               </div>
             </div>
           </div>
+          {lists.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              <ListChip
+                active={statusFilter.length === 0}
+                onClick={() => setStatusFilter([])}
+              >
+                All
+              </ListChip>
+              {lists.map((list) => {
+                const active =
+                  statusFilter.length === list.statuses.length &&
+                  list.statuses.every((status) => statusFilter.includes(status));
+                return (
+                  <ListChip
+                    key={list.name}
+                    active={active}
+                    onClick={() => setStatusFilter(active ? [] : list.statuses)}
+                  >
+                    {list.name}
+                  </ListChip>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Content */}
@@ -1282,5 +1303,30 @@ export function BoardPage({
         </div>
       </div>
     </BoardDndProvider>
+  );
+}
+
+function ListChip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "inline-flex h-7 items-center rounded-full px-3 font-sans text-[12px] font-medium transition-colors",
+        active
+          ? "bg-sts-blue text-white dark:text-gray-900"
+          : "border border-sts-card-border bg-sts-card text-sts-muted hover:text-sts-foreground",
+      )}
+    >
+      {children}
+    </button>
   );
 }

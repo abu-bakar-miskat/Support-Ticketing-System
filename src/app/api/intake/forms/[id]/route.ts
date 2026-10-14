@@ -125,6 +125,22 @@ export async function DELETE(
     )
   }
 
-  await prisma.intakeFormConfig.delete({ where: { id } })
+  const portalKey = await prisma.apiKey.findUnique({
+    where: { formConfigId: id },
+    select: { id: true },
+  })
+  if (portalKey) {
+    return NextResponse.json(
+      { error: "This form is connected to a portal API key. Delete that connection before deleting the form." },
+      { status: 409 },
+    )
+  }
+
+  // SlaPolicy.formConfigId has no FK, so drop the form's SLA policies with it —
+  // otherwise they linger as orphans no ticket can ever match.
+  await prisma.$transaction([
+    prisma.slaPolicy.deleteMany({ where: { formConfigId: id } }),
+    prisma.intakeFormConfig.delete({ where: { id } }),
+  ])
   return new NextResponse(null, { status: 204 })
 }

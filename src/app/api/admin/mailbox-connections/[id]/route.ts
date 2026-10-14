@@ -28,7 +28,7 @@ export async function PATCH(
   const { id } = await params
   const existing = await prisma.mailboxConnection.findUnique({
     where: { id },
-    select: { departmentId: true, subDepartmentId: true },
+    select: { departmentId: true, subDepartmentId: true, authType: true },
   })
   if (!existing) {
     return NextResponse.json({ error: "Connection not found" }, { status: 404 })
@@ -44,6 +44,14 @@ export async function PATCH(
 
   if (isActive !== undefined && typeof isActive !== "boolean") {
     return NextResponse.json({ error: "isActive must be a boolean" }, { status: 400 })
+  }
+
+  // An M365 connection's address and token come from the Microsoft sign-in.
+  if (existing.authType === "OAUTH_M365" && (address !== undefined || plaintextCredentials !== undefined)) {
+    return NextResponse.json(
+      { error: "This mailbox is tied to the account that signed in. Use Reconnect to change it." },
+      { status: 400 },
+    )
   }
 
   if (address !== undefined) {

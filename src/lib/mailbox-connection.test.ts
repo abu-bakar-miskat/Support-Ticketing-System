@@ -11,7 +11,7 @@ vi.mock("@/lib/db", () => ({
 vi.mock("@/lib/mailbox-credentials", () => ({
   encryptMailboxCredentials: vi.fn((s: string) => `encrypted(${s})`),
 }))
-vi.mock("@/lib/mail-providers", () => ({ getMailProvider: vi.fn() }))
+vi.mock("@/lib/mail-providers", () => ({ getMailProvider: vi.fn(), getPullMailProvider: vi.fn(() => null) }))
 vi.mock("@/lib/notify", () => ({ createNotification: vi.fn().mockResolvedValue(undefined) }))
 vi.mock("@/lib/email", () => ({ sendMailboxConnectionFailedAlertEmail: vi.fn().mockResolvedValue(undefined) }))
 vi.mock("@/lib/audit-log", () => ({ recordAuditEvent: vi.fn().mockResolvedValue(undefined) }))

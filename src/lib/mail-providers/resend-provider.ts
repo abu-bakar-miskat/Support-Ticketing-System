@@ -5,7 +5,7 @@ import type { MailProvider, MailboxCredentials, NormalizedInboundEmail, HealthCh
 /**
  * The only functional provider today. Wraps the existing Resend inbound API
  * (unchanged from before slice 14) behind {@link MailProvider} — no behavior
- * change for existing mail, just a seam for OAuth/IMAP to land behind later.
+ * change for existing mail.
  * Uses the platform-wide `RESEND_API_KEY`; `credentials.credentialsRef` is
  * always null for this provider (see lib/mailbox-credentials.ts's docstring).
  */

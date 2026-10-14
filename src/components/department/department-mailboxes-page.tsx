@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   AlertTriangle,
   Check,
@@ -9,6 +9,7 @@ import {
   Gauge,
   ListChecks,
   Loader2,
+  LogIn,
   Mail,
   Pencil,
   Plus,
@@ -40,13 +41,15 @@ import {
 } from "@/components/ui/select";
 import { ReceivedMailPanel } from "@/components/mailbox/received-mail-panel";
 import {
-  DomainRequestStatusList,
-  RequestDomainDialog,
-  type ScopeRequestStatus,
-} from "@/components/email/domain-request-form";
+  ExternalMailboxConnectForm,
+  MAILBOX_PROVIDER_META,
+  isOAuthProvider,
+  isPullProvider,
+  reconnectMailbox,
+  useMailboxOAuthResult,
+} from "@/components/mailbox/mailbox-provider-connect";
 import {
   getDepartmentMailboxConnections,
-  createDepartmentMailboxConnection,
   updateMailboxConnection,
   deleteMailboxConnection,
   recheckMailboxConnection,
@@ -153,41 +156,18 @@ export function DepartmentMailboxesPage({
   departmentName,
   subDepartments,
   canManage,
-  canRequestDomain = false,
-  domainRequests = [],
 }: {
   departmentId: string;
   departmentName: string;
   subDepartments: { id: string; name: string; assignmentMethod: AssignmentMethod }[];
   canManage: boolean;
-  /** Managers / sub-managers can request a sending domain (admins register directly). */
-  canRequestDomain?: boolean;
-  /** Existing domain requests in this department, shown with their status. */
-  domainRequests?: ScopeRequestStatus[];
 }) {
   const [connections, setConnections] = useState<MailboxConnection[] | null>(null);
   const [loadError, setLoadError] = useState(false);
 
   const [showConnect, setShowConnect] = useState(false);
-  const [address, setAddress] = useState("");
-  const addressRef = useRef<HTMLInputElement>(null);
   const [teamId, setTeamId] = useState(subDepartments[0]?.id ?? "");
-
-  /** Opens the connect form prefilled with `@<domain>`, cursor at the start so
-   * the admin just types the local part. */
-  function connectForDomain(domain: string) {
-    setAddress(`@${domain}`);
-    openConnect();
-    setTimeout(() => {
-      const el = addressRef.current;
-      if (el) {
-        el.focus();
-        el.setSelectionRange(0, 0);
-      }
-    }, 50);
-  }
   const [saving, setSaving] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editAddress, setEditAddress] = useState("");
@@ -209,14 +189,19 @@ export function DepartmentMailboxesPage({
   // Member rosters cached per sub-department id, loaded lazily for the picker.
   const [membersBySubDept, setMembersBySubDept] = useState<Record<string, SubDepartmentMember[] | undefined>>({});
 
-  useEffect(() => {
+  function loadConnections() {
     getDepartmentMailboxConnections(departmentId)
-      .then(setConnections)
+      .then((rows) => { setConnections(rows); setLoadError(false); })
       .catch(() => {
         setConnections([]);
         setLoadError(true);
       });
-  }, [departmentId]);
+  }
+
+  useEffect(loadConnections, [departmentId]);
+
+  // Back from a Microsoft sign-in: toast the outcome and refresh.
+  useMailboxOAuthResult(loadConnections);
 
   const list = connections ?? [];
   const loading = connections === null;
@@ -255,43 +240,14 @@ export function DepartmentMailboxesPage({
   }, [editingAssignmentId, draftAssignmentMethod, membersBySubDept, list]);
 
   function openConnect() {
-    setFormError(null);
     setTeamId((prev) => prev || subDepartments[0]?.id || "");
     setShowConnect(true);
   }
 
   function closeConnect() {
     setShowConnect(false);
-    setFormError(null);
   }
 
-  async function connect() {
-    const value = address.trim();
-    if (!isValidEmail(value)) {
-      setFormError("Enter a valid email address.");
-      return;
-    }
-    if (!teamId) {
-      setFormError("Choose which subDepartment this mailbox files into.");
-      return;
-    }
-    if (list.some((c) => c.address.toLowerCase() === value.toLowerCase())) {
-      setFormError("That address is already connected.");
-      return;
-    }
-    setSaving(true);
-    setFormError(null);
-    try {
-      const created = await createDepartmentMailboxConnection(departmentId, { teamId, address: value });
-      setConnections((prev) => [...(prev ?? []), created]);
-      setAddress("");
-      setShowConnect(false);
-    } catch (e) {
-      setFormError(e instanceof Error ? e.message : "Couldn't connect that mailbox.");
-    } finally {
-      setSaving(false);
-    }
-  }
 
   function startEditAssignment(c: MailboxConnection) {
     setEditingAssignmentId(c.id);
@@ -423,85 +379,59 @@ export function DepartmentMailboxesPage({
             Connect the shared inboxes that open tickets for {departmentName}.
           </p>
         </div>
-        {/* Request a sending domain (managers / sub-managers) */}
-        {canRequestDomain && (
-          <RequestDomainDialog departmentId={departmentId} subDepartments={subDepartments} />
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          {canManage && !noSubDepartments && (
+            <button
+              type="button"
+              onClick={openConnect}
+              className="flex h-8 items-center gap-1.5 rounded-full bg-sts-blue px-3.5 font-sans text-[12.5px] font-medium text-white dark:text-gray-900"
+            >
+              <Plus className="size-3.5" />
+              Connect inbox
+            </button>
+          )}
+        </div>
       </div>
-
-      {canRequestDomain && (
-        <DomainRequestStatusList
-          requests={domainRequests}
-          onConnectMailbox={canManage && !noSubDepartments ? connectForDomain : undefined}
-        />
-      )}
 
       {/* ── Connect mailbox modal ── */}
       {canManage && showConnect && !noSubDepartments && (
         <div className="fixed inset-0 z-50 flex items-center justify-center sts-overlay-backdrop" onClick={closeConnect}>
           <div
-            className="w-full max-w-md rounded-2xl border border-sts-card-border bg-sts-bg shadow-2xl"
+            className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-2xl border border-sts-card-border bg-sts-bg shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-sts-card-border px-5 py-4">
-              <p className="font-sans text-[14px] font-semibold text-sts-foreground">Connect mailbox</p>
+              <p className="font-sans text-[14px] font-semibold text-sts-foreground">Connect inbox</p>
               <button type="button" onClick={closeConnect} aria-label="Close">
                 <X className="size-4 text-sts-muted" />
               </button>
             </div>
             <div className="flex flex-col gap-4 px-5 py-4">
-              <div>
-                <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">
-                  Mailbox address
-                </label>
-                <input
-                  ref={addressRef}
-                  autoFocus
-                  type="text"
-                  inputMode="email"
-                  value={address}
-                  onChange={(e) => { setAddress(e.target.value); setFormError(null); }}
-                  onKeyDown={(e) => { if (e.key === "Enter") connect(); if (e.key === "Escape") closeConnect(); }}
-                  placeholder="support@yourcompany.com"
-                  className="h-9 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-blue/50"
-                />
-              </div>
-              <div>
-                <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">
-                  Files into
-                </label>
-                <select
-                  value={teamId}
-                  onChange={(e) => setTeamId(e.target.value)}
-                  className="h-9 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-blue/50"
-                >
-                  {subDepartments.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
-                <p className="mt-1.5 font-sans text-[11px] text-sts-subtle">
-                  Each new email to this address opens a ticket for the chosen subDepartment.
-                </p>
-              </div>
-              {formError && <p className="font-sans text-[11.5px] text-red-500">{formError}</p>}
-            </div>
-            <div className="flex justify-end gap-2 border-t border-sts-card-border px-5 py-3">
-              <button
-                type="button"
-                onClick={closeConnect}
-                className="h-8 rounded-full border border-sts-card-border px-4 font-sans text-[12.5px] text-sts-muted hover:bg-sts-surface"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={connect}
-                disabled={saving || !address.trim() || !teamId}
-                className="flex h-8 items-center gap-1.5 rounded-full bg-sts-blue px-4 font-sans text-[12.5px] font-medium text-white disabled:opacity-50 dark:text-gray-900"
-              >
-                {saving && <Loader2 className="size-3.5 animate-spin" />}
-                Connect
-              </button>
+              <ExternalMailboxConnectForm
+                teamId={teamId}
+                scopeType="DEPARTMENT"
+                existingAddresses={list.map((c) => c.address)}
+                onCancel={closeConnect}
+                teamPicker={
+                  <div>
+                    <label className="mb-1.5 block font-sans text-[11.5px] font-medium text-sts-muted">
+                      Files into
+                    </label>
+                    <select
+                      value={teamId}
+                      onChange={(e) => setTeamId(e.target.value)}
+                      className="h-9 w-full rounded-lg border border-sts-card-border bg-sts-surface px-3 font-sans text-[13px] text-sts-foreground outline-none focus:border-sts-blue/50"
+                    >
+                      {subDepartments.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
+                    <p className="mt-1.5 font-sans text-[11px] text-sts-subtle">
+                      Each new email in this inbox opens a ticket for the chosen subDepartment.
+                    </p>
+                  </div>
+                }
+              />
             </div>
           </div>
         </div>
@@ -598,10 +528,11 @@ export function DepartmentMailboxesPage({
                           {subDeptName(c.subDepartmentId)}
                         </span>
                       </span>
-                      <span className="rounded bg-sts-surface px-1.5 py-0.5 font-mono text-[9.5px] text-sts-muted">
-                        {c.authType}
+                      <span className="rounded bg-sts-surface px-1.5 py-0.5 font-sans text-[10px] font-medium text-sts-muted">
+                        {MAILBOX_PROVIDER_META[c.authType].short}
                       </span>
                       <span>Checked {relativeTime(c.lastCheckedAt)}</span>
+                      {isPullProvider(c.authType) && <span>Synced {relativeTime(c.lastSyncedAt)}</span>}
                       {c.failureCount > 0 && (
                         <span className="text-amber-600 dark:text-amber-400">
                           {c.failureCount} failed check{c.failureCount === 1 ? "" : "s"}
@@ -672,7 +603,22 @@ export function DepartmentMailboxesPage({
                             {c.isActive ? "On" : "Off"}
                           </button>
                         </Tip>
-                        <Tip label="Test connection">
+                        {isOAuthProvider(c.authType) && (
+                          <Tip label={`Reconnect — sign in with ${MAILBOX_PROVIDER_META[c.authType].label} again`}>
+                            <button
+                              type="button"
+                              aria-label="Reconnect mailbox"
+                              onClick={() => reconnectMailbox(c)}
+                              className={cn(
+                                "rounded-full p-1.5 hover:bg-sts-surface hover:text-sts-foreground",
+                                c.status === "ACTIVE" ? "text-sts-subtle" : "text-red-500",
+                              )}
+                            >
+                              <LogIn className="size-3.5" />
+                            </button>
+                          </Tip>
+                        )}
+                        <Tip label={isPullProvider(c.authType) ? "Test connection & check for new mail" : "Test connection"}>
                           <button
                             type="button"
                             aria-label="Test connection"
@@ -683,16 +629,18 @@ export function DepartmentMailboxesPage({
                             <RefreshCw className={cn("size-3.5", busy && "animate-spin")} />
                           </button>
                         </Tip>
-                        <Tip label="Edit address">
-                          <button
-                            type="button"
-                            aria-label="Edit address"
-                            onClick={() => { setEditingId(c.id); setEditAddress(c.address); }}
-                            className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-                          >
-                            <Pencil className="size-3.5" />
-                          </button>
-                        </Tip>
+                        {!isOAuthProvider(c.authType) && (
+                          <Tip label="Edit address">
+                            <button
+                              type="button"
+                              aria-label="Edit address"
+                              onClick={() => { setEditingId(c.id); setEditAddress(c.address); }}
+                              className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+                            >
+                              <Pencil className="size-3.5" />
+                            </button>
+                          </Tip>
+                        )}
                         <Tip label="Disconnect">
                           <button
                             type="button"
@@ -868,6 +816,7 @@ export function DepartmentMailboxesPage({
         </p>
         <ul className="mt-2 flex flex-col gap-1.5 font-sans text-[12px] text-sts-muted">
           <li>• Mail delivered to a connected address opens a new ticket for the sub department it files into.</li>
+          <li>• Microsoft 365 inboxes are checked for new mail every couple of minutes; mail is only read, never moved or deleted.</li>
           <li>• Replies thread onto the same ticket automatically.</li>
           <li>• We check each connection automatically; use <span className="text-sts-foreground">Test connection</span> to verify one right now.</li>
         </ul>

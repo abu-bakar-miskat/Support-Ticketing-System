@@ -1,22 +1,14 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAdminOrManager } from "@/lib/auth"
-import { canAdminDeptSettings } from "@/lib/dept-scope"
 import { updateMailboxConnection, deleteMailboxConnection } from "@/lib/mailbox-connection"
-import { checkDomainVerification } from "@/lib/resend-domains"
+import { assertMailboxAdmin } from "@/lib/mailbox-access"
 import { AssignmentMethod } from "@/generated/prisma/enums"
-import type { AuthProfile } from "@/lib/auth"
 
 const VALID_METHODS = new Set<string>(Object.values(AssignmentMethod))
 
 // Mailbox connection + its per-mailbox assignment method are admin-only settings
-// (role-hierarchy.md). Plain managers are excluded — only tenant/department admins.
-function assertScope(caller: AuthProfile, departmentId: string): NextResponse | null {
-  if (!canAdminDeptSettings(caller, departmentId)) {
-    return NextResponse.json({ error: "You must be an admin of this department." }, { status: 403 })
-  }
-  return null
-}
+// (role-hierarchy.md). Plain managers are excluded — see lib/mailbox-access.ts.
 
 export async function PATCH(
   req: NextRequest,
@@ -28,16 +20,15 @@ export async function PATCH(
   const { id } = await params
   const existing = await prisma.mailboxConnection.findUnique({
     where: { id },
-    select: { departmentId: true, subDepartmentId: true, authType: true },
+    select: { tenantId: true, departmentId: true, subDepartmentId: true, authType: true },
   })
   if (!existing) {
     return NextResponse.json({ error: "Connection not found" }, { status: 404 })
   }
-  const scopeError = await assertScope(caller!, existing.departmentId)
+  const scopeError = assertMailboxAdmin(caller!, existing)
   if (scopeError) return scopeError
 
   const body = await req.json().catch(() => ({}))
-  const { address, plaintextCredentials } = body as { address?: string; plaintextCredentials?: string | null }
   const assignmentMethod = body.assignmentMethod as unknown
   const manualAssigneeIds = body.manualAssigneeIds as unknown
   const isActive = body.isActive as unknown
@@ -46,22 +37,18 @@ export async function PATCH(
     return NextResponse.json({ error: "isActive must be a boolean" }, { status: 400 })
   }
 
-  // An M365 connection's address and token come from the Microsoft sign-in.
-  if (existing.authType === "OAUTH_M365" && (address !== undefined || plaintextCredentials !== undefined)) {
+  // A mailbox's address and sign-in come from Microsoft — change them with Reconnect.
+  if (body.address !== undefined || body.plaintextCredentials !== undefined) {
     return NextResponse.json(
       { error: "This mailbox is tied to the account that signed in. Use Reconnect to change it." },
       { status: 400 },
     )
   }
 
-  if (address !== undefined) {
-    const verification = await checkDomainVerification(address)
-    if (verification.status !== "verified" || !verification.receivingEnabled) {
-      return NextResponse.json(
-        { error: `The ${verification.domain ?? "email"} domain is not ready to receive mail in Resend. Complete verification and enable receiving directly in Resend before adding this mailbox.` },
-        { status: 400 },
-      )
-    }
+  // Only ticket-opening mailboxes have an assignment method; the tenant
+  // mailbox is send-only.
+  if (assignmentMethod !== undefined && !existing.subDepartmentId) {
+    return NextResponse.json({ error: "The organisation mailbox doesn't open tickets" }, { status: 400 })
   }
 
   // Per-mailbox assignment override. null = inherit the sub-department's method;
@@ -93,7 +80,8 @@ export async function PATCH(
       }
       const requested = [...new Set(manualAssigneeIds as string[])]
       const validMembers = await prisma.subDepartmentMembership.findMany({
-        where: { subDepartmentId: existing.subDepartmentId, isActive: true, userId: { in: requested } },
+        // Non-null: the guard above rejects assignment changes on the tenant mailbox.
+        where: { subDepartmentId: existing.subDepartmentId!, isActive: true, userId: { in: requested } },
         select: { userId: true },
       })
       const validIds = new Set(validMembers.map((m) => m.userId))
@@ -113,8 +101,6 @@ export async function PATCH(
   const updated = await updateMailboxConnection(
     id,
     {
-      address,
-      plaintextCredentials,
       ...(methodProvided ? { assignmentMethod: assignmentMethod as AssignmentMethod | null, manualAssigneeIds: manualIds } : {}),
       ...(isActive !== undefined ? { isActive: isActive as boolean } : {}),
     },
@@ -131,11 +117,11 @@ export async function DELETE(
   if (error) return error
 
   const { id } = await params
-  const existing = await prisma.mailboxConnection.findUnique({ where: { id }, select: { departmentId: true } })
+  const existing = await prisma.mailboxConnection.findUnique({ where: { id }, select: { tenantId: true, departmentId: true } })
   if (!existing) {
     return new NextResponse(null, { status: 204 })
   }
-  const scopeError = await assertScope(caller!, existing.departmentId)
+  const scopeError = assertMailboxAdmin(caller!, existing)
   if (scopeError) return scopeError
 
   await deleteMailboxConnection(id, caller!.id)

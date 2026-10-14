@@ -7,6 +7,7 @@ import { safeReturnPath, signOAuthState, verifyOAuthState } from "./mailbox-oaut
 const base = {
   provider: "microsoft" as const,
   actorId: "user-1",
+  tenantId: "tenant-1",
   departmentId: "dept-1",
   teamId: "team-1",
   scopeType: "DEPARTMENT" as const,

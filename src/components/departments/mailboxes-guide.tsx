@@ -6,7 +6,7 @@ import { CircleHelp, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 /** Bump the suffix when the guide changes enough that everyone should see it again. */
-const SEEN_KEY = "pen.mailboxes-guide.seen.v3";
+const SEEN_KEY = "pen.mailboxes-guide.seen.v4";
 const SEEN_CHANGED = "pen-mailboxes-guide-seen";
 
 function subscribe(onChange: () => void) {
@@ -28,21 +28,30 @@ function readSeen(): boolean {
 
 const STEPS: { title: string; body: React.ReactNode }[] = [
   {
-    title: "Prepare the domain in Resend",
-    body: <>Register and verify your domain directly in Resend. Enable receiving there before connecting a mailbox.</>,
-  },
-  {
-    title: "Add a verified domain",
-    body: <>Under <b>Add a verified domain</b>, enter the domain and click <b>Check</b>. Once Resend confirms verification, choose a specific team or <b>All departments and sub-departments</b>, then click <b>Add domain</b>.</>,
-  },
-  {
-    title: "Connect a mailbox to a sub-department",
+    title: "Connect your organisation's mailbox",
     body: (
       <>
-        Open the department, pick the sub-department, then choose <b>Mailbox</b> in its sidebar. The verified domain is
-        listed there with <b>Connect mailbox</b>. Enter the address (e.g.{" "}
-        <span className="font-mono">support@mail.yourcompany.com</span>), click <b>Check</b>, then <b>Save</b>. Emails
-        sent to that address now open tickets for that sub-department.
+        Under <b>Organisation mailbox</b>, click <b>Connect</b> and sign in with Microsoft. It sends anything that isn&apos;t
+        tied to a department — invitations, notifications — and is the fallback for departments without their own.
+      </>
+    ),
+  },
+  {
+    title: "Connect each department's mailbox",
+    body: (
+      <>
+        Open the department&apos;s <b>Mailboxes</b> page and click <b>Connect inbox</b> (e.g.{" "}
+        <span className="font-mono">support@yourcompany.com</span>). New mail there opens tickets, and every email about
+        the department&apos;s tickets is sent from it.
+      </>
+    ),
+  },
+  {
+    title: "Optionally, a sub-department's own mailbox",
+    body: (
+      <>
+        A sub-department can connect its own mailbox on its <b>Mailbox</b> page. Its tickets then use that address instead
+        of the department&apos;s.
       </>
     ),
   },
@@ -50,12 +59,11 @@ const STEPS: { title: string; body: React.ReactNode }[] = [
 
 const NOTES: React.ReactNode[] = [
   <>
-    Mailboxes always belong to a sub-department. A domain registered for a whole department can be used by every
-    sub-department in it. Choose <b>All departments and sub-departments</b> to share a domain across the workspace. Each mailbox needs its own unique address.
+    Email is always sent from the most specific mailbox: sub-department, then department, then organisation. Until one is
+    connected, it falls back to the platform&apos;s default sender.
   </>,
   <>
-    Managers can request domains already verified in Resend. They ask for one with <b>Request a sending domain</b> on their
-    sub-department&apos;s Mailbox page, and the request appears at the top of this page for you to approve or reject.
+    For a shared mailbox, sign in with an account that has <b>Full Access</b> and <b>Send As</b> permission on it.
   </>,
   <>
     <b>Mailbox overview</b> lists every connected mailbox and its health. Click a department, then{" "}
@@ -64,8 +72,8 @@ const NOTES: React.ReactNode[] = [
 ];
 
 /**
- * First-visit walkthrough for /departments/mailboxes: what the page is for, how
- * to add a verified domain, and where mailboxes are actually connected. Opens on its
+ * First-visit walkthrough for /departments/mailboxes: which Microsoft 365
+ * mailboxes to connect at each level and where. Opens on its
  * own the first time (remembered per browser) and stays reachable from the
  * header button.
  */
@@ -100,8 +108,8 @@ export function MailboxesGuide() {
             <div>
               <Dialog.Title className="sts-text-modal-title">How mailboxes work</Dialog.Title>
               <Dialog.Description className="mt-1 font-sans text-[12.5px] leading-relaxed text-sts-muted">
-                Customers email a support address, and the email becomes a ticket for the right sub-department. This
-                page is where you set up the email domains those addresses use.
+                Customers email a support address, and the email becomes a ticket for the right sub-department. Every
+                email the app sends goes out from one of your Microsoft 365 mailboxes.
               </Dialog.Description>
             </div>
             <Dialog.Close

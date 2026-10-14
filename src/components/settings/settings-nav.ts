@@ -69,12 +69,6 @@ export const SETTINGS_NAV: SettingsNavGroup[] = [
         templateFeatureKey: "branding",
       },
       {
-        label: "Email domains",
-        href: "/settings/email-domains",
-        adminOnly: true,
-        tenantScoped: true,
-      },
-      {
         label: "Feature marketplace",
         href: "/settings/features",
         managerOnly: true,

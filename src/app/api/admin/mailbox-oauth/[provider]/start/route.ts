@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/db"
 import { requireAuth, assertDepartmentAdmin } from "@/lib/auth"
 import { assertFeatureEnabled } from "@/lib/feature-flags"
+import { findScopeMailbox } from "@/lib/mailbox-outbound"
 import {
   OAUTH_AUTH_TYPE,
   buildAuthorizeUrl,
@@ -53,39 +54,72 @@ export async function GET(request: NextRequest, { params }: Params) {
   let teamId = search.get("teamId") ?? ""
   let scopeType = search.get("scopeType") ?? ""
   let mailbox = search.get("mailbox")?.trim().toLowerCase() || undefined
+  let connectionTenantId: string | null = null
 
   if (connectionId) {
     const existing = await prisma.mailboxConnection.findUnique({
       where: { id: connectionId },
-      select: { subDepartmentId: true, scopeType: true, authType: true, address: true },
+      select: { tenantId: true, subDepartmentId: true, scopeType: true, authType: true, address: true },
     })
     if (!existing || existing.authType !== OAUTH_AUTH_TYPE[provider]) return fail("That mailbox connection no longer exists.")
-    teamId = existing.subDepartmentId
+    teamId = existing.subDepartmentId ?? ""
     scopeType = existing.scopeType
     mailbox = existing.address
+    connectionTenantId = existing.tenantId
   }
 
-  if (scopeType !== "DEPARTMENT" && scopeType !== "SUB_DEPARTMENT") return fail("Invalid mailbox scope.")
+  if (scopeType !== "TENANT" && scopeType !== "DEPARTMENT" && scopeType !== "SUB_DEPARTMENT") return fail("Invalid mailbox scope.")
   if (mailbox && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(mailbox)) return fail("Enter a valid mailbox address.")
 
-  const subDepartment = teamId
-    ? await prisma.subDepartment.findUnique({ where: { id: teamId }, select: { id: true, departmentId: true, tenantId: true } })
-    : null
-  if (!subDepartment) return fail("Choose which sub-department this mailbox files into.")
+  let tenantId: string
+  let departmentId: string | null = null
+  let subDepartmentId: string | null = null
+  if (scopeType === "TENANT") {
+    // The organisation-wide mailbox is a tenant-admin setting.
+    const target = connectionTenantId ?? caller!.activeTenantId
+    if (!target) return fail("Choose an organisation first.")
+    if (!caller!.isSuperAdmin && !(caller!.role === "admin" && caller!.activeTenantId === target)) {
+      return NextResponse.json({ error: "Only an organisation admin can connect its mailbox." }, { status: 403 })
+    }
+    tenantId = target
+  } else {
+    const subDepartment = teamId
+      ? await prisma.subDepartment.findUnique({ where: { id: teamId }, select: { id: true, departmentId: true, tenantId: true } })
+      : null
+    if (!subDepartment) return fail("Choose which sub-department this mailbox files into.")
 
-  const scopeError = assertDepartmentAdmin(caller!, subDepartment.departmentId)
-  if (scopeError) return scopeError
+    const scopeError = assertDepartmentAdmin(caller!, subDepartment.departmentId)
+    if (scopeError) return scopeError
+    tenantId = subDepartment.tenantId
+    departmentId = subDepartment.departmentId
+    subDepartmentId = subDepartment.id
+  }
 
   // SA-04: a Super Admin can disable mailbox connections per tenant.
-  const featureCheck = await assertFeatureEnabled(subDepartment.tenantId, "mailboxConnections")
+  const featureCheck = await assertFeatureEnabled(tenantId, "mailboxConnections")
   if (!featureCheck.ok) return fail(featureCheck.error)
+
+  if (!connectionId) {
+    const existing = await findScopeMailbox(
+      scopeType === "TENANT"
+        ? { scopeType, tenantId }
+        : scopeType === "DEPARTMENT"
+          ? { scopeType, departmentId: departmentId! }
+          : { scopeType, subDepartmentId: subDepartmentId! },
+    )
+    if (existing) {
+      const label = scopeType === "TENANT" ? "Your organisation" : scopeType === "DEPARTMENT" ? "This department" : "This sub-department"
+      return fail(`${label} already has a connected mailbox (${existing.address}). Disconnect it first to connect a different one.`)
+    }
+  }
 
   const nonce = createOAuthNonce()
   const state = signOAuthState({
     provider,
     actorId: caller!.id,
-    departmentId: subDepartment.departmentId,
-    teamId: subDepartment.id,
+    tenantId,
+    departmentId,
+    teamId: subDepartmentId,
     scopeType,
     mailbox,
     connectionId,

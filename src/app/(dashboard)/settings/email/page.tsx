@@ -74,13 +74,9 @@ export default async function SettingsEmailRoute() {
   return (
     <SettingsEmailPage
       initialConfig={initialConfig}
-      resendConfigured={Boolean(process.env.RESEND_API_KEY)}
-      webhookConfigured={Boolean(process.env.RESEND_WEBHOOK_SECRET)}
       isAdmin={isAdmin}
       isManager={isManager}
       departments={departments}
-      fromName={emailConfig.fromName}
-      fromEmail={emailConfig.fromEmail}
       branding={{
         brandColor: emailConfig.brandColor,
         headerColor: emailConfig.headerColor,

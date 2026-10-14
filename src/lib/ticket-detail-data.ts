@@ -14,7 +14,7 @@ import {
 } from "@/lib/mentionable-users";
 import { fetchProjectDepartmentPeople } from "@/lib/project-department-people";
 import { canEditTicket, canEditTicketDescription, canDeleteTicket } from "@/lib/ticket-date-permissions";
-import { RESEND_RECEIVING_ENABLED } from "@/lib/email-config";
+import { resolveSenderMailbox } from "@/lib/mailbox-outbound";
 import { isDueOverdue } from "@/lib/format";
 import { serializeTicketDateIso } from "@/lib/ticket-datetime";
 import { buildGitHubDevData } from "@/lib/github/dev-data";
@@ -443,6 +443,9 @@ export async function getTicketDetailPayload(
   const mailboxCustomer = !ticket.intake && !lastInbound?.fromEmail
     ? await getMailboxTicketCustomer(ticket.id)
     : null;
+  // Customer replies go out from and come back to a connected Microsoft 365
+  // mailbox (sub-department → department → tenant).
+  const hasReplyMailbox = !!(await resolveSenderMailbox({ subDepartmentId: ticket.subDepartmentId }));
   const activityLogs = ticket.activityLogs;
   const cycleStart = await getWorkCycleStart(ticket.id);
   const ticketTimeEntries = ticket.timeEntries.filter((entry) => !cycleStart || entry.startedAt >= cycleStart);
@@ -804,10 +807,11 @@ export async function getTicketDetailPayload(
       const customerName = ticket.intake?.submitterName ?? lastInbound?.fromName ?? mailboxCustomer?.fromName ?? null;
       const customerEmail = ticket.intake?.submitterEmail ?? lastInbound?.fromEmail ?? mailboxCustomer?.fromEmail ?? null;
       return {
-        // Composer shown only when receiving is configured, the form (when
-        // there is one) permits replies, and there's a known customer address.
+        // Composer shown only when a mailbox can carry the conversation, the
+        // form (when there is one) permits replies, and there's a known
+        // customer address.
         enabled:
-          RESEND_RECEIVING_ENABLED &&
+          hasReplyMailbox &&
           (!ticket.intake || ticket.intake.formConfig.allowCustomerReplies) &&
           !!customerEmail,
         customerName,

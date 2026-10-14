@@ -41,6 +41,8 @@ import {
   isPullProvider,
   reconnectMailbox,
   useMailboxOAuthResult,
+  scopeReplyMailbox,
+  ReplyMailboxNotice,
 } from "@/components/mailbox/mailbox-provider-connect";
 import {
   getSubDepartmentMailboxConnections,
@@ -55,6 +57,10 @@ type StatusMeta = {
   dot: string;
   chip: string;
 };
+
+/** Department / sub-department mailboxes always file into a sub-department. */
+type DeptMailbox = MailboxConnection & { subDepartmentId: string };
+const asDeptMailbox = (c: MailboxConnection) => c as DeptMailbox;
 
 const STATUS: Record<MailboxConnection["status"], StatusMeta> = {
   ACTIVE: {
@@ -89,10 +95,6 @@ function relativeTime(iso: string | null): string {
   return new Date(iso).toLocaleDateString();
 }
 
-function isValidEmail(value: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
-}
-
 type AssignmentMethod = "RULE_BASED" | "ROUND_ROBIN" | "WORKLOAD_BASED" | "MANUAL" | "MANUAL_SELECT";
 
 const ASSIGNMENT_METHOD_LABEL: Record<AssignmentMethod, string> = {
@@ -115,6 +117,7 @@ export function SubDepartmentMailboxManager({
   prefix,
   assignmentMethod,
   canManage,
+  departmentMailbox = null,
 }: {
   subDepartmentId: string;
   subDepartmentName: string;
@@ -123,12 +126,13 @@ export function SubDepartmentMailboxManager({
    *  value for any mailbox that has no per-mailbox override of its own. */
   assignmentMethod: AssignmentMethod;
   canManage: boolean;
+  /** Address of the parent department's mailbox, used when this sub-department has none of its own. */
+  departmentMailbox?: string | null;
 }) {
-  const [connections, setConnections] = useState<MailboxConnection[] | null>(null);
+  const [connections, setConnections] = useState<DeptMailbox[] | null>(null);
   const [loadError, setLoadError] = useState(false);
 
   const [showConnect, setShowConnect] = useState(false);
-  const [saving, setSaving] = useState(false);
 
   // Assignment method is now per-mailbox (per MailboxConnection). Editing state is
   // keyed by the connection id so changing one inbox never touches another. A
@@ -141,17 +145,15 @@ export function SubDepartmentMailboxManager({
   const [assignmentError, setAssignmentError] = useState<string | null>(null);
   const [members, setMembers] = useState<SubDepartmentMember[] | null>(null);
 
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editAddress, setEditAddress] = useState("");
   const [rechecking, setRechecking] = useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<Record<string, boolean>>({});
-  const [confirmDisable, setConfirmDisable] = useState<MailboxConnection | null>(null);
-  const [confirmDisconnect, setConfirmDisconnect] = useState<MailboxConnection | null>(null);
+  const [confirmDisable, setConfirmDisable] = useState<DeptMailbox | null>(null);
+  const [confirmDisconnect, setConfirmDisconnect] = useState<DeptMailbox | null>(null);
 
   function loadConnections() {
     getSubDepartmentMailboxConnections(subDepartmentId)
-      .then((rows) => { setConnections(rows); setLoadError(false); })
+      .then((rows) => { setConnections(rows.filter((c) => c.subDepartmentId).map(asDeptMailbox)); setLoadError(false); })
       .catch(() => {
         setConnections([]);
         setLoadError(true);
@@ -176,6 +178,7 @@ export function SubDepartmentMailboxManager({
 
   const list = connections ?? [];
   const loading = connections === null;
+  const ownMailbox = scopeReplyMailbox(list, { scopeType: "SUB_DEPARTMENT", subDepartmentId });
   const mailboxList = useListControls(list, {
     searchText: (c) => [c.address, STATUS[c.status].label, c.isActive ? "" : "disabled"].join(" "),
     sortOptions: [
@@ -190,14 +193,14 @@ export function SubDepartmentMailboxManager({
     ],
   });
 
-  function startEditAssignment(c: MailboxConnection) {
+  function startEditAssignment(c: DeptMailbox) {
     setEditingAssignmentId(c.id);
     setDraftAssignmentMethod(c.assignmentMethod ?? "INHERIT");
     setDraftMemberIds(c.manualAssigneeIds);
     setAssignmentError(null);
   }
 
-  async function saveAssignmentMethod(c: MailboxConnection) {
+  async function saveAssignmentMethod(c: DeptMailbox) {
     const method = draftAssignmentMethod === "INHERIT" ? null : draftAssignmentMethod;
     if (method === "MANUAL_SELECT" && draftMemberIds.length === 0) {
       setAssignmentError("Select at least one member for the Manual user method.");
@@ -210,7 +213,7 @@ export function SubDepartmentMailboxManager({
         assignmentMethod: method,
         manualAssigneeIds: method === "MANUAL_SELECT" ? draftMemberIds : [],
       });
-      setConnections((prev) => (prev ?? []).map((x) => (x.id === c.id ? updated : x)));
+      setConnections((prev) => (prev ?? []).map((x) => (x.id === c.id ? asDeptMailbox(updated) : x)));
       setEditingAssignmentId(null);
     } catch (e) {
       setAssignmentError(e instanceof Error ? e.message : "Couldn't update the assignment method.");
@@ -225,26 +228,11 @@ export function SubDepartmentMailboxManager({
     );
   }
 
-  async function saveEdit(id: string) {
-    const value = editAddress.trim();
-    if (!isValidEmail(value)) return;
-    setSaving(true);
-    try {
-      const updated = await updateMailboxConnection(id, { address: value });
-      setConnections((prev) => (prev ?? []).map((c) => (c.id === id ? updated : c)));
-      setEditingId(null);
-    } catch {
-      // keep the row in edit mode so the admin can retry
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function recheck(id: string) {
     setRechecking((prev) => ({ ...prev, [id]: true }));
     try {
       const updated = await recheckMailboxConnection(id);
-      setConnections((prev) => (prev ?? []).map((c) => (c.id === id ? updated : c)));
+      setConnections((prev) => (prev ?? []).map((c) => (c.id === id ? asDeptMailbox(updated) : c)));
     } catch {
       // leave the previous status in place on a failed check
     } finally {
@@ -261,11 +249,11 @@ export function SubDepartmentMailboxManager({
   // Manual on/off switch. Turning a mailbox off stops new tickets being opened
   // from it (the inbound router skips inactive mailboxes) without touching any
   // existing tickets.
-  async function toggleActive(c: MailboxConnection) {
+  async function toggleActive(c: DeptMailbox) {
     setTogglingId((prev) => ({ ...prev, [c.id]: true }));
     try {
       const updated = await updateMailboxConnection(c.id, { isActive: !c.isActive });
-      setConnections((prev) => (prev ?? []).map((x) => (x.id === c.id ? updated : x)));
+      setConnections((prev) => (prev ?? []).map((x) => (x.id === c.id ? asDeptMailbox(updated) : x)));
     } catch {
       // leave the current state in place on a failed toggle
     } finally {
@@ -273,7 +261,7 @@ export function SubDepartmentMailboxManager({
     }
   }
 
-  async function copyAddress(c: MailboxConnection) {
+  async function copyAddress(c: DeptMailbox) {
     try {
       await navigator.clipboard.writeText(c.address);
       setCopiedId(c.id);
@@ -322,7 +310,7 @@ export function SubDepartmentMailboxManager({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {canManage && (
+          {canManage && !ownMailbox && (
             <button
               type="button"
               onClick={() => setShowConnect(true)}
@@ -334,6 +322,28 @@ export function SubDepartmentMailboxManager({
           )}
         </div>
       </div>
+
+      {!loading && (
+        <ReplyMailboxNotice>
+          {ownMailbox ? (
+            <>
+              Customers of {subDepartmentName} email and hear back from{" "}
+              <span className="font-medium">{ownMailbox.address}</span>.
+            </>
+          ) : departmentMailbox ? (
+            <>
+              Customer email for {subDepartmentName} uses the department mailbox{" "}
+              <span className="font-medium">{departmentMailbox}</span>. Optionally connect this sub-department&rsquo;s
+              own mailbox to use its own address instead.
+            </>
+          ) : (
+            <>
+              No department mailbox is connected yet. Connect one on the department&rsquo;s Mailboxes page, or connect
+              an inbox for {subDepartmentName} here.
+            </>
+          )}
+        </ReplyMailboxNotice>
+      )}
 
       {/* ── Connect form ── */}
       {canManage && showConnect && (
@@ -386,47 +396,30 @@ export function SubDepartmentMailboxManager({
                   </span>
 
                   <div className="min-w-0 flex-1">
-                    {editingId === c.id ? (
-                      <div className="flex items-center gap-2">
-                        <input
-                          autoFocus
-                          value={editAddress}
-                          onChange={(e) => setEditAddress(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === "Enter") saveEdit(c.id); if (e.key === "Escape") setEditingId(null); }}
-                          className="min-w-0 flex-1 rounded-md border border-sts-blue/50 bg-sts-surface px-2 py-1 font-sans text-[13px] text-sts-foreground outline-none"
-                        />
-                        <Tip label="Save">
-                          <button aria-label="Save address" type="button" onClick={() => saveEdit(c.id)} disabled={saving} className="rounded-full p-1 text-sts-green hover:bg-sts-green/10">
-                            <Check className="size-4" />
-                          </button>
-                        </Tip>
-                        <Tip label="Cancel">
-                          <button aria-label="Cancel" type="button" onClick={() => setEditingId(null)} className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground">
-                            <X className="size-4" />
-                          </button>
-                        </Tip>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="min-w-0 truncate font-sans text-[13.5px] font-medium text-sts-foreground">
-                          {c.address}
-                        </span>
-                        <Tip label={copiedId === c.id ? "Copied" : "Copy address"}>
-                          <button
-                            aria-label="Copy address"
-                            type="button"
-                            onClick={() => copyAddress(c)}
-                            className="shrink-0 rounded-full p-1 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-                          >
-                            {copiedId === c.id ? <Check className="size-3.5 text-sts-green" /> : <Copy className="size-3.5" />}
-                          </button>
-                        </Tip>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <span className="min-w-0 truncate font-sans text-[13.5px] font-medium text-sts-foreground">
+                        {c.address}
+                      </span>
+                      <Tip label={copiedId === c.id ? "Copied" : "Copy address"}>
+                        <button
+                          aria-label="Copy address"
+                          type="button"
+                          onClick={() => copyAddress(c)}
+                          className="shrink-0 rounded-full p-1 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+                        >
+                          {copiedId === c.id ? <Check className="size-3.5 text-sts-green" /> : <Copy className="size-3.5" />}
+                        </button>
+                      </Tip>
+                    </div>
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[11px] text-sts-subtle">
                       <span className="rounded bg-sts-surface px-1.5 py-0.5 font-sans text-[10px] font-medium text-sts-muted">
                         {MAILBOX_PROVIDER_META[c.authType].short}
                       </span>
+                      {c.authType === "OAUTH_M365" && c.scopeType === "SUB_DEPARTMENT" && (
+                        <span className="rounded bg-sts-green/10 px-1.5 py-0.5 font-medium text-sts-green">
+                          Sends customer email
+                        </span>
+                      )}
                       <span>Checked {relativeTime(c.lastCheckedAt)}</span>
                       {isPullProvider(c.authType) && <span>Synced {relativeTime(c.lastSyncedAt)}</span>}
                       {c.failureCount > 0 && (
@@ -476,7 +469,7 @@ export function SubDepartmentMailboxManager({
                         Off
                       </span>
                     )}
-                    {canManage && editingId !== c.id && (
+                    {canManage && (
                       <div className="flex items-center gap-0.5">
                         <Tip label={c.isActive ? "Turn off — stop opening new tickets" : "Turn on — resume opening tickets"}>
                           <button
@@ -518,18 +511,6 @@ export function SubDepartmentMailboxManager({
                             <RefreshCw className={cn("size-3.5", busy && "animate-spin")} />
                           </button>
                         </Tip>
-                        {!isOAuthProvider(c.authType) && (
-                          <Tip label="Edit address">
-                            <button
-                              aria-label="Edit address"
-                              type="button"
-                              onClick={() => { setEditingId(c.id); setEditAddress(c.address); }}
-                              className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-                            >
-                              <Pencil className="size-3.5" />
-                            </button>
-                          </Tip>
-                        )}
                         <Tip label="Disconnect">
                           <button
                             aria-label="Disconnect"

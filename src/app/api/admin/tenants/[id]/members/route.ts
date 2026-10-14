@@ -12,7 +12,7 @@ import {
 import { recordAuditEvent } from "@/lib/audit-log"
 import { resolveUserPrimaryDepartmentId } from "@/lib/dept-scope"
 import { broadcastForceLogout } from "@/lib/realtime-broadcast"
-import { sendTenantInviteEmail } from "@/lib/email"
+import { sendTenantInviteEmail, type EmailDelivery } from "@/lib/email"
 import { INVITE_TTL_MS } from "@/lib/invites/constants"
 import type { Role } from "@/generated/prisma/enums"
 
@@ -180,7 +180,7 @@ export async function POST(request: Request, { params }: Params) {
 
   // Best-effort: email the invitee so the 24h window + 12h reminder apply. The
   // accept link is still returned so a delivery failure never blocks the invite.
-  let emailDelivery: { status: "sent"; via: "mailpit" | "resend" } | { status: "failed" }
+  let emailDelivery: { status: "sent"; via: EmailDelivery } | { status: "failed" }
   try {
     const delivery = await sendTenantInviteEmail({
       to: email,

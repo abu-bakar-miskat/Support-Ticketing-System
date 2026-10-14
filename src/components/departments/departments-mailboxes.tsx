@@ -26,16 +26,8 @@ import {
   TableHead,
   TableCell,
 } from "@/components/ui/table";
-import {
-  EmailDomainsManager,
-  type ManagerDomain,
-  type ManagerDepartmentScope,
-} from "@/components/email/email-domains-manager";
-import {
-  DomainRequestsPanel,
-  type PendingDomainRequest,
-} from "@/components/email/domain-requests-panel";
-import type { InUseDomain } from "@/lib/email-domains";
+import { TenantMailboxPanel } from "@/components/mailbox/tenant-mailbox-panel";
+import type { MailboxConnection } from "@/lib/api/admin";
 import { MailboxesGuide } from "@/components/departments/mailboxes-guide";
 
 export type DepartmentMailboxUsage = {
@@ -142,16 +134,11 @@ const MAILBOX_STATUS: Record<
  */
 export function DepartmentsMailboxes({
   rows,
-  domains,
-  inUseDomains,
-  departments,
-  domainRequests,
+  tenantMailbox,
 }: {
   rows: DepartmentMailboxUsage[];
-  domains: ManagerDomain[];
-  inUseDomains: InUseDomain[];
-  departments: ManagerDepartmentScope[];
-  domainRequests: PendingDomainRequest[];
+  /** The organisation's send-only Microsoft 365 mailbox, if connected. */
+  tenantMailbox: MailboxConnection | null;
 }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<FilterKey>("all");
@@ -236,7 +223,7 @@ export function DepartmentsMailboxes({
             <h1 className="sts-text-admin-title">Mailboxes</h1>
           </div>
           <p className="mt-[3px] font-sans text-[13px] text-sts-muted">
-            Add email domains already verified in Resend for your department mailboxes.
+            Connect your organisation&rsquo;s Microsoft 365 mailbox; departments and sub-departments connect their own.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -256,15 +243,8 @@ export function DepartmentsMailboxes({
         </div>
       </div>
 
-      {/* ── Email domains ── */}
-      <DomainRequestsPanel requests={domainRequests} />
-      <EmailDomainsManager
-        apiBase="/api/admin/email-identity/domains"
-        initialDomains={domains}
-        loadError={null}
-        departments={departments}
-        inUseDomains={inUseDomains}
-      />
+      {/* ── Organisation (tenant) mailbox ── */}
+      <TenantMailboxPanel initial={tenantMailbox} />
 
       {/* ── Mailbox overview (modal) ── */}
       <Dialog.Root open={overviewOpen} onOpenChange={setOverviewOpen}>

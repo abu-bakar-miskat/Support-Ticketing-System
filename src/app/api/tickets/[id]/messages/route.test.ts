@@ -11,8 +11,7 @@ const mockProfile = {
   role: "agent" as const,
 }
 
-// Isolate the route from auth internals + email sending; RESEND_RECEIVING_ENABLED
-// is a module-load const, mocked true here.
+// Isolate the route from auth internals + email sending.
 vi.mock("@/lib/auth", () => ({
   requireAuth: vi.fn(),
   assertTicketAccess: vi.fn(),
@@ -32,11 +31,14 @@ vi.mock("@/lib/db", () => ({
   },
 }))
 vi.mock("@/lib/email-config", () => ({
-  RESEND_RECEIVING_ENABLED: true,
   getEmailConfig: vi.fn().mockResolvedValue({ fromEmail: "support@pengroup.com" }),
 }))
 vi.mock("@/lib/email", () => ({
   sendCustomerReplyEmail: vi.fn(),
+}))
+// The department has a connected Microsoft 365 mailbox to reply through.
+vi.mock("@/lib/mailbox-outbound", () => ({
+  resolveReplyMailbox: vi.fn().mockResolvedValue({ id: "mc-1", address: "support@example.com", credentialsRef: "enc" }),
 }))
 vi.mock("@/lib/mailbox-ticket-customer", () => ({
   getMailboxTicketCustomer: vi.fn(),

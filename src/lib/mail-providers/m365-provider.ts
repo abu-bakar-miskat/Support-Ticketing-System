@@ -19,9 +19,13 @@ function mailboxBase(credentials: OAuthMailboxCredentials): string {
     : `${GRAPH}/me`;
 }
 
-async function graphFetch(ctx: PullContext<OAuthMailboxCredentials>, url: string): Promise<Response> {
+async function graphFetch(
+  ctx: PullContext<OAuthMailboxCredentials>,
+  url: string,
+  init: { method?: string; headers?: Record<string, string>; body?: string } = {},
+): Promise<Response> {
   const token = await getAccessToken("microsoft", ctx.credentials, ctx.saveCredentials);
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  const res = await fetch(url, { ...init, headers: { ...init.headers, Authorization: `Bearer ${token}` } });
   if (res.ok) return res;
   const body = (await res.json().catch(() => null)) as { error?: { message?: string } } | null;
   const message = body?.error?.message ?? `Microsoft Graph returned HTTP ${res.status}`;
@@ -77,3 +81,35 @@ export const m365Provider: PullMailProvider<OAuthMailboxCredentials> = {
     }
   },
 };
+
+/**
+ * Sends a complete RFC 5322 message as the connected mailbox (Graph
+ * `sendMail` with a MIME body). MIME — rather than Graph's JSON message — is
+ * what lets us set Message-ID / In-Reply-To / References, so the customer's
+ * mail client threads the conversation and their reply matches the ticket.
+ *
+ * A shared mailbox needs the signed-in account to hold Send As on it
+ * (Mail.Send.Shared); Graph answers 403 otherwise.
+ */
+export async function sendMimeAsMailbox(ctx: PullContext<OAuthMailboxCredentials>, mime: Buffer): Promise<void> {
+  try {
+    await graphFetch(ctx, `${mailboxBase(ctx.credentials)}/sendMail`, {
+      method: "POST",
+      headers: { "Content-Type": "text/plain" },
+      body: mime.toString("base64"),
+    });
+  } catch (err) {
+    if (err instanceof MailProviderError && err.kind === "auth") {
+      const mailbox = ctx.credentials.mailbox ?? ctx.credentials.account;
+      throw new MailProviderError(
+        `Couldn't send as ${mailbox}: ${err.message}. ${
+          mailbox !== ctx.credentials.account
+            ? `${ctx.credentials.account} needs Send As permission on ${mailbox}, then Reconnect.`
+            : "Reconnect the mailbox to grant send permission."
+        }`,
+        "auth",
+      );
+    }
+    throw err;
+  }
+}

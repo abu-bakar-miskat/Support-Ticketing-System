@@ -5,6 +5,7 @@ import { getProfileDeptScope } from "@/lib/dept-scope"
 import { checkMailboxConnectionHealth, getMailboxConnectionSafe } from "@/lib/mailbox-connection"
 import { syncMailboxConnection } from "@/lib/mailbox-sync"
 import { PULL_AUTH_TYPES } from "@/lib/mail-providers"
+import { assertMailboxAdmin } from "@/lib/mailbox-access"
 
 async function assertScope(caller: { role: string }, departmentId: string): Promise<NextResponse | null> {
   if (caller.role !== "manager") return null
@@ -28,11 +29,18 @@ export async function POST(
   if (error) return error
 
   const { id } = await params
-  const existing = await prisma.mailboxConnection.findUnique({ where: { id }, select: { departmentId: true, authType: true } })
+  const existing = await prisma.mailboxConnection.findUnique({
+    where: { id },
+    select: { tenantId: true, departmentId: true, authType: true },
+  })
   if (!existing) {
     return NextResponse.json({ error: "Connection not found" }, { status: 404 })
   }
-  const scopeError = await assertScope(caller!, existing.departmentId)
+  // Department managers may test their department's mailboxes; the tenant
+  // mailbox is for organisation admins only.
+  const scopeError = existing.departmentId
+    ? await assertScope(caller!, existing.departmentId)
+    : assertMailboxAdmin(caller!, existing)
   if (scopeError) return scopeError
 
   await checkMailboxConnectionHealth(id, new Date(), { notifyOnNewFailure: false })

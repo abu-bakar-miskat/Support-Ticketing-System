@@ -2,7 +2,6 @@ import "server-only"
 import { mailboxOriginIdsWhere } from "@/lib/mailbox-ticket-origin"
 import { prisma } from "@/lib/db"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { extractReplyToken } from "@/lib/customer-conversation"
 import {
   isAutoReply,
   pickBody,
@@ -19,8 +18,8 @@ import { classifyAttachment, INBOUND_MAX_BYTES } from "@/lib/message-attachments
 import { maybeReopenTicket } from "@/lib/customer-reopen"
 import { isOverRateLimit } from "@/lib/inbound-rate-limit"
 import { syncWorkTimerWithConversation } from "@/lib/timer-conversation-sync"
-import { getMailProvider, type NormalizedAttachment, type NormalizedInboundEmail } from "@/lib/mail-providers"
-import { findMailboxConnectionForRecipients, getMailboxRouteById, logMailSuppression } from "@/lib/mailbox-connection"
+import type { NormalizedAttachment, NormalizedInboundEmail } from "@/lib/mail-providers"
+import { getMailboxRouteById, logMailSuppression } from "@/lib/mailbox-connection"
 import { broadcastMailboxMail } from "@/lib/realtime-broadcast"
 import {
   createTicketFromInboundEmail,
@@ -29,11 +28,6 @@ import {
 } from "@/lib/mailbox-ticket-creation"
 import { DepartmentNotOperationalError } from "@/lib/department-setup"
 import { normalizeStatus } from "@/components/board/board-types"
-
-// Re-exported for existing call sites (webhook route, reconcile route) — the
-// implementation lives in lib/resend-client.ts so lib/mail-providers/resend-provider.ts
-// can depend on it without a module cycle back through this file.
-export { getResendClient } from "@/lib/resend-client"
 
 type MatchedTicket = {
   id: string
@@ -49,11 +43,7 @@ type MatchedTicket = {
 /** Display shape returned to the realtime broadcast (mirrors MessageData.attachments). */
 type StoredAttachment = { id: string; storageUrl: string; fileName: string; fileSize: number }
 
-/** Resolves a download URL for an attachment whose bytes weren't delivered inline (Resend). */
-type AttachmentUrlResolver = (attachmentId: string) => Promise<string | null>
-
 async function storeInboundAttachments(
-  resolveAttachmentUrl: AttachmentUrlResolver | null,
   ticketId: string,
   messageDbId: string | null,
   uploaderProfileId: string,
@@ -73,25 +63,8 @@ async function storeInboundAttachments(
         return null
       }
 
-      // Pull providers parse the full MIME message, so the bytes are already
-      // in hand; Resend only hands back a per-attachment download URL.
-      let buffer: ArrayBuffer | Buffer
-      if (att.content) {
-        buffer = att.content
-      } else {
-        const downloadUrl = resolveAttachmentUrl ? await resolveAttachmentUrl(att.id) : null
-        if (!downloadUrl) {
-          console.error("[inbound] failed to get attachment download URL, att.id:", att.id)
-          return null
-        }
-
-        const response = await fetch(downloadUrl)
-        if (!response.ok) {
-          console.error("[inbound] failed to download attachment:", response.status, att.filename)
-          return null
-        }
-        buffer = await response.arrayBuffer()
-      }
+      // The provider parsed the full MIME message, so the bytes are in hand.
+      const buffer = att.content
 
       const safeName = (att.filename ?? "attachment").replace(/[^\w.\-()+ ]/g, "_").slice(0, 200)
       const storagePath = `${ticketId}/${messageDbId ? `msg-${messageDbId}` : "description"}/${Date.now()}-${safeName}`
@@ -161,62 +134,12 @@ export async function broadcastChatMessage(
 }
 
 /**
- * Fetch a received email from Resend, match it to a ticket, persist it, and
- * fire notifications. Idempotent — call safely on duplicates.
- *
- * Returns true if a new message was stored, false if skipped.
- */
-export async function processInboundEmail(
-  emailId: string,
-  messageId: string,
-  recipients: string[],
-): Promise<boolean> {
-  const idVariants = messageIdLookupVariants(messageId)
-
-  // Idempotency fast path before the Resend fetch (normalized + legacy
-  // bracketed / bare forms); the core re-checks under its advisory lock.
-  const existing = await prisma.ticketMessage.findFirst({
-    where: { providerMessageId: { in: idVariants } },
-    select: { id: true },
-  })
-  const origin = await prisma.activityLog.findFirst({
-    where: mailboxOriginIdsWhere(idVariants), select: { id: true },
-  })
-  if (existing || origin) return false
-
-  console.log("[inbound] processInboundEmail start — emailId:", emailId, "recipients:", recipients)
-
-  const provider = getMailProvider("RESEND")
-  if (!provider) {
-    console.error("[inbound] RESEND_API_KEY is not configured")
-    return false
-  }
-
-  const email = await provider.fetchMessage(emailId)
-  if (!email) {
-    console.error("[inbound] failed to fetch email body")
-    return false
-  }
-
-  console.log("[inbound] email fetched — from:", email.from, "subject:", email.subject)
-
-  return processNormalizedInboundEmail({
-    email,
-    messageId,
-    recipients,
-    resendEmailId: emailId,
-    resolveAttachmentUrl: (attachmentId) => provider.fetchAttachmentUrl(emailId, attachmentId),
-    idempotencyChecked: true,
-  })
-}
-
-/**
- * Provider-agnostic core: match a normalized email to a ticket (reply token →
- * threading headers → subject reference), or open a new ticket through the
- * mailbox it arrived at. Resend resolves that mailbox from the webhook's
- * recipients; pull providers (Microsoft 365) already know it and pass
- * `mailboxConnectionId`, so mail reaching the inbox via an alias, group or
- * Bcc still routes correctly.
+ * Match an email synced from a connected mailbox to a ticket (threading
+ * headers → subject reference), or open a new ticket through that mailbox.
+ * The sync already knows which connection the message came from
+ * (`mailboxConnectionId`), so mail reaching the inbox via an alias, group or
+ * Bcc still routes correctly. A tenant (send-only) mailbox only threads
+ * replies; it never opens tickets.
  *
  * Idempotent on the RFC Message-ID; throws only on unexpected failures so the
  * caller can retry.
@@ -225,28 +148,21 @@ export async function processNormalizedInboundEmail(params: {
   email: NormalizedInboundEmail
   messageId: string
   recipients: string[]
-  mailboxConnectionId?: string
-  resendEmailId?: string
-  resolveAttachmentUrl?: AttachmentUrlResolver
-  /** The caller already ran the fast-path dedupe check (Resend, before fetching). */
-  idempotencyChecked?: boolean
+  mailboxConnectionId: string
 }): Promise<boolean> {
-  const { email, messageId, recipients, resendEmailId } = params
-  const resolveAttachmentUrl = params.resolveAttachmentUrl ?? null
+  const { email, messageId, recipients } = params
   const normalizedMessageId = normalizeMessageId(messageId) || messageId
   const idVariants = messageIdLookupVariants(messageId)
 
   // Fast path only — the atomic re-check happens under the advisory lock below.
-  if (!params.idempotencyChecked) {
-    const existing = await prisma.ticketMessage.findFirst({
-      where: { providerMessageId: { in: idVariants } },
-      select: { id: true },
-    })
-    const origin = await prisma.activityLog.findFirst({
-      where: mailboxOriginIdsWhere(idVariants), select: { id: true },
-    })
-    if (existing || origin) return false
-  }
+  const existing = await prisma.ticketMessage.findFirst({
+    where: { providerMessageId: { in: idVariants } },
+    select: { id: true },
+  })
+  const origin = await prisma.activityLog.findFirst({
+    where: mailboxOriginIdsWhere(idVariants), select: { id: true },
+  })
+  if (existing || origin) return false
 
   const headers = normalizeHeaderKeys(email.headers)
   const isSystem = isAutoReply(headers)
@@ -268,11 +184,9 @@ export async function processNormalizedInboundEmail(params: {
     rawPayload: {
       from: email.from, to: email.to, subject: email.subject,
       text: email.text, html: email.html, headers, quotedText: quoted,
-      resendEmailId,
-      // The webhook envelope is the source used to route direct mail. Keep
-      // it separately from the provider's fetched `to` field, which can be
-      // rewritten during forwarding. The resolved connection makes mailbox
-      // filtering unambiguous and excludes ordinary ticket replies.
+      // The connected mailbox's address, kept apart from the message's own
+      // `to` (which can differ for aliases/forwards). The resolved connection
+      // makes mailbox filtering unambiguous and excludes ordinary replies.
       envelopeTo: recipients,
       mailboxConnectionId,
     },
@@ -280,28 +194,7 @@ export async function processNormalizedInboundEmail(params: {
     inReplyTo: headers["in-reply-to"] ?? null,
   })
 
-  const token = recipients.map(extractReplyToken).find(Boolean) ?? null
-  if (token) {
-    const intake = await prisma.intake.findUnique({
-      where: { replyToken: token },
-      select: {
-        submitterEmail: true,
-        ticket: {
-          select: {
-            id: true, title: true, ticketNumber: true, status: true,
-            assigneeId: true, creatorId: true, subDepartmentId: true,
-            subDepartment: { select: { prefix: true } },
-          },
-        },
-      },
-    })
-    if (intake?.ticket) {
-      ticket = intake.ticket
-      submitterEmail = intake.submitterEmail
-    }
-  }
-
-  if (!ticket) {
+  {
     const refIds = extractReferencedIds(
       headers["in-reply-to"] ?? null,
       headers["references"] ?? null,
@@ -367,11 +260,11 @@ export async function processNormalizedInboundEmail(params: {
     // Always resolve the configured mailbox first. Its on/off state controls
     // ticket creation only; it must never control whether the provider's email
     // is received and recorded in the application's mailbox view.
-    const mailbox = params.mailboxConnectionId
-      ? await getMailboxRouteById(params.mailboxConnectionId)
-      : await findMailboxConnectionForRecipients(recipients)
+    const mailbox = await getMailboxRouteById(params.mailboxConnectionId)
     if (!mailbox) {
-      console.log("[inbound] no matching mailbox route, dropping message:", messageId)
+      // A tenant mailbox is send-only: it threads replies (above) but never
+      // opens tickets from new mail.
+      console.log("[inbound] mailbox doesn't open tickets (tenant scope), dropping new message:", messageId)
       return false
     }
 
@@ -473,7 +366,7 @@ export async function processNormalizedInboundEmail(params: {
     }
     // The original body is the description, not a customer reply.
     if (email.attachments.length > 0) {
-      await storeInboundAttachments(resolveAttachmentUrl, ticket.id, null, ticket.creatorId, email.attachments)
+      await storeInboundAttachments(ticket.id, null, ticket.creatorId, email.attachments)
     }
     broadcastMailboxMail(route.departmentId, route.subDepartmentId).catch(() => undefined)
     return true
@@ -534,7 +427,7 @@ export async function processNormalizedInboundEmail(params: {
   // here would hide inbound images until a manual reload.
   const storedAttachments =
     email.attachments.length > 0
-      ? await storeInboundAttachments(resolveAttachmentUrl, ticket.id, created.id, ticket.creatorId, email.attachments)
+      ? await storeInboundAttachments(ticket.id, created.id, ticket.creatorId, email.attachments)
       : []
 
   broadcastChatMessage(ticket.id, {

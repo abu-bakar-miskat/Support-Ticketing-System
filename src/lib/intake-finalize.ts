@@ -3,7 +3,6 @@ import { TicketPriority } from "@/generated/prisma/client"
 import { sendIntakeConfirmationEmail, sendAssignmentEmail, sendIntakeManagerAlertEmail } from "@/lib/email"
 import { createNotification } from "@/lib/notify"
 import { prepareConversion, runConversion } from "@/lib/intake-conversion"
-import { RESEND_RECEIVING_ENABLED } from "@/lib/email-config"
 import { startSlaTimers } from "@/lib/sla-engine"
 import { applyRulesToTicket } from "@/lib/rule-executor"
 import { recordAssignmentFailure } from "@/lib/assignment-engine"
@@ -137,7 +136,7 @@ export async function createTicketFromPayload(
     issueRouted: routedSubDepartmentId !== null,
   })
 
-  const { intakeId, ticketId, replyToken } = await prisma.$transaction(async (tx) =>
+  const { intakeId, ticketId } = await prisma.$transaction(async (tx) =>
     runConversion(
       tx,
       prep,
@@ -240,7 +239,6 @@ export async function createTicketFromPayload(
   }
 
   const emailSummary = responses.filter((r) => r.value && r.value.trim()).map((r) => ({ label: r.label, value: r.value }))
-  const useToken = RESEND_RECEIVING_ENABLED && form.allowCustomerReplies
   await sendIntakeConfirmationEmail({
     to: submitterEmail,
     submitterName,
@@ -250,7 +248,6 @@ export async function createTicketFromPayload(
     priority: resolvedPriority || undefined,
     humanId: humanId ?? undefined,
     responses: emailSummary,
-    replyToken: useToken ? replyToken : null,
     departmentId: routedDepartmentId,
     subDepartmentId: prep.intakeSubDepartmentId,
   }).catch((err) => {

@@ -47,6 +47,8 @@ import {
   isPullProvider,
   reconnectMailbox,
   useMailboxOAuthResult,
+  scopeReplyMailbox,
+  ReplyMailboxNotice,
 } from "@/components/mailbox/mailbox-provider-connect";
 import {
   getDepartmentMailboxConnections,
@@ -61,6 +63,10 @@ type StatusMeta = {
   dot: string;
   chip: string;
 };
+
+/** Department / sub-department mailboxes always file into a sub-department. */
+type DeptMailbox = MailboxConnection & { subDepartmentId: string };
+const asDeptMailbox = (c: MailboxConnection) => c as DeptMailbox;
 
 const STATUS: Record<MailboxConnection["status"], StatusMeta> = {
   ACTIVE: {
@@ -93,10 +99,6 @@ function relativeTime(iso: string | null): string {
   const day = Math.round(hr / 24);
   if (day < 30) return `${day}d ago`;
   return new Date(iso).toLocaleDateString();
-}
-
-function isValidEmail(value: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
 }
 
 type AssignmentMethod = "RULE_BASED" | "ROUND_ROBIN" | "WORKLOAD_BASED" | "MANUAL" | "MANUAL_SELECT";
@@ -162,20 +164,17 @@ export function DepartmentMailboxesPage({
   subDepartments: { id: string; name: string; assignmentMethod: AssignmentMethod }[];
   canManage: boolean;
 }) {
-  const [connections, setConnections] = useState<MailboxConnection[] | null>(null);
+  const [connections, setConnections] = useState<DeptMailbox[] | null>(null);
   const [loadError, setLoadError] = useState(false);
 
   const [showConnect, setShowConnect] = useState(false);
   const [teamId, setTeamId] = useState(subDepartments[0]?.id ?? "");
-  const [saving, setSaving] = useState(false);
 
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editAddress, setEditAddress] = useState("");
   const [rechecking, setRechecking] = useState<Record<string, boolean>>({});
   const [togglingId, setTogglingId] = useState<Record<string, boolean>>({});
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [confirmDisable, setConfirmDisable] = useState<MailboxConnection | null>(null);
-  const [confirmDisconnect, setConfirmDisconnect] = useState<MailboxConnection | null>(null);
+  const [confirmDisable, setConfirmDisable] = useState<DeptMailbox | null>(null);
+  const [confirmDisconnect, setConfirmDisconnect] = useState<DeptMailbox | null>(null);
 
   // Assignment method is per-mailbox (per MailboxConnection). Editing state is
   // keyed by the connection id so changing one inbox never touches another. A
@@ -191,7 +190,7 @@ export function DepartmentMailboxesPage({
 
   function loadConnections() {
     getDepartmentMailboxConnections(departmentId)
-      .then((rows) => { setConnections(rows); setLoadError(false); })
+      .then((rows) => { setConnections(rows.filter((c) => c.subDepartmentId).map(asDeptMailbox)); setLoadError(false); })
       .catch(() => {
         setConnections([]);
         setLoadError(true);
@@ -206,6 +205,9 @@ export function DepartmentMailboxesPage({
   const list = connections ?? [];
   const loading = connections === null;
   const noSubDepartments = subDepartments.length === 0;
+  // The department's one Microsoft 365 mailbox: it receives new mail and sends
+  // every customer email for sub-departments without a mailbox of their own.
+  const deptMailbox = scopeReplyMailbox(list, { scopeType: "DEPARTMENT" });
   const subDeptName = (id: string) => subDepartments.find((s) => s.id === id)?.name ?? "—";
   const mailboxList = useListControls(list, {
     searchText: (c) => [c.address, subDeptName(c.subDepartmentId), STATUS[c.status].label, c.isActive ? "" : "disabled"].join(" "),
@@ -249,14 +251,14 @@ export function DepartmentMailboxesPage({
   }
 
 
-  function startEditAssignment(c: MailboxConnection) {
+  function startEditAssignment(c: DeptMailbox) {
     setEditingAssignmentId(c.id);
     setDraftAssignmentMethod(c.assignmentMethod ?? "INHERIT");
     setDraftMemberIds(c.manualAssigneeIds);
     setAssignmentError(null);
   }
 
-  async function saveAssignmentMethod(c: MailboxConnection) {
+  async function saveAssignmentMethod(c: DeptMailbox) {
     const method = draftAssignmentMethod === "INHERIT" ? null : draftAssignmentMethod;
     if (method === "MANUAL_SELECT" && draftMemberIds.length === 0) {
       setAssignmentError("Select at least one member for the Manual user method.");
@@ -269,7 +271,7 @@ export function DepartmentMailboxesPage({
         assignmentMethod: method,
         manualAssigneeIds: method === "MANUAL_SELECT" ? draftMemberIds : [],
       });
-      setConnections((prev) => (prev ?? []).map((x) => (x.id === c.id ? updated : x)));
+      setConnections((prev) => (prev ?? []).map((x) => (x.id === c.id ? asDeptMailbox(updated) : x)));
       setEditingAssignmentId(null);
     } catch (e) {
       setAssignmentError(e instanceof Error ? e.message : "Couldn't update the assignment method.");
@@ -284,26 +286,11 @@ export function DepartmentMailboxesPage({
     );
   }
 
-  async function saveEdit(id: string) {
-    const value = editAddress.trim();
-    if (!isValidEmail(value)) return;
-    setSaving(true);
-    try {
-      const updated = await updateMailboxConnection(id, { address: value });
-      setConnections((prev) => (prev ?? []).map((c) => (c.id === id ? updated : c)));
-      setEditingId(null);
-    } catch {
-      // keep the row in edit mode so the admin can retry
-    } finally {
-      setSaving(false);
-    }
-  }
-
   async function recheck(id: string) {
     setRechecking((prev) => ({ ...prev, [id]: true }));
     try {
       const updated = await recheckMailboxConnection(id);
-      setConnections((prev) => (prev ?? []).map((c) => (c.id === id ? updated : c)));
+      setConnections((prev) => (prev ?? []).map((c) => (c.id === id ? asDeptMailbox(updated) : c)));
     } catch {
       // leave the previous status in place on a failed check
     } finally {
@@ -319,11 +306,11 @@ export function DepartmentMailboxesPage({
 
   // Manual on/off switch. Off pauses ticket creation from this mailbox (the
   // inbound router skips inactive mailboxes); existing tickets are untouched.
-  async function toggleActive(c: MailboxConnection) {
+  async function toggleActive(c: DeptMailbox) {
     setTogglingId((prev) => ({ ...prev, [c.id]: true }));
     try {
       const updated = await updateMailboxConnection(c.id, { isActive: !c.isActive });
-      setConnections((prev) => (prev ?? []).map((x) => (x.id === c.id ? updated : x)));
+      setConnections((prev) => (prev ?? []).map((x) => (x.id === c.id ? asDeptMailbox(updated) : x)));
     } catch {
       // leave the current state in place on a failed toggle
     } finally {
@@ -331,7 +318,7 @@ export function DepartmentMailboxesPage({
     }
   }
 
-  async function copyAddress(c: MailboxConnection) {
+  async function copyAddress(c: DeptMailbox) {
     try {
       await navigator.clipboard.writeText(c.address);
       setCopiedId(c.id);
@@ -380,7 +367,7 @@ export function DepartmentMailboxesPage({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          {canManage && !noSubDepartments && (
+          {canManage && !noSubDepartments && !deptMailbox && (
             <button
               type="button"
               onClick={openConnect}
@@ -392,6 +379,22 @@ export function DepartmentMailboxesPage({
           )}
         </div>
       </div>
+
+      {!loading && !noSubDepartments && (
+        <ReplyMailboxNotice>
+          {deptMailbox ? (
+            <>
+              Customers email and hear back from <span className="font-medium">{deptMailbox.address}</span> for every
+              sub-department of {departmentName}, unless a sub-department connects its own mailbox.
+            </>
+          ) : (
+            <>
+              Connect {departmentName}&rsquo;s mailbox (e.g. support@yourcompany.com). It opens tickets from new mail
+              and sends all customer replies and updates, so customers only ever see that one address.
+            </>
+          )}
+        </ReplyMailboxNotice>
+      )}
 
       {/* ── Connect mailbox modal ── */}
       {canManage && showConnect && !noSubDepartments && (
@@ -484,43 +487,21 @@ export function DepartmentMailboxesPage({
                   </span>
 
                   <div className="min-w-0 flex-1">
-                    {editingId === c.id ? (
-                      <div className="flex items-center gap-2">
-                        <input
-                          autoFocus
-                          value={editAddress}
-                          onChange={(e) => setEditAddress(e.target.value)}
-                          onKeyDown={(e) => { if (e.key === "Enter") saveEdit(c.id); if (e.key === "Escape") setEditingId(null); }}
-                          className="min-w-0 flex-1 rounded-md border border-sts-blue/50 bg-sts-surface px-2 py-1 font-sans text-[13px] text-sts-foreground outline-none"
-                        />
-                        <Tip label="Save">
-                          <button type="button" aria-label="Save address" onClick={() => saveEdit(c.id)} disabled={saving} className="rounded-full p-1 text-sts-green hover:bg-sts-green/10">
-                            <Check className="size-4" />
-                          </button>
-                        </Tip>
-                        <Tip label="Cancel">
-                          <button type="button" aria-label="Cancel editing" onClick={() => setEditingId(null)} className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground">
-                            <X className="size-4" />
-                          </button>
-                        </Tip>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="min-w-0 truncate font-sans text-[13.5px] font-medium text-sts-foreground">
-                          {c.address}
-                        </span>
-                        <Tip label="Copy address">
-                          <button
-                            type="button"
-                            aria-label="Copy address"
-                            onClick={() => copyAddress(c)}
-                            className="shrink-0 rounded-full p-1 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-                          >
-                            {copiedId === c.id ? <Check className="size-3.5 text-sts-green" /> : <Copy className="size-3.5" />}
-                          </button>
-                        </Tip>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-2">
+                      <span className="min-w-0 truncate font-sans text-[13.5px] font-medium text-sts-foreground">
+                        {c.address}
+                      </span>
+                      <Tip label="Copy address">
+                        <button
+                          type="button"
+                          aria-label="Copy address"
+                          onClick={() => copyAddress(c)}
+                          className="shrink-0 rounded-full p-1 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
+                        >
+                          {copiedId === c.id ? <Check className="size-3.5 text-sts-green" /> : <Copy className="size-3.5" />}
+                        </button>
+                      </Tip>
+                    </div>
                     <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 font-sans text-[11px] text-sts-subtle">
                       <span className="flex items-center gap-1">
                         Files into
@@ -531,6 +512,13 @@ export function DepartmentMailboxesPage({
                       <span className="rounded bg-sts-surface px-1.5 py-0.5 font-sans text-[10px] font-medium text-sts-muted">
                         {MAILBOX_PROVIDER_META[c.authType].short}
                       </span>
+                      {c.authType === "OAUTH_M365" && (
+                        <span className="rounded bg-sts-green/10 px-1.5 py-0.5 font-medium text-sts-green">
+                          {c.scopeType === "DEPARTMENT"
+                            ? "Sends customer email for the department"
+                            : `Sends customer email for ${subDeptName(c.subDepartmentId)}`}
+                        </span>
+                      )}
                       <span>Checked {relativeTime(c.lastCheckedAt)}</span>
                       {isPullProvider(c.authType) && <span>Synced {relativeTime(c.lastSyncedAt)}</span>}
                       {c.failureCount > 0 && (
@@ -587,7 +575,7 @@ export function DepartmentMailboxesPage({
                         Off
                       </span>
                     )}
-                    {canManage && editingId !== c.id && (
+                    {canManage && (
                       <div className="flex items-center gap-0.5">
                         <Tip label={c.isActive ? "Turn off — stop opening new tickets" : "Turn on — resume opening tickets"}>
                           <button
@@ -629,18 +617,6 @@ export function DepartmentMailboxesPage({
                             <RefreshCw className={cn("size-3.5", busy && "animate-spin")} />
                           </button>
                         </Tip>
-                        {!isOAuthProvider(c.authType) && (
-                          <Tip label="Edit address">
-                            <button
-                              type="button"
-                              aria-label="Edit address"
-                              onClick={() => { setEditingId(c.id); setEditAddress(c.address); }}
-                              className="rounded-full p-1.5 text-sts-subtle hover:bg-sts-surface hover:text-sts-foreground"
-                            >
-                              <Pencil className="size-3.5" />
-                            </button>
-                          </Tip>
-                        )}
                         <Tip label="Disconnect">
                           <button
                             type="button"

@@ -18,10 +18,7 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { cn } from "@/lib/utils";
 import { useUnsavedChangesGuard } from "@/hooks/use-unsaved-changes-guard";
 import { SettingsEmailTemplatesPage, type DeptOption } from "./settings-email-templates-page";
-import { EmailIdentityCard } from "./settings-email-identity";
 import { LogoUploadButton } from "./logo-upload-button";
-
-const DEFAULT_FROM_EMAIL = "onboarding@mail.pengroup.com";
 
 const NOTIFICATION_META = [
   {
@@ -192,18 +189,26 @@ function EmailNotificationsCard({
   );
 }
 
-function ConnectionCard({
-  resendConfigured,
-  webhookConfigured,
-  fromName,
-  fromEmail,
-}: {
-  resendConfigured: boolean;
-  webhookConfigured: boolean;
-  fromName: string;
-  fromEmail: string;
-}) {
+/**
+ * Which mailbox email for the selected scope goes out from — the most specific
+ * connected Microsoft 365 mailbox (sub-department → department → tenant), or
+ * the platform sender when none is connected — plus a test send through it.
+ */
+function SendingMailboxCard({ scope }: { scope: DeptOption | undefined }) {
   const [sending, setSending] = useState(false);
+  const [sender, setSender] = useState<{ address: string; platform: boolean } | null>(null);
+  const departmentId = scope?.id ?? "";
+  const subDepartmentId = scope?.subDepartmentId ?? "";
+
+  useEffect(() => {
+    let cancelled = false;
+    const query = new URLSearchParams({ departmentId, subDepartmentId });
+    fetch(`/api/email/test?${query}`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => { if (!cancelled) setSender(data); })
+      .catch(() => { if (!cancelled) setSender(null); });
+    return () => { cancelled = true; };
+  }, [departmentId, subDepartmentId]);
 
   async function sendTest() {
     setSending(true);
@@ -211,13 +216,13 @@ function ConnectionCard({
       const res = await fetch("/api/email/test", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
+        body: JSON.stringify({ departmentId, subDepartmentId }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         throw new Error(data?.error ?? "Failed to send test email");
       }
-      toast.success(`Test email sent to ${data.to ?? "your address"}`);
+      toast.success(`Test email sent to ${data.to ?? "your address"}${data.from ? ` from ${data.from}` : ""}`);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Failed to send test email");
     } finally {
@@ -229,56 +234,42 @@ function ConnectionCard({
     <section className="w-full max-w-[920px] rounded-[6px] border border-sts-card-border bg-sts-card px-[22px] pt-4 pb-4">
       <div className="pb-1.5">
         <h2 className="font-sans text-sm font-semibold text-sts-foreground">
-          Resend connection
+          Sending mailbox
         </h2>
       </div>
 
       <div className="flex flex-col gap-3 border-t border-sts-surface py-3 sm:flex-row sm:items-center sm:gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-px">
           <span className="font-sans text-[12.5px] font-semibold text-sts-foreground">
-            Status
+            Sends from
           </span>
           <p className="font-sans text-[11.5px] text-sts-subtle">
-            Sending as{" "}
-            <span className="font-mono">
-              {fromName} &lt;{fromEmail}&gt;
-            </span>
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2 self-start sm:self-center">
-          <span
-            className={cn(
-              "inline-flex h-[22px] items-center rounded-full px-2.5 font-sans text-[11.5px] font-medium",
-              resendConfigured
-                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
-                : "bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300",
+            {sender ? (
+              sender.platform ? (
+                <>
+                  No Microsoft 365 mailbox is connected here, so email goes out from the platform address{" "}
+                  <span className="font-mono">{sender.address}</span>. Connect one on the Mailboxes page.
+                </>
+              ) : (
+                <>
+                  All email for this scope is sent from <span className="font-mono">{sender.address}</span>.
+                </>
+              )
+            ) : (
+              "Checking…"
             )}
-          >
-            {resendConfigured ? "Connected" : "No API key"}
-          </span>
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-3 border-t border-sts-surface py-3 sm:flex-row sm:items-center sm:gap-4">
-        <div className="flex min-w-0 flex-1 flex-col gap-px">
-          <span className="font-sans text-[12.5px] font-semibold text-sts-foreground">
-            Inbound webhook
-          </span>
-          <p className="font-sans text-[11.5px] text-sts-subtle">
-            Receives inbound email events from Resend at{" "}
-            <span className="font-mono">/api/webhooks/resend</span>
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2 self-start sm:self-center">
           <span
             className={cn(
               "inline-flex h-[22px] items-center rounded-full px-2.5 font-sans text-[11.5px] font-medium",
-              webhookConfigured
+              sender && !sender.platform
                 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300"
                 : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
             )}
           >
-            {webhookConfigured ? "Connected" : "No secret"}
+            {sender && !sender.platform ? "Microsoft 365" : "Platform sender"}
           </span>
         </div>
       </div>
@@ -289,15 +280,14 @@ function ConnectionCard({
             Send a test email
           </span>
           <p className="font-sans text-[11.5px] text-sts-subtle">
-            Delivers a sample message to your own address using the current
-            settings.
+            Delivers a sample message to your own address through the mailbox above.
           </p>
         </div>
         <div className="shrink-0 self-start sm:self-center">
           <button
             type="button"
             onClick={sendTest}
-            disabled={sending || !resendConfigured}
+            disabled={sending}
             className={cn(
               "inline-flex h-8 items-center rounded-full bg-sts-blue px-3.5 font-sans text-xs font-medium text-white",
               "disabled:cursor-not-allowed disabled:opacity-50",
@@ -966,23 +956,15 @@ function EmailBrandingCard({
 
 export function SettingsEmailPage({
   initialConfig,
-  resendConfigured = false,
-  webhookConfigured = false,
   isAdmin = true,
   isManager = false,
   departments = [],
-  fromName = "Global Support Portal",
-  fromEmail = DEFAULT_FROM_EMAIL,
   branding,
 }: {
   initialConfig?: Record<string, string | boolean>;
-  resendConfigured?: boolean;
-  webhookConfigured?: boolean;
   isAdmin?: boolean;
   isManager?: boolean;
   departments?: DeptOption[];
-  fromName?: string;
-  fromEmail?: string;
   branding?: EmailBrandingValues;
 }) {
   const canSeeGeneral = isAdmin || isManager;
@@ -1078,12 +1060,7 @@ export function SettingsEmailPage({
 
       {tab === "general" && canSeeGeneral ? (
         <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
-          <ConnectionCard
-            resendConfigured={resendConfigured}
-            webhookConfigured={webhookConfigured}
-            fromName={fromName}
-            fromEmail={fromEmail}
-          />
+          <SendingMailboxCard scope={selectedScope} />
 
           <EmailNotificationsCard
             scope={selectedScope}
@@ -1093,7 +1070,6 @@ export function SettingsEmailPage({
         </div>
       ) : tab === "branding" && canSeeGeneral ? (
         <div className="flex flex-col gap-4 px-5 py-8 sm:px-8 lg:px-10 lg:py-8">
-          <EmailIdentityCard scope={selectedScope} />
           {branding ? (
             <EmailBrandingCard
               scope={selectedScope}

@@ -3,8 +3,9 @@ import { prisma } from "@/lib/db"
 import { getProfile } from "@/lib/profile"
 import { runAsSystem } from "@/lib/request-scope"
 import { getPullMailProvider, MailProviderError, type OAuthMailboxCredentials } from "@/lib/mail-providers"
-import { createMailboxConnection, replacePullCredentials } from "@/lib/mailbox-connection"
+import { createMailboxConnection, encryptPullCredentials, replacePullCredentials } from "@/lib/mailbox-connection"
 import { initialSyncCursor } from "@/lib/mailbox-sync"
+import { findScopeMailbox } from "@/lib/mailbox-outbound"
 import {
   MAILBOX_OAUTH_NONCE_COOKIE,
   OAUTH_AUTH_TYPE,
@@ -94,20 +95,20 @@ export async function GET(request: NextRequest, { params }: Params) {
     const syncCursor = await initialSyncCursor(pull, ctx as never)
 
     return await runAsSystem(async () => {
-      const department = await prisma.department.findUnique({
-        where: { id: state.departmentId },
-        select: { tenantId: true, subDepartments: { where: { id: state.teamId }, select: { id: true } } },
-      })
-      if (!department || department.subDepartments.length === 0) {
-        return finish({ error: "That sub-department no longer exists." })
+      if (state.scopeType !== "TENANT") {
+        const sub = await prisma.subDepartment.findFirst({
+          where: { id: state.teamId ?? "", departmentId: state.departmentId ?? "", tenantId: state.tenantId },
+          select: { id: true },
+        })
+        if (!sub) return finish({ error: "That sub-department no longer exists." })
       }
 
       if (state.connectionId) {
         const existing = await prisma.mailboxConnection.findUnique({
           where: { id: state.connectionId },
-          select: { address: true, departmentId: true, syncCursor: true },
+          select: { address: true, tenantId: true, scopeType: true, syncCursor: true },
         })
-        if (!existing || existing.departmentId !== state.departmentId) {
+        if (!existing || existing.tenantId !== state.tenantId || existing.scopeType !== state.scopeType) {
           return finish({ error: "That mailbox connection no longer exists." })
         }
         if (existing.address !== target) {
@@ -119,12 +120,55 @@ export async function GET(request: NextRequest, { params }: Params) {
         return finish({ connected: target })
       }
 
+      // Re-checked here: another admin may have connected one meanwhile.
+      const taken = await findScopeMailbox(
+        state.scopeType === "TENANT"
+          ? { scopeType: "TENANT", tenantId: state.tenantId }
+          : state.scopeType === "DEPARTMENT"
+            ? { scopeType: "DEPARTMENT", departmentId: state.departmentId ?? "" }
+            : { scopeType: "SUB_DEPARTMENT", subDepartmentId: state.teamId ?? "" },
+      )
+      if (taken) {
+        return finish({ error: `A mailbox (${taken.address}) is already connected here. Disconnect it first to connect a different one.` })
+      }
+
+      const scope = {
+        tenantId: state.tenantId,
+        departmentId: state.scopeType === "TENANT" ? null : state.departmentId,
+        subDepartmentId: state.scopeType === "TENANT" ? null : state.teamId,
+        scopeType: state.scopeType,
+      }
+
+      // A legacy Resend forwarding mailbox may still hold this address (the
+      // column is unique). Upgrade that row in place to the Microsoft 365
+      // connection — it keeps its id, so its received-mail history stays linked.
+      const legacy = await prisma.mailboxConnection.findUnique({
+        where: { address: target },
+        select: { id: true, authType: true, tenantId: true },
+      })
+      if (legacy && legacy.authType === "RESEND" && legacy.tenantId === state.tenantId) {
+        await prisma.mailboxConnection.update({
+          where: { id: legacy.id },
+          data: {
+            ...scope,
+            authType,
+            credentialsRef: encryptPullCredentials(granted),
+            syncCursor: syncCursor as never,
+            status: "ACTIVE",
+            failureCount: 0,
+            lastErrorAt: null,
+            lastErrorMessage: null,
+            nextCheckAt: null,
+            assignmentMethod: null,
+            manualAssigneeIds: [],
+          },
+        })
+        return finish({ connected: target })
+      }
+
       try {
         await createMailboxConnection({
-          tenantId: department.tenantId,
-          departmentId: state.departmentId,
-          subDepartmentId: state.teamId,
-          scopeType: state.scopeType,
+          ...scope,
           address: target,
           authType,
           plaintextCredentials: JSON.stringify(granted),

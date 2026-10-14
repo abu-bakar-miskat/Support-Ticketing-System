@@ -110,7 +110,7 @@ export default async function DepartmentsPage() {
     const mailboxGroups = await runAsSystem(() =>
       prisma.mailboxConnection.groupBy({
         by: ["departmentId", "status"],
-        where: { tenantId },
+        where: { tenantId, authType: "OAUTH_M365", departmentId: { not: null } },
         _count: { _all: true },
         _max: { lastCheckedAt: true },
       }),
@@ -120,6 +120,7 @@ export default async function DepartmentsPage() {
       { total: number; active: number; issues: number; lastCheckedAt: Date | null }
     >();
     for (const g of mailboxGroups) {
+      if (!g.departmentId) continue;
       const entry = mailboxByDept.get(g.departmentId) ?? { total: 0, active: 0, issues: 0, lastCheckedAt: null };
       const count = g._count._all;
       entry.total += count;

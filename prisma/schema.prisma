@@ -1171,11 +1171,14 @@ model TicketAccessGrant {
 enum MailboxScopeType {
   DEPARTMENT
   SUB_DEPARTMENT
+  // Send-only tenant-wide mailbox: the fallback sender for tenant email when no
+  // department / sub-department mailbox applies (lib/mailbox-outbound.ts).
+  TENANT
 }
 
-// RESEND is the only functional provider today; the others are the D-10
-// provider-abstraction seam OAuth (M365/Google) and IMAP land behind later
-// (EM-05) — see lib/mail-providers.
+// OAUTH_M365 is the only provider in use. RESEND rows are legacy forwarding
+// mailboxes (ignored since mail moved to Microsoft 365); OAUTH_GOOGLE / IMAP
+// are unused enum values.
 enum MailboxAuthType {
   RESEND
   OAUTH_M365
@@ -1189,20 +1192,21 @@ enum MailboxConnectionStatus {
   UNREACHABLE
 }
 
-// A department/sub-department inbound mailbox (slice 14, EM-01/02/03).
-// `teamId` is always the concrete sub-department (Team) new tickets are filed
-// into — even a DEPARTMENT-scoped connection needs one, since Team is the only
+// A tenant / department / sub-department mailbox (slice 14, EM-01/02/03).
+// For DEPARTMENT and SUB_DEPARTMENT scope, `teamId` is the concrete
+// sub-department (Team) new tickets are filed into — even a DEPARTMENT-scoped
+// connection needs one, since Team is the only
 // unit with a board/ticket counter (slice 04/05). `scopeType` is a management/
 // visibility attribute (who may edit it), mirroring the DEPARTMENT/
 // SUB_DEPARTMENT split already established by RoleAssignment (slice 01).
-// `credentialsRef` is an opaque AES-256-GCM-encrypted blob (lib/mailbox-credentials.ts,
-// NFR-03) — null for RESEND, which still uses the platform-wide RESEND_API_KEY.
-// Never selected/returned by any API response.
+// TENANT scope has neither (send-only). `credentialsRef` is an opaque
+// AES-256-GCM-encrypted blob (lib/mailbox-credentials.ts, NFR-03). Never
+// selected/returned by any API response.
 model MailboxConnection {
   id               String                  @id @default(cuid())
   tenantId         String
-  departmentId     String
-  subDepartmentId  String                  @map("teamId")
+  departmentId     String?
+  subDepartmentId  String?                 @map("teamId")
   scopeType        MailboxScopeType
   address          String                  @unique
   authType         MailboxAuthType         @default(RESEND)
@@ -1238,8 +1242,8 @@ model MailboxConnection {
   updatedAt        DateTime                @updatedAt
 
   tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  department    Department    @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-  subDepartment SubDepartment @relation(fields: [subDepartmentId], references: [id], onDelete: Cascade)
+  department    Department?    @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  subDepartment SubDepartment? @relation(fields: [subDepartmentId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
   @@index([departmentId])

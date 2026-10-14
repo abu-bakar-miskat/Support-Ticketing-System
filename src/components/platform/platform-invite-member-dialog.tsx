@@ -137,7 +137,7 @@ export function PlatformInviteMemberDialog({
       if (body.invited) {
         setInviteLink(body.acceptPath)
         setInviteDelivery(
-          body.emailDelivery?.status === "sent" && body.emailDelivery.via === "resend"
+          body.emailDelivery?.status === "sent" && (body.emailDelivery.via === "resend" || body.emailDelivery.via === "mailbox")
             ? "resend"
             : body.emailDelivery?.status === "sent" && body.emailDelivery.via === "mailpit"
               ? "mailpit"
@@ -199,7 +199,7 @@ export function PlatformInviteMemberDialog({
     } else if (body.invited) {
       setInviteLink(body.acceptPath)
       setInviteDelivery(
-        body.emailDelivery?.status === "sent" && body.emailDelivery.via === "resend"
+        body.emailDelivery?.status === "sent" && (body.emailDelivery.via === "resend" || body.emailDelivery.via === "mailbox")
           ? "resend"
           : body.emailDelivery?.status === "sent" && body.emailDelivery.via === "mailpit"
             ? "mailpit"

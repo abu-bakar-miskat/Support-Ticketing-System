@@ -199,6 +199,7 @@ async function collectManagerDashboardData(profile: Profile): Promise<ManagerDas
         where: {
           departmentId: deptScope?.activeDeptId ?? "__no_department__",
           subDepartmentId: { in: subDepartmentIds },
+          authType: "OAUTH_M365",
         },
         orderBy: { address: "asc" },
         select: {
@@ -392,7 +393,7 @@ async function collectManagerDashboardData(profile: Profile): Promise<ManagerDas
       address: mailbox.address,
       isActive: mailbox.isActive,
       status: mailbox.status,
-      subDepartmentName: mailbox.subDepartment.name,
+      subDepartmentName: mailbox.subDepartment?.name ?? "",
     })),
     supportForms: supportFormRows.map((form) => ({
       id: form.id,

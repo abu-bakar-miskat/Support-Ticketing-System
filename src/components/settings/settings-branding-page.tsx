@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 import type { TenantBranding } from "@/lib/tenant-branding"
-import { EmailIdentityCard } from "./settings-email-identity"
 import { LogoUploadButton } from "./logo-upload-button"
 import { AccentColorField } from "./accent-color-field"
 import { normalizeHex } from "@/lib/tenant-accent"
@@ -465,8 +464,6 @@ export function SettingsBrandingPage({
           </Select>
         </div>
       ) : null}
-
-      <EmailIdentityCard scope={selectedScope} />
     </div>
   )
 }

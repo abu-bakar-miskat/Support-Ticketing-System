@@ -847,17 +847,17 @@ const SECTIONS: HelpSection[] = [
     ),
   },
   {
-    id: "email-domains",
-    title: "Email domains",
+    id: "email-mailboxes",
+    title: "Sending email from your mailboxes",
     icon: Mail,
     group: "managers",
     managerOnly: true,
-    keywords: "email domain sending verify dns from address deliverability tenant organisation sender",
-    summary: "Register and verify the domains your organisation sends email from.",
+    keywords: "email mailbox microsoft 365 outlook sending from address tenant organisation department sub-department sender",
+    summary: "Every email is sent from your own Microsoft 365 mailbox.",
     body: (
       <>
-        <P>Admins register sending domains under <strong>Settings → Email domains</strong> (All Departments view). Verified domains let tickets, confirmations and replies send from your own addresses instead of a shared default.</P>
-        <InfoBox type="info">Verification uses DNS records; until a domain verifies, mail falls back to the platform default sender.</InfoBox>
+        <P>Connect a Microsoft 365 mailbox for your organisation (<strong>Departments → Mailboxes</strong>), for each department, and optionally for a sub-department. Every email — customer replies, ticket updates, staff notifications and invitations — is sent from the most specific one: sub-department, then department, then organisation.</P>
+        <InfoBox type="info">Until a mailbox is connected, email falls back to the platform&rsquo;s default sender.</InfoBox>
       </>
     ),
   },

@@ -26,7 +26,6 @@ vi.mock("@/lib/email", () => ({
 }))
 vi.mock("@/lib/notify", () => ({ createNotification: vi.fn() }))
 vi.mock("@/lib/email-config", () => ({
-  RESEND_RECEIVING_ENABLED: true,
   getEmailConfig: vi.fn().mockResolvedValue({
     fromName: "Global Support Portal",
     fromEmail: "support@pengroup.com",
@@ -210,15 +209,12 @@ describe("POST /api/support/[uuid]/submit — customer confirmation", () => {
     mockFindAccount.mockResolvedValue({ id: "profile-1" } as never)
   })
 
-  it("sends the confirmation with the reply token when receiving is enabled", async () => {
+  it("sends the confirmation to the submitter", async () => {
     const res = await POST(makeRequest(validBody), { params })
     expect(res.status).toBe(201)
 
     expect(mockSendConfirmation).toHaveBeenCalledWith(
-      expect.objectContaining({
-        to: "jane@example.com",
-        replyToken: "a".repeat(48),
-      }),
+      expect.objectContaining({ to: "jane@example.com" }),
     )
   })
 
@@ -227,15 +223,6 @@ describe("POST /api/support/[uuid]/submit — customer confirmation", () => {
 
     expect(mockSendConfirmation).toHaveBeenCalledOnce()
     expect(mockCreateMessage).not.toHaveBeenCalled()
-  })
-
-  it("omits the token when form disallows customer replies", async () => {
-    mockFindForm.mockResolvedValue({ ...form, allowCustomerReplies: false } as never)
-    await POST(makeRequest(validBody), { params })
-
-    expect(mockSendConfirmation).toHaveBeenCalledWith(
-      expect.objectContaining({ replyToken: null }),
-    )
   })
 
   it("does not add an unsent confirmation to the ticket conversation", async () => {

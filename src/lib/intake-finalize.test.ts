@@ -18,7 +18,7 @@ vi.mock("@/lib/email", () => ({
 }))
 vi.mock("@/lib/notify", () => ({ createNotification: vi.fn().mockResolvedValue(undefined) }))
 vi.mock("@/lib/intake-conversion", () => ({ prepareConversion: vi.fn(), runConversion: vi.fn() }))
-vi.mock("@/lib/email-config", () => ({ RESEND_RECEIVING_ENABLED: true, getEmailConfig: vi.fn() }))
+vi.mock("@/lib/email-config", () => ({ getEmailConfig: vi.fn() }))
 vi.mock("@/lib/sla-engine", () => ({ startSlaTimers: vi.fn().mockResolvedValue(undefined) }))
 vi.mock("@/lib/rule-executor", () => ({ applyRulesToTicket: vi.fn().mockResolvedValue(undefined) }))
 vi.mock("@/lib/assignment-engine", () => ({ recordAssignmentFailure: vi.fn().mockResolvedValue(undefined) }))

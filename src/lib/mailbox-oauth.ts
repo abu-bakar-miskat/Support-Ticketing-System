@@ -40,9 +40,13 @@ const PROVIDER_CONFIG: Record<OAuthProviderKey, () => ProviderConfig> = {
     return {
       authorizeUrl: `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/authorize`,
       tokenUrl: `https://login.microsoftonline.com/${tenant}/oauth2/v2.0/token`,
-      // Mail.Read.Shared also covers shared mailboxes the signed-in user has
-      // been granted access to; offline_access yields the refresh token.
-      scopes: ["offline_access", "openid", "email", "User.Read", "Mail.Read", "Mail.Read.Shared"],
+      // *.Shared cover shared mailboxes the signed-in user has been granted
+      // (Full Access to read, Send As to send customer replies from it);
+      // offline_access yields the refresh token.
+      scopes: [
+        "offline_access", "openid", "email", "User.Read",
+        "Mail.Read", "Mail.Read.Shared", "Mail.Send", "Mail.Send.Shared",
+      ],
       clientId: process.env.MAILBOX_M365_CLIENT_ID,
       clientSecret: process.env.MAILBOX_M365_CLIENT_SECRET,
       extraAuthorizeParams: { prompt: "select_account" },
@@ -158,9 +162,12 @@ export async function getAccessToken(
 export type MailboxOAuthState = {
   provider: OAuthProviderKey;
   actorId: string;
-  departmentId: string;
-  teamId: string;
-  scopeType: "DEPARTMENT" | "SUB_DEPARTMENT";
+  tenantId: string;
+  /** Null for a TENANT-scoped (send-only) mailbox. */
+  departmentId: string | null;
+  /** The sub-department new tickets file into; null for TENANT scope. */
+  teamId: string | null;
+  scopeType: "TENANT" | "DEPARTMENT" | "SUB_DEPARTMENT";
   /** M365 shared mailbox to read instead of the signed-in account's own inbox. */
   mailbox?: string;
   /** Re-authorize an existing connection instead of creating one. */

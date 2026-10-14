@@ -66,7 +66,7 @@ export async function syncMailboxConnection(connectionId: string, now: Date = ne
       where: { id: connectionId },
       select: {
         id: true, address: true, authType: true, credentialsRef: true, syncCursor: true,
-        status: true, failureCount: true, departmentId: true,
+        status: true, failureCount: true, tenantId: true, departmentId: true,
       },
     });
     const provider = getPullMailProvider(connection.authType);

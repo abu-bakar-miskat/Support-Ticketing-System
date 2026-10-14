@@ -4,11 +4,8 @@
  * lib/process-inbound-email.ts are all provider-agnostic — they only ever
  * touch a `NormalizedInboundEmail`.
  *
- * Two kinds of provider sit behind it:
- * - push: RESEND delivers mail by webhook; we fetch the body by its opaque ref
- *   ({@link MailProvider}, lib/mail-providers/resend-provider.ts).
- * - pull: OAUTH_M365 is polled by the mailbox-sync cron
- *   from a per-connection cursor ({@link PullMailProvider}, lib/mailbox-sync.ts).
+ * Providers are polled by the mailbox-sync cron from a per-connection cursor
+ * ({@link PullMailProvider}, lib/mailbox-sync.ts). OAUTH_M365 is the only one.
  */
 import type { MailboxAuthType } from "@/generated/prisma/enums";
 
@@ -17,9 +14,8 @@ export type NormalizedAttachment = {
   filename: string | null;
   contentType: string;
   size: number;
-  /** Bytes already in hand (pull providers parse the full MIME message). When
-   *  absent the pipeline downloads the attachment via `fetchAttachmentUrl`. */
-  content?: Buffer;
+  /** The attachment's bytes (providers parse the full MIME message). */
+  content: Buffer;
 };
 
 export type NormalizedInboundEmail = {
@@ -36,19 +32,7 @@ export type NormalizedInboundEmail = {
   messageId?: string | null;
 };
 
-export type MailboxCredentials = { credentialsRef: string | null };
-
 export type HealthCheckResult = { ok: true } | { ok: false; error: string };
-
-export interface MailProvider {
-  readonly authType: MailboxAuthType;
-  /** Fetch a received message's full body/headers given the provider's opaque message ref. */
-  fetchMessage(providerRef: string): Promise<NormalizedInboundEmail | null>;
-  /** Resolve a downloadable URL for one attachment on a previously-fetched message. */
-  fetchAttachmentUrl(providerRef: string, attachmentId: string): Promise<string | null>;
-  /** Lightweight connectivity/auth check for the EM-07 health-check cron. */
-  checkHealth(credentials: MailboxCredentials): Promise<HealthCheckResult>;
-}
 
 // ─── Pull providers ─────────────────────────────────────────────────────────
 

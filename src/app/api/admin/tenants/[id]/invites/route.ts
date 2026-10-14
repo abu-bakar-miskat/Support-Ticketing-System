@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db"
 import { NextResponse } from "next/server"
 import { requireAuth } from "@/lib/auth"
 import { badRequest, forbidden } from "@/lib/api-response"
-import { sendTenantInviteEmail } from "@/lib/email"
+import { sendTenantInviteEmail, type EmailDelivery } from "@/lib/email"
 import { INVITE_TTL_MS } from "@/lib/invites/constants"
 import type { Role } from "@/generated/prisma/enums"
 
@@ -125,7 +125,7 @@ export async function POST(request: Request, { params }: Params) {
   // Email the invitee so the 24h clock and the 12h reminder have something to
   // reference. Delivery failure shouldn't lose the invite — the accept link is
   // still returned for manual sharing — so this is best-effort.
-  let emailDelivery: { status: "sent"; via: "mailpit" | "resend" } | { status: "failed" }
+  let emailDelivery: { status: "sent"; via: EmailDelivery } | { status: "failed" }
   try {
     const delivery = await sendTenantInviteEmail({
       to: email,

@@ -2,8 +2,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getProfile } from "@/lib/profile";
 import { prisma } from "@/lib/db";
-import { listTenantDomains, listTenantInUseDomains, listTenantDepartmentScopes } from "@/lib/email-domains";
-import { listPendingDomainRequests } from "@/lib/email-domain-requests";
+import { listTenantMailboxConnections } from "@/lib/mailbox-connection";
 import { X_TENANT_SLUG_HEADER } from "@/lib/tenant-path";
 import {
   DepartmentsMailboxes,
@@ -20,7 +19,7 @@ export default async function DepartmentsMailboxesRoute() {
   const tenantId = profile.activeTenantId ?? "__no_tenant__";
 
   // ── Per-department shared-mailbox usage (tenant-wide) ────────────────────
-  const [depts, mailboxGroups, mailboxConnections, domains, inUseDomains, scopeOptions, domainRequests] = await Promise.all([
+  const [depts, mailboxGroups, mailboxConnections, tenantMailboxes] = await Promise.all([
     prisma.department.findMany({
       where: { tenantId },
       orderBy: { name: "asc" },
@@ -36,24 +35,22 @@ export default async function DepartmentsMailboxesRoute() {
     }),
     prisma.mailboxConnection.groupBy({
       by: ["departmentId", "status"],
-      where: { tenantId },
+      where: { tenantId, authType: "OAUTH_M365", departmentId: { not: null } },
       _count: { _all: true },
       _max: { lastCheckedAt: true },
     }),
     prisma.mailboxConnection.findMany({
-      where: { tenantId },
+      where: { tenantId, authType: "OAUTH_M365", subDepartmentId: { not: null } },
       orderBy: { address: "asc" },
       select: { subDepartmentId: true, address: true, status: true, lastCheckedAt: true },
     }),
-    profile.activeTenantId ? listTenantDomains(profile.activeTenantId) : Promise.resolve([]),
-    profile.activeTenantId ? listTenantInUseDomains(profile.activeTenantId) : Promise.resolve([]),
-    profile.activeTenantId ? listTenantDepartmentScopes(profile.activeTenantId) : Promise.resolve([]),
-    profile.activeTenantId ? listPendingDomainRequests(profile.activeTenantId) : Promise.resolve([]),
+    profile.activeTenantId ? listTenantMailboxConnections(profile.activeTenantId) : Promise.resolve([]),
   ]);
 
   type DeptAgg = { total: number; active: number; issues: number; lastCheckedAt: Date | null };
   const mailboxByDept = new Map<string, DeptAgg>();
   for (const g of mailboxGroups) {
+    if (!g.departmentId) continue;
     const entry = mailboxByDept.get(g.departmentId) ?? { total: 0, active: 0, issues: 0, lastCheckedAt: null };
     const count = g._count._all;
     entry.total += count;
@@ -69,6 +66,7 @@ export default async function DepartmentsMailboxesRoute() {
 
   const mailboxesBySubDepartment = new Map<string, DepartmentMailboxUsage["subDepartments"][number]["mailboxes"]>();
   for (const mailbox of mailboxConnections) {
+    if (!mailbox.subDepartmentId) continue;
     const entries = mailboxesBySubDepartment.get(mailbox.subDepartmentId) ?? [];
     entries.push({
       address: mailbox.address,
@@ -104,10 +102,7 @@ export default async function DepartmentsMailboxesRoute() {
   return (
     <DepartmentsMailboxes
       rows={rows}
-      domains={domains}
-      inUseDomains={inUseDomains}
-      departments={scopeOptions}
-      domainRequests={domainRequests}
+      tenantMailbox={tenantMailboxes[0] ? JSON.parse(JSON.stringify(tenantMailboxes[0])) : null}
     />
   );
 }

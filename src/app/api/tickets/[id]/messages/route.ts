@@ -3,7 +3,7 @@ import { getMailboxOriginMessageId, isMailboxReceipt } from "@/lib/mailbox-ticke
 import { NextRequest, NextResponse } from "next/server"
 import { requireAuth, assertTicketAccess } from "@/lib/auth"
 import { prisma } from "@/lib/db"
-import { RESEND_RECEIVING_ENABLED, getEmailConfig } from "@/lib/email-config"
+import { getEmailConfig } from "@/lib/email-config"
 import { sendCustomerReplyEmail } from "@/lib/email"
 import { sanitizeInboundHtml } from "@/lib/inbound-email"
 import { OUTBOUND_MAX_TOTAL_BYTES } from "@/lib/message-attachments"
@@ -13,6 +13,7 @@ import { syncWorkTimerWithConversation } from "@/lib/timer-conversation-sync"
 import { startTimerOnStatusChange } from "@/lib/timer-autostart"
 import { isEscalatedLabel, labelsAfterDeEscalation } from "@/lib/ticket-escalation"
 import { getMailboxTicketCustomer } from "@/lib/mailbox-ticket-customer"
+import { resolveReplyMailbox } from "@/lib/mailbox-outbound"
 
 // GET /api/tickets/[id]/messages — fetch all messages for the chat tab (realtime refresh)
 export async function GET(
@@ -97,7 +98,6 @@ export async function POST(
         select: {
           submitterName: true,
           submitterEmail: true,
-          replyToken: true,
           formConfig: { select: { allowCustomerReplies: true } },
         },
       },
@@ -110,11 +110,13 @@ export async function POST(
   const accessError = await assertTicketAccess(profile, ticket, { forWrite: true })
   if (accessError) return accessError
 
-  // Customer replies require receiving to be configured, and the form (when
-  // the ticket came from one) permitting replies.
-  if (!RESEND_RECEIVING_ENABLED) {
+  // Customer replies go out from — and come back to — a connected Microsoft
+  // 365 mailbox (sub-department → department → tenant), and need the form
+  // (when the ticket came from one) to permit replies.
+  const replyMailbox = await resolveReplyMailbox(ticket.subDepartment.departmentId, ticket.subDepartmentId)
+  if (!replyMailbox) {
     return NextResponse.json(
-      { error: "Customer replies are not enabled in this environment" },
+      { error: "Connect a Microsoft 365 mailbox for this department to reply to customers" },
       { status: 409 },
     )
   }
@@ -126,13 +128,12 @@ export async function POST(
   }
 
   // Ticket #16: a mailbox-connection-originated ticket (#14) has no `intake`
-  // row, so there's no submitterEmail/replyToken to fall back on — resolve
+  // row, so there's no submitterEmail to fall back on — resolve
   // the customer's address from the most recent inbound message instead.
   // Threading for these still works via In-Reply-To/References (and the
   // subject-reference fallback), so a reply-token isn't required either.
   let submitterName = ticket.intake?.submitterName ?? null
   let submitterEmail = ticket.intake?.submitterEmail ?? null
-  const replyToken = ticket.intake?.replyToken ?? null
   if (!submitterEmail) {
     const lastInbound = await prisma.ticketMessage.findFirst({
       where: { ticketId, direction: "inbound" },
@@ -250,7 +251,6 @@ export async function POST(
       humanId,
       ticketTitle: ticket.title,
       messageText: messageHtml,
-      replyToken,
       inReplyTo: lastMessage?.providerMessageId ?? await getMailboxOriginMessageId(ticketId),
       attachments: emailAttachments.length > 0 ? emailAttachments : undefined,
       departmentId: ticket.subDepartment.departmentId,
@@ -268,7 +268,7 @@ export async function POST(
       status: "trusted",
       authorProfileId: profile.id,
       fromName: profile.name,
-      fromEmail: config.fromEmail,
+      fromEmail: sent?.fromEmail ?? config.fromEmail,
       bodyHtml: messageHtml,
       providerMessageId: sent?.providerMessageId ?? null,
       rawPayload: sent?.providerEmailId

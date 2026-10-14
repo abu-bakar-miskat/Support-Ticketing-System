@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/db";
 import { decryptMailboxCredentials, encryptMailboxCredentials } from "@/lib/mailbox-credentials";
-import { getMailProvider, getPullMailProvider, type HealthCheckResult, type PullCredentials } from "@/lib/mail-providers";
+import { getPullMailProvider, type HealthCheckResult, type PullCredentials } from "@/lib/mail-providers";
 import type { PullContext } from "@/lib/mail-providers/types";
 import { createNotification } from "@/lib/notify";
 import { sendMailboxConnectionFailedAlertEmail } from "@/lib/email";
@@ -9,13 +9,18 @@ import { recordAuditEvent } from "@/lib/audit-log";
 import type { AssignmentMethod, MailboxAuthType, MailboxScopeType } from "@/generated/prisma/enums";
 
 /**
- * MailboxConnection CRUD + routing + EM-07 health monitoring (slice 14).
+ * MailboxConnection CRUD + EM-07 health monitoring (slice 14). Every live
+ * connection is a Microsoft 365 mailbox; legacy RESEND rows are kept in the
+ * database but ignored everywhere (`LIVE` below).
  *
  * `credentialsRef` (NFR-03: encrypted at rest, never returned by any API) is
  * deliberately excluded from every `select` below — not just omitted by the
  * caller — so a future call site can't accidentally leak it by forgetting to
  * strip a field.
  */
+
+/** Only Microsoft 365 connections are live; legacy Resend rows are ignored. */
+const LIVE = { authType: "OAUTH_M365" } as const;
 
 const SAFE_SELECT = {
   id: true,
@@ -42,8 +47,10 @@ const SAFE_SELECT = {
 export type MailboxConnectionSafe = {
   id: string;
   tenantId: string;
-  departmentId: string;
-  subDepartmentId: string;
+  /** Null for a TENANT-scoped (send-only) mailbox. */
+  departmentId: string | null;
+  /** The sub-department new tickets file into; null for TENANT scope. */
+  subDepartmentId: string | null;
   scopeType: MailboxScopeType;
   address: string;
   authType: MailboxAuthType;
@@ -67,7 +74,7 @@ export async function listMailboxConnections(departmentId: string): Promise<Mail
   const { runAsSystem } = await import("@/lib/request-scope");
   return runAsSystem(() =>
     prisma.mailboxConnection.findMany({
-      where: { departmentId },
+      where: { departmentId, ...LIVE },
       select: SAFE_SELECT,
       orderBy: { createdAt: "asc" },
     }),
@@ -78,7 +85,19 @@ export async function listMailboxConnectionsForSubDepartment(subDepartmentId: st
   const { runAsSystem } = await import("@/lib/request-scope");
   return runAsSystem(() =>
     prisma.mailboxConnection.findMany({
-      where: { subDepartmentId },
+      where: { subDepartmentId, ...LIVE },
+      select: SAFE_SELECT,
+      orderBy: { createdAt: "asc" },
+    }),
+  );
+}
+
+/** The tenant's send-only mailbox(es) — at most one is allowed (lib/mailbox-outbound.ts). */
+export async function listTenantMailboxConnections(tenantId: string): Promise<MailboxConnectionSafe[]> {
+  const { runAsSystem } = await import("@/lib/request-scope");
+  return runAsSystem(() =>
+    prisma.mailboxConnection.findMany({
+      where: { tenantId, scopeType: "TENANT", ...LIVE },
       select: SAFE_SELECT,
       orderBy: { createdAt: "asc" },
     }),
@@ -91,12 +110,12 @@ export async function getMailboxConnectionSafe(id: string): Promise<MailboxConne
 
 export async function createMailboxConnection(params: {
   tenantId: string;
-  departmentId: string;
-  subDepartmentId: string;
+  departmentId: string | null;
+  subDepartmentId: string | null;
   scopeType: MailboxScopeType;
   address: string;
   authType: MailboxAuthType;
-  /** Plaintext, encrypted before storage. Omit/null for RESEND (uses the platform API key). */
+  /** Plaintext, encrypted before storage. */
   plaintextCredentials?: string | null;
   /** Pull providers: the starting sync cursor ("now"), so history isn't imported. */
   syncCursor?: unknown;
@@ -137,8 +156,6 @@ export async function createMailboxConnection(params: {
 export async function updateMailboxConnection(
   id: string,
   params: {
-    address?: string;
-    plaintextCredentials?: string | null;
     assignmentMethod?: AssignmentMethod | null;
     manualAssigneeIds?: string[];
     /** Manual on/off switch. When toggled it's audited as ENABLED / DISABLED. */
@@ -151,10 +168,6 @@ export async function updateMailboxConnection(
   const updated = await prisma.mailboxConnection.update({
     where: { id },
     data: {
-      ...(params.address !== undefined ? { address: params.address.trim().toLowerCase() } : {}),
-      ...(params.plaintextCredentials !== undefined
-        ? { credentialsRef: params.plaintextCredentials ? encryptMailboxCredentials(params.plaintextCredentials) : null }
-        : {}),
       ...(params.assignmentMethod !== undefined ? { assignmentMethod: params.assignmentMethod } : {}),
       ...(params.manualAssigneeIds !== undefined ? { manualAssigneeIds: params.manualAssigneeIds } : {}),
       ...(params.isActive !== undefined ? { isActive: params.isActive } : {}),
@@ -199,55 +212,26 @@ export async function deleteMailboxConnection(id: string, actorId: string): Prom
   }
 }
 
-/** Strips display-name/angle-bracket wrapping and lowercases, matching extractReplyToken's tolerance. */
-function normalizeRecipientAddress(recipient: string): string {
-  const angle = recipient.match(/<([^>]+)>/);
-  return (angle ? angle[1] : recipient).trim().toLowerCase();
-}
-
 export type MailboxRoute = {
   id: string;
   address: string;
   tenantId: string;
   departmentId: string;
   subDepartmentId: string;
+  isActive: boolean;
 };
 
 /**
- * EM-01/02/03: resolve which (if any) configured mailbox a fresh inbound
- * message landed in, so a brand-new ticket can be filed on the right
- * department/sub-department board. Exact address match only — Resend's
- * inbound domain is shared, so `address` is purely a routing key checked
- * against the webhook's recipient list.
+ * EM-01/02/03: where new mail synced from this connection files tickets. Null
+ * for a TENANT-scoped mailbox (send-only — it never opens tickets).
  */
-export async function findMailboxRouteForRecipients(recipients: string[]): Promise<MailboxRoute | null> {
-  return findMailboxConnectionForRecipients(recipients, { activeOnly: true });
-}
-
-/**
- * Resolves a configured mailbox even when it is paused. Inbound processing uses
- * this solely to retain an audit/received-mail entry for paused mailboxes;
- * callers that may create tickets must use `findMailboxRouteForRecipients`.
- */
-export async function findMailboxConnectionForRecipients(
-  recipients: string[],
-  { activeOnly = false }: { activeOnly?: boolean } = {},
-): Promise<(MailboxRoute & { isActive: boolean }) | null> {
-  const candidates = [...new Set(recipients.map(normalizeRecipientAddress))].filter(Boolean);
-  if (candidates.length === 0) return null;
-
-  return prisma.mailboxConnection.findFirst({
-    where: { address: { in: candidates }, ...(activeOnly ? { isActive: true } : {}) },
-    select: { id: true, address: true, tenantId: true, departmentId: true, subDepartmentId: true, isActive: true },
-  });
-}
-
-/** Pull providers already know which connection a message came from. */
-export async function getMailboxRouteById(id: string): Promise<(MailboxRoute & { isActive: boolean }) | null> {
-  return prisma.mailboxConnection.findUnique({
+export async function getMailboxRouteById(id: string): Promise<MailboxRoute | null> {
+  const row = await prisma.mailboxConnection.findUnique({
     where: { id },
     select: { id: true, address: true, tenantId: true, departmentId: true, subDepartmentId: true, isActive: true },
   });
+  if (!row?.departmentId || !row.subDepartmentId) return null;
+  return { ...row, departmentId: row.departmentId, subDepartmentId: row.subDepartmentId };
 }
 
 // ─── Pull-provider credentials ──────────────────────────────────────────────
@@ -367,6 +351,7 @@ export async function checkMailboxConnectionHealth(
         credentialsRef: true,
         status: true,
         failureCount: true,
+        tenantId: true,
         departmentId: true,
         address: true,
       },
@@ -402,17 +387,12 @@ async function runProviderHealthCheck(connection: {
   credentialsRef: string | null;
 }): Promise<HealthCheckResult> {
   const pull = getPullMailProvider(connection.authType);
-  if (pull) {
-    try {
-      return await pull.checkHealth(pullContextFor(connection));
-    } catch (err) {
-      return { ok: false, error: err instanceof Error ? err.message : "Couldn't check the mailbox" };
-    }
+  if (!pull) return { ok: false, error: `No provider implementation for ${connection.authType}` };
+  try {
+    return await pull.checkHealth(pullContextFor(connection));
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Couldn't check the mailbox" };
   }
-  const provider = getMailProvider(connection.authType);
-  return provider
-    ? provider.checkHealth({ credentialsRef: connection.credentialsRef })
-    : { ok: false, error: `No provider implementation for ${connection.authType}` };
 }
 
 /**
@@ -421,7 +401,14 @@ async function runProviderHealthCheck(connection: {
  * there first). Notifies managers only on the healthy→failed transition.
  */
 export async function recordMailboxConnectionFailure(
-  connection: { id: string; status: string; failureCount: number; departmentId: string; address: string },
+  connection: {
+    id: string;
+    status: string;
+    failureCount: number;
+    tenantId: string;
+    departmentId: string | null;
+    address: string;
+  },
   error: string,
   now: Date = new Date(),
   {
@@ -446,17 +433,26 @@ export async function recordMailboxConnectionFailure(
   });
 
   if (wasHealthy && notifyOnNewFailure) {
-    await notifyMailboxConnectionFailure(connection.departmentId, connection.address, error);
+    await notifyMailboxConnectionFailure(connection, error);
   }
 }
 
-async function notifyMailboxConnectionFailure(departmentId: string, address: string, error: string): Promise<void> {
-  const managers = await prisma.departmentManager.findMany({
-    where: { departmentId },
-    select: { user: { select: { id: true, name: true, email: true } } },
-  });
+/** Department mailbox → its managers; tenant mailbox → the tenant's admins. */
+async function notifyMailboxConnectionFailure(
+  { tenantId, departmentId, address }: { tenantId: string; departmentId: string | null; address: string },
+  error: string,
+): Promise<void> {
+  const recipients = departmentId
+    ? await prisma.departmentManager.findMany({
+        where: { departmentId },
+        select: { user: { select: { id: true, name: true, email: true } } },
+      })
+    : await prisma.tenantMembership.findMany({
+        where: { tenantId, role: "admin", isActive: true },
+        select: { user: { select: { id: true, name: true, email: true } } },
+      });
 
-  for (const { user } of managers) {
+  for (const { user } of recipients) {
     createNotification({
       recipientId: user.id,
       type: "mailbox_connection_failed",
@@ -468,6 +464,8 @@ async function notifyMailboxConnectionFailure(departmentId: string, address: str
       managerName: user.name,
       address,
       error,
+      tenantId,
+      departmentId,
     }).catch(() => undefined);
   }
 }
@@ -479,7 +477,7 @@ async function notifyMailboxConnectionFailure(departmentId: string, address: str
  */
 export async function sweepMailboxConnectionHealth(now: Date = new Date()): Promise<{ checked: number }> {
   const due = await prisma.mailboxConnection.findMany({
-    where: { OR: [{ status: "ACTIVE" }, { nextCheckAt: { lte: now } }] },
+    where: { ...LIVE, OR: [{ status: "ACTIVE" }, { nextCheckAt: { lte: now } }] },
     select: { id: true },
   });
   for (const { id } of due) {

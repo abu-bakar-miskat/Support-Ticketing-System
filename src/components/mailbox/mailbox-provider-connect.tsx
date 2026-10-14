@@ -204,3 +204,26 @@ export function useMailboxOAuthResult(onConnected: () => void) {
     window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
   }, []);
 }
+
+/** The Microsoft 365 mailbox connected at exactly this scope (department or sub-department). */
+export function scopeReplyMailbox(
+  connections: MailboxConnection[],
+  scope: { scopeType: "DEPARTMENT" } | { scopeType: "SUB_DEPARTMENT"; subDepartmentId: string },
+): MailboxConnection | undefined {
+  return connections.find(
+    (c) =>
+      c.authType === "OAUTH_M365" &&
+      c.scopeType === scope.scopeType &&
+      (scope.scopeType === "DEPARTMENT" || c.subDepartmentId === scope.subDepartmentId),
+  );
+}
+
+/** One-line banner naming the address customers see for this scope's tickets. */
+export function ReplyMailboxNotice({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-start gap-2 rounded-xl border border-sts-blue/20 bg-sts-blue/5 px-4 py-3 font-sans text-[12.5px] text-sts-foreground">
+      <span className="mt-1 size-1.5 shrink-0 rounded-full bg-sts-blue" />
+      <p>{children}</p>
+    </div>
+  );
+}

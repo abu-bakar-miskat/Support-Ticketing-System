@@ -19,7 +19,7 @@ export type AutoAssignResult = {
   assigneeId: string | null;
   method: AssignmentMethod;
   failed: boolean;
-  /** Set only for ROUND_ROBIN — the caller persists this onto SubDepartment.rotaPointer. */
+  /** Rotation cursor — the caller persists this onto SubDepartment.rotaPointer. */
   nextRotaPointer?: number;
 };
 
@@ -188,7 +188,7 @@ export async function autoAssignTicket(params: {
       result = { assigneeId: null, method, failed: true };
     }
   } else if (method === "ROUND_ROBIN") {
-    const eligible = await getEligibleMembers(teamId, excludeUserId);
+    const eligible = await getEligibleMembers(teamId, excludeUserId, true);
     const picked = pickRoundRobin(eligible, subDepartment?.rotaPointer ?? 0);
     result = picked
       ? { assigneeId: picked.userId, method, failed: false, nextRotaPointer: picked.nextPointer }
@@ -206,7 +206,7 @@ export async function autoAssignTicket(params: {
       ? { assigneeId: picked.userId, method, failed: false, nextRotaPointer: picked.nextPointer }
       : { assigneeId: null, method, failed: true };
   } else {
-    // WORKLOAD_BASED — among currently available members only. Rotate through
+    // WORKLOAD_BASED — among currently available agents only. Rotate through
     // members still under the workload threshold, falling back to the fewest
     // open tickets once everyone is at/over it.
     // The threshold follows the same dept/sub scope the method resolves to: a
@@ -220,7 +220,7 @@ export async function autoAssignTicket(params: {
       subDepartment?.workloadThreshold ??
       department?.workloadThreshold ??
       5;
-    const eligible = await getEligibleMembers(teamId, excludeUserId);
+    const eligible = await getEligibleMembers(teamId, excludeUserId, true);
     const counts = await getOpenTicketCounts(teamId, eligible.map((m) => m.userId));
     const picked = pickWorkloadThreshold(counts, workloadThreshold, subDepartment?.rotaPointer ?? 0);
     result = picked

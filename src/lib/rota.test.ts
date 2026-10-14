@@ -73,6 +73,27 @@ describe("isMemberAvailableNow", () => {
 })
 
 describe("getEligibleMembers", () => {
+  it("restricts the automatic assignment pool to agents and excludes scoped department managers", async () => {
+    mockMembershipFindMany.mockResolvedValue([{ userId: "agent" }] as never)
+
+    expect(await getEligibleMembers(TEAM_ID, null, true)).toEqual([{ userId: "agent" }])
+    expect(mockMembershipFindMany).toHaveBeenCalledWith({
+      where: {
+        subDepartmentId: TEAM_ID,
+        isActive: true,
+        role: "agent",
+        user: {
+          role: "agent",
+          managedDepartments: {
+            none: { department: { subDepartments: { some: { id: TEAM_ID } } } },
+          },
+        },
+      },
+      orderBy: { joinedAt: "asc" },
+      select: { userId: true },
+    })
+  })
+
   it("excludes the given user and orders by joinedAt", async () => {
     mockMembershipFindMany.mockResolvedValue([
       { userId: "a" }, { userId: "b" }, { userId: "manager" },

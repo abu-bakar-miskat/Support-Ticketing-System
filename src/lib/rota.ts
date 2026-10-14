@@ -135,14 +135,29 @@ export async function isMemberAvailableNow(userId: string, subDepartmentId: stri
  * (joinedAt asc), excluding `excludeUserId` (typically the department
  * manager, who doesn't work tickets). Returns [] when no member is inside
  * working hours (ASG-04 / WH-03).
+ * `agentsOnly` restricts automatic round-robin/workload assignment to agents,
+ * excluding scoped department managers even if they retain an agent membership.
  */
 export async function getEligibleMembers(
   subDepartmentId: string,
   excludeUserId: string | null,
+  agentsOnly = false,
 ): Promise<{ userId: string }[]> {
   const allMembers = (
     await prisma.subDepartmentMembership.findMany({
-      where: { subDepartmentId, isActive: true },
+      where: {
+        subDepartmentId,
+        isActive: true,
+        ...(agentsOnly ? {
+          role: "agent" as const,
+          user: {
+            role: "agent" as const,
+            managedDepartments: {
+              none: { department: { subDepartments: { some: { id: subDepartmentId } } } },
+            },
+          },
+        } : {}),
+      },
       orderBy: { joinedAt: "asc" },
       select: { userId: true },
     })

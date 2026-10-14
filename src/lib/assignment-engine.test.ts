@@ -55,6 +55,29 @@ beforeEach(() => {
 })
 
 describe("autoAssignTicket — ASG-01", () => {
+  it.each(["ROUND_ROBIN", "WORKLOAD_BASED"])("%s: requests agents only for automatic assignment", async (method) => {
+    mockDeptFind.mockResolvedValue({ assignmentMethod: method, workloadThreshold: 5 } as never)
+    mockGetEligible.mockResolvedValue([{ userId: "agent" }])
+    mockGetCounts.mockResolvedValue([{ userId: "agent", count: 8 }])
+
+    const result = await autoAssignTicket({ departmentId: "d1", teamId: "t1", formValues: {}, excludeUserId: null })
+
+    expect(mockGetEligible).toHaveBeenCalledWith("t1", null, true)
+    expect(result.assigneeId).toBe("agent")
+    expect(result.failed).toBe(false)
+  })
+
+  it.each(["ROUND_ROBIN", "WORKLOAD_BASED"])("%s: leaves the ticket unassigned when no agents qualify", async (method) => {
+    mockDeptFind.mockResolvedValue({ assignmentMethod: method } as never)
+    mockGetEligible.mockResolvedValue([])
+    mockGetCounts.mockResolvedValue([])
+
+    const result = await autoAssignTicket({ departmentId: "d1", teamId: "t1", formValues: {}, excludeUserId: null })
+
+    expect(mockGetEligible).toHaveBeenCalledWith("t1", null, true)
+    expect(result).toEqual({ assigneeId: null, method, failed: true })
+  })
+
   it("MANUAL: returns unassigned, not a failure", async () => {
     mockDeptFind.mockResolvedValue({ assignmentMethod: "MANUAL" } as never)
     const result = await autoAssignTicket({ departmentId: "d1", teamId: "t1", formValues: {}, excludeUserId: null })

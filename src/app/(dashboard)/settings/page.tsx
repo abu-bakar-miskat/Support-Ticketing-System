@@ -47,6 +47,7 @@ export default async function SettingsPage() {
       workStartTime={schedule?.workStartTime ?? "09:00"}
       workEndTime={schedule?.workEndTime ?? "17:00"}
       signature={signature}
+      showAssignmentAvailability={!profile.isSuperAdmin && profile.role === "agent"}
       subDepartmentMemberships={memberships.map((m) => ({
         subDepartmentId: m.subDepartmentId,
         subDepartmentName: m.subDepartment.name,

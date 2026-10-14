@@ -60,6 +60,7 @@ type SettingsProfileProps = {
   workStartTime: string;
   workEndTime: string;
   signature: SignaturePrefs;
+  showAssignmentAvailability: boolean;
   subDepartmentMemberships: OwnSubDepartmentMembership[];
   holidays: OwnHoliday[];
 };
@@ -131,6 +132,7 @@ export function SettingsProfilePage({
   workStartTime: initialWorkStartTime,
   workEndTime: initialWorkEndTime,
   signature: initialSignature,
+  showAssignmentAvailability,
   subDepartmentMemberships,
   holidays,
 }: SettingsProfileProps) {
@@ -482,10 +484,12 @@ export function SettingsProfilePage({
           </div>
         </div>
 
-        <ProfileAvailabilitySection
-          subDepartmentMemberships={subDepartmentMemberships}
-          holidays={holidays}
-        />
+        {showAssignmentAvailability && (
+          <ProfileAvailabilitySection
+            subDepartmentMemberships={subDepartmentMemberships}
+            holidays={holidays}
+          />
+        )}
 
         {/* <Separator className="bg-sts-card-border" /> */}
 

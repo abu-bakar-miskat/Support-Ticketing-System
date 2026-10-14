@@ -470,6 +470,9 @@ export function DepartmentDetailPage({ data }: { data: DepartmentDetailData }) {
         <TableCell className="py-0">
           <div className="flex h-[54px] items-center">
             {(() => {
+              if (role !== "agent") {
+                return <span className="font-sans text-[11.5px] text-sts-subtle">—</span>;
+              }
               // Mirrors rota.ts "active in rotation": profile active AND this
               // sub-department membership isn't flagged doNotAssign.
               const membership = memberships.find((s) => s.subDepartmentId === currentSubId);

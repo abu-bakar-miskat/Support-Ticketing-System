@@ -597,11 +597,12 @@ export async function smartAssignTickets(
   ticketIds: string[],
   mode: "single" | "round-robin",
   assigneeIds: string[],
+  subDepartmentId?: string,
 ): Promise<{ updated: number }> {
   const res = await fetch("/api/admin/tickets/smart-assign", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ticketIds, mode, assigneeIds }),
+    body: JSON.stringify({ ticketIds, mode, assigneeIds, subDepartmentId }),
   })
   if (!res.ok) throw new Error("Failed to assign tickets")
   return res.json()

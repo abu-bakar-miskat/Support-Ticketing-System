@@ -4,6 +4,7 @@ vi.mock("@/lib/auth", () => ({ requireAdminOrManager: vi.fn() }))
 vi.mock("@/lib/db", () => ({
   prisma: {
     profile: { findMany: vi.fn() },
+    subDepartmentMembership: { findMany: vi.fn() },
     ticket: { findMany: vi.fn(), findUnique: vi.fn(), update: vi.fn(), updateMany: vi.fn() },
     activityLog: { create: vi.fn() },
     $transaction: vi.fn(),
@@ -16,11 +17,15 @@ vi.mock("@/lib/rota", () => ({
 vi.mock("@/lib/notify", () => ({ createNotification: vi.fn(() => Promise.resolve()) }))
 vi.mock("@/lib/email", () => ({ sendAssignmentEmail: vi.fn(() => Promise.resolve()) }))
 vi.mock("@/lib/ensure-project-members", () => ({ ensureProjectMembers: vi.fn(() => Promise.resolve()) }))
-vi.mock("@/lib/dept-scope", () => ({ getProfileDeptScope: vi.fn(() => Promise.resolve(null)) }))
+vi.mock("@/lib/dept-scope", () => ({
+  getProfileDeptScope: vi.fn(() => Promise.resolve(null)),
+  subDepartmentInScope: vi.fn(() => Promise.resolve(true)),
+}))
 
 import { requireAdminOrManager } from "@/lib/auth"
 import { prisma } from "@/lib/db"
 import { isMemberAvailableNow, isMemberActiveInRotation } from "@/lib/rota"
+import { subDepartmentInScope } from "@/lib/dept-scope"
 import { POST } from "./route"
 
 const mockRequire = vi.mocked(requireAdminOrManager)
@@ -89,6 +94,36 @@ beforeEach(() => {
 })
 
 describe("POST /api/admin/tickets/smart-assign — round robin availability", () => {
+  it("uses the selected sub-department to check member availability", async () => {
+    vi.mocked(prisma.subDepartmentMembership.findMany).mockResolvedValue([
+      { userId: "a" }, { userId: "b" }, { userId: "c" },
+    ] as never)
+    mockAvailableNow.mockResolvedValue(true)
+
+    const response = await POST(makeRequest({ ticketIds: TICKET_IDS, mode: "round-robin", assigneeIds: ["a", "b", "c"], subDepartmentId: "selected-team" }))
+
+    expect(response.status).toBe(200)
+    expect(mockAvailableNow).toHaveBeenCalledWith("a", "selected-team")
+  })
+
+  it("rejects assignees outside the selected sub-department before updating tickets", async () => {
+    vi.mocked(prisma.subDepartmentMembership.findMany).mockResolvedValue([{ userId: "a" }] as never)
+
+    const response = await POST(makeRequest({ ticketIds: TICKET_IDS, mode: "round-robin", assigneeIds: ["a", "b"], subDepartmentId: TEAM }))
+
+    expect(response.status).toBe(400)
+    expect(mockTicketUpdate).not.toHaveBeenCalled()
+  })
+
+  it("rejects a selected sub-department outside the caller's scope", async () => {
+    vi.mocked(subDepartmentInScope).mockResolvedValueOnce(false)
+
+    const response = await POST(makeRequest({ ticketIds: TICKET_IDS, mode: "single", assigneeIds: ["a"], subDepartmentId: TEAM }))
+
+    expect(response.status).toBe(403)
+    expect(mockTicketUpdate).not.toHaveBeenCalled()
+  })
+
   it("never distributes onto an unavailable member", async () => {
     // b is unavailable (holiday / off-hours); a and c are available.
     mockAvailableNow.mockImplementation((id: string) => Promise.resolve(id !== "b") as never)

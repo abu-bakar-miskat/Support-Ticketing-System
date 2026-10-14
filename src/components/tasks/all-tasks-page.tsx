@@ -318,8 +318,8 @@ export function AllTasksPage({
   }
 
   // ── Bulk assign handler ─────────────────────────────────────────────────────
-  async function handleBulkAssign(mode: "single" | "round-robin", assigneeIds: string[]) {
-    const { updated } = await smartAssignTickets([...selectedIds], mode, assigneeIds);
+  async function handleBulkAssign(mode: "single" | "round-robin", assigneeIds: string[], subDepartmentId?: string) {
+    const { updated } = await smartAssignTickets([...selectedIds], mode, assigneeIds, subDepartmentId);
     toast.success(`${updated} ticket${updated === 1 ? "" : "s"} assigned`);
     setSelectedIds(new Set());
     setAssignModalOpen(false);
@@ -762,6 +762,7 @@ export function AllTasksPage({
       <BulkAssignModal
         count={selectedIds.size}
         subDepartmentMembers={availableMembers}
+        subDepartments={availableSubDepartments}
         onClose={() => setAssignModalOpen(false)}
         onAssign={handleBulkAssign}
       />

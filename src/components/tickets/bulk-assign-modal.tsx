@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { RefreshCw, User, Users, Check, X, Search } from "lucide-react";
 import { AvatarVisual } from "@/components/ui/user-avatar";
-import type { SubDepartmentMember } from "@/lib/api/sub-departments";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { getSubDepartmentMembers, type SubDepartmentMember } from "@/lib/api/sub-departments";
 import { cn } from "@/lib/utils";
 
 type AssignMode = "round-robin-all" | "single" | "round-robin-pick";
@@ -64,16 +65,21 @@ function MemberPickerList({
 export function BulkAssignModal({
   count,
   subDepartmentMembers,
+  subDepartments,
   onClose,
   onAssign,
 }: {
   count: number;
   subDepartmentMembers: SubDepartmentMember[];
+  subDepartments?: { id: string; name: string }[];
   onClose: () => void;
-  onAssign: (mode: "single" | "round-robin", assigneeIds: string[]) => Promise<void>;
+  onAssign: (mode: "single" | "round-robin", assigneeIds: string[], subDepartmentId?: string) => Promise<void>;
 }) {
-  // Managers are excluded from round-robin distribution — they're not meant to work tickets.
-  const rotationMembers = subDepartmentMembers.filter((m) => m.role !== "manager");
+  const [subDepartmentId, setSubDepartmentId] = useState("");
+  const [loadedMembers, setLoadedMembers] = useState<SubDepartmentMember[]>([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
+  const members = subDepartments ? loadedMembers : subDepartmentMembers;
+  const rotationMembers = members.filter((m) => m.role === "agent");
 
   const [mode, setMode] = useState<AssignMode>("round-robin-all");
   const [singleId, setSingleId] = useState<string>("");
@@ -81,11 +87,37 @@ export function BulkAssignModal({
   const [assigning, setAssigning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (!subDepartmentId) return;
+    let cancelled = false;
+    getSubDepartmentMembers(subDepartmentId).then((result) => {
+      if (!cancelled) setLoadedMembers(result);
+    }).catch(() => {
+      if (!cancelled) setError("Could not load members. Select the sub-department again to retry.");
+    }).finally(() => {
+      if (!cancelled) setLoadingMembers(false);
+    });
+    return () => { cancelled = true; };
+  }, [subDepartmentId]);
+
+  function changeSubDepartment(id: string) {
+    setSubDepartmentId(id);
+    setLoadedMembers([]);
+    setLoadingMembers(Boolean(id));
+    setSingleId("");
+    setPicked(new Set());
+    setError(null);
+  }
+
   // Switching modes resets the other pickers so a deselected mode never keeps a stale selection.
   function changeMode(next: AssignMode) {
     if (next === mode) return;
     setMode(next);
     setError(null);
+    if (subDepartments && (!subDepartmentId || loadingMembers)) {
+      setError("Select a sub-department first.");
+      return;
+    }
     setSingleId("");
     setPicked(new Set());
   }
@@ -120,7 +152,7 @@ export function BulkAssignModal({
 
     setAssigning(true);
     try {
-      await onAssign(apiMode, ids);
+      await onAssign(apiMode, ids, subDepartmentId || undefined);
     } catch {
       setError("Assignment failed. Please try again.");
     } finally {
@@ -133,7 +165,7 @@ export function BulkAssignModal({
       value: "round-robin-all",
       icon: <RefreshCw className="size-3.5" />,
       label: "Round robin — all active members",
-      desc: "Distribute evenly across all sub department members",
+      desc: "Distribute evenly across agents in the selected sub-department",
     },
     {
       value: "single",
@@ -152,7 +184,7 @@ export function BulkAssignModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 sts-overlay-backdrop" onClick={onClose} />
-      <div className="sts-glass-panel relative w-full max-w-md rounded-2xl border border-sts-card-border p-6 shadow-2xl">
+      <div className="sts-glass-panel relative max-h-[90vh] overflow-y-auto w-full max-w-md rounded-2xl border border-sts-card-border p-6 shadow-2xl">
         <div className="mb-5 flex items-center justify-between">
           <h2 className="sts-text-modal-title">Assign {count} ticket{count !== 1 ? "s" : ""}</h2>
           <button aria-label="Close" type="button" onClick={onClose} className="rounded-full p-1 text-sts-subtle hover:text-sts-foreground">
@@ -160,6 +192,33 @@ export function BulkAssignModal({
           </button>
         </div>
 
+        {subDepartments && (
+          <div className="mb-4 flex flex-col gap-1.5">
+            <label htmlFor="bulk-assign-sub-department" className="font-sans text-[12px] font-semibold text-sts-foreground">Sub-department</label>
+            <Select
+              value={subDepartmentId || null}
+              onValueChange={(value) => changeSubDepartment(value ?? "")}
+              disabled={assigning}
+            >
+              <SelectTrigger
+                id="bulk-assign-sub-department"
+                className="w-full data-[size=default]:h-9 rounded-md border-sts-card-border bg-sts-surface px-3 font-sans text-[12.5px] text-sts-foreground"
+              >
+                <SelectValue placeholder="Select a sub-department">
+                  {subDepartments.find((department) => department.id === subDepartmentId)?.name}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                {subDepartments.map((department) => (
+                  <SelectItem key={department.id} value={department.id}>{department.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {loadingMembers && <p className="font-sans text-[11.5px] text-sts-subtle">Loading members…</p>}
+          </div>
+        )}
+
+        {(!subDepartments || (subDepartmentId && !loadingMembers)) && <>
         <div className="flex flex-col gap-3">
           {MODES.map((m) => (
             <button
@@ -192,7 +251,7 @@ export function BulkAssignModal({
           <div className="mt-4 flex flex-col gap-1.5">
             <label className="font-sans text-[12px] font-semibold text-sts-foreground">Member</label>
             <MemberPickerList
-              members={subDepartmentMembers}
+              members={members}
               selected={singleId ? new Set([singleId]) : new Set()}
               onSelect={setSingleId}
             />
@@ -212,6 +271,7 @@ export function BulkAssignModal({
             />
           </div>
         )}
+        </>}
 
         {error && <p className="mt-3 font-sans text-[11.5px] text-sts-red">{error}</p>}
 
@@ -226,7 +286,7 @@ export function BulkAssignModal({
           <button
             type="button"
             onClick={handleSubmit}
-            disabled={assigning}
+            disabled={assigning || Boolean(subDepartments && (!subDepartmentId || loadingMembers))}
             className="h-8 min-w-[100px] rounded-full bg-sts-blue px-3 font-sans text-xs font-medium text-white dark:text-gray-900 hover:bg-sts-blue/90 disabled:opacity-50"
           >
             {assigning ? "Assigning…" : `Assign ${count} ticket${count !== 1 ? "s" : ""}`}
